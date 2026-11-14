@@ -354,7 +354,7 @@ button.versus:hover:not(:disabled) { border-color: #c58bff; }
 "use strict";
 // GAME_VERSION changes with any update. RULES_VERSION goes up ONLY when a balance change makes the game easier or
 // harder: each rules version gets its own leaderboard, so scores from different rules are never mixed.
-const GAME_VERSION = "1.1.0", RULES_VERSION = 2;   // v2: special dragon names give bonuses
+const GAME_VERSION = "1.1.1", RULES_VERSION = 2;   // v2: special dragon names give bonuses
 const W = 960, H = 560;
 const $ = id => document.getElementById(id);
 const cv = $("board"), ctx = cv.getContext("2d");
@@ -626,17 +626,20 @@ function makeSave() {
 }
 function restore(sv) {
   newRun();
-  Object.assign(S, { level: sv.level, gold: sv.gold, hp: sv.hp, maxHp: sv.maxHp, walls: sv.walls || 0, treasury: sv.treasury || 0, dragon: !!sv.dragon, fort: { archers: 0, moat: 0, masons: 0, ...(sv.fort || {}) } });
+  const int = (v, lo, hi, d) => v != null && v !== "" && Number.isFinite(+v) ? Math.max(lo, Math.min(hi, Math.floor(+v))) : d, f = sv.fort || {};
+  const maxHp = int(sv.maxHp, 1, 1e6, 20);
+  Object.assign(S, { level: int(sv.level, 1, 5000, 1), gold: int(sv.gold, 0, 1e9, 0), hp: int(sv.hp, 1, maxHp, maxHp), maxHp, walls: int(sv.walls, 0, 1e3, 0), treasury: int(sv.treasury, 0, 1e3, 0), dragon: !!sv.dragon,
+                     fort: { archers: int(f.archers, 0, FORT.archers.max, 0), moat: int(f.moat, 0, FORT.moat.max, 0), masons: int(f.masons, 0, FORT.masons.max, 0) } });
   (sv.towers || []).forEach((t, i) => {
     if (!t || !TOWERS[t[0]]) return;
     const [x, y] = t.length >= 5 ? [t[3], t[4]] : (SPOTS[i] || [-1, -1]);  // older saves used fixed circles
     if (x < 0) return;
-    S.towers.push({ type: t[0], lvl: t[1], spent: t[2], cd: 0, ang: 0, flash: 0, x, y, dmg: t[5] || 0, kills: t[6] || 0, slowed: t[7] || 0, name: t[0] === "dragon" ? (cleanDragonName(t[8]) || suggestDragonName()) : undefined });
+    S.towers.push({ type: t[0], lvl: int(t[1], 1, 999, 1), spent: int(t[2], 0, 1e9, 0), cd: 0, ang: 0, flash: 0, x, y, dmg: t[5] || 0, kills: t[6] || 0, slowed: t[7] || 0, name: t[0] === "dragon" ? (cleanDragonName(t[8]) || suggestDragonName()) : undefined });
   });
   S.stats = { ...S.stats, ...(sv.stats || {}) };
   S.rv = Number.isInteger(sv.rv) && sv.rv >= 1 && sv.rv <= 999 ? sv.rv : RULES_VERSION;  // a game keeps the rules it started under
   S.perks = normMeta({ perks: sv.perks }).perks; S.dyn = Math.max(0, Math.min(99, Math.floor(+sv.dyn || 0))); S.windUsed = !!sv.windUsed;
-  if (Array.isArray(sv.plan) && sv.planL === sv.level && sv.plan.every(q => q && (q.k === "boss" || ENEMIES[q.k]))) { S.plan = sv.plan; S.planL = sv.planL; S.ev = sv.ev && EVENTS[sv.ev.id] && sv.ev.L === sv.level ? { id: sv.ev.id, L: sv.ev.L, choice: sv.ev.choice || null } : null; }
+  if (Array.isArray(sv.plan) && sv.planL === S.level && sv.plan.every(q => q && (q.k === "boss" || ENEMIES[q.k]))) { S.plan = sv.plan; S.planL = S.level; S.ev = sv.ev && EVENTS[sv.ev.id] && sv.ev.L === S.level ? { id: sv.ev.id, L: sv.ev.L, choice: sv.ev.choice || null } : null; }
   const gone = new Set(sv.cleared || []);
   S.trees = S.trees.filter(tr => !gone.has(tr.id) && !S.towers.some(t => Math.hypot(t.x - tr.x, t.y - tr.y) < 34));
   (sv.planted || []).forEach(([x, y, planted, tone, chopped]) => {
@@ -799,7 +802,8 @@ const GROWTH = [
   { name: "Mighty oak", at: 15, s: 1.4, max: 8, wood: 13 },
 ];
 const plantCost = () => Math.round(4 * goldScale(S.level));
-const treeStage = t => { const age = S.level - t.planted + perk("thumb"); let i = 0; while (i < GROWTH.length - 1 && age >= GROWTH[i + 1].at) i++; return i; };
+const treeAge = t => S.level - t.planted + perk("thumb");
+const treeStage = t => { const age = treeAge(t); let i = 0; while (i < GROWTH.length - 1 && age >= GROWTH[i + 1].at) i++; return i; };
 function growTree(t) {
   const i = treeStage(t), g = GROWTH[i], grew = t.stage !== undefined && i > t.stage, chopped = Math.max(0, (t.max || 0) - (t.hp || 0));
   t.stage = i; t.s = g.s; t.max = g.max; t.wood = g.wood; t.hp = g.max ? Math.max(1, g.max - chopped) : 0;
@@ -990,7 +994,7 @@ function drawLiveTree(t) {
     c.fillStyle = tones[2]; ell(c, x + sway, y - 16, 3, 3.4);
     if (season.snow) { c.fillStyle = "#f7fafc"; ell(c, x + sway, y - 18, 2.6, 1.2); }
     if (picked) {
-      const f = Math.min(1, (S.level - t.planted) / GROWTH[1].at);
+      const f = Math.min(1, treeAge(t) / GROWTH[1].at);
       c.lineWidth = 3; c.strokeStyle = "rgba(0,0,0,.35)"; c.beginPath(); c.arc(t.x, y - 9, 14, 0, Math.PI * 2); c.stroke();
       c.strokeStyle = "#8cc06a"; c.beginPath(); c.arc(t.x, y - 9, 14, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * f); c.stroke();
     }
@@ -1289,7 +1293,6 @@ function drawEnemy(e) {
   enemyBody(c, e);
   c.restore();
   if (e.slowT > 0) { c.strokeStyle = "rgba(170,230,250,.85)"; c.lineWidth = 2; c.beginPath(); c.ellipse(x, y, r + 3, r + 3, 0, 0, Math.PI * 2); c.stroke(); }
-  if (e.burnT > 0 && Math.random() < .25) S.fx.push({ x: x + (Math.random() - .5) * r, y: y - r * .3, vx: 0, vy: -30, life: .4, max: .4, col: Math.random() < .5 ? "#ff9a3c" : "#ffd25e", r: 2.5 });
   if (e.hp < e.max) {
     const bw = Math.max(18, r * 2), f = Math.max(0, e.hp / e.max), by = y - r - (e.boss ? 16 : 9);
     c.fillStyle = "rgba(0,0,0,.5)"; c.fillRect(x - bw / 2 - 1, by - 1, bw + 2, 5);
@@ -1326,6 +1329,7 @@ function drawShot(s) {
 
 /* ---------- simulation ---------- */
 // small per-monster variety: a few close shades of each body colour (plus little extras chosen in enemyBody from e.v / e.v2)
+const emberFx = (e, local) => ({ x: e.x + (Math.random() - .5) * e.r, y: e.y - (e.fly ? 22 : 0) - e.r * .3, vx: 0, vy: -30, life: .4, max: .4, col: Math.random() < .5 ? "#ff9a3c" : "#ffd25e", r: 2.5, local });
 const VCOLS = {
   goblin: ["#7fb04a", "#8cbb52", "#71a545"], wolf: ["#9aa0a6", "#a1968a", "#8a9096"], orc: ["#6b7a3a", "#617441", "#77803c"],
   bat: ["#5b4a7a", "#684a74", "#504c7c"], troll: ["#6f8a99", "#768d88", "#6a8297"], wyvern: ["#3f8f7a", "#4c8f62", "#3f8190"],
@@ -1496,6 +1500,7 @@ function clearWave() {
   sfx("clear");
   const tpay = S.treasury ? treasPay(S.treasury, L) : 0;
   if (tpay) earn(tpay);
+  const unhurt = S.hp >= S.waveHp;  // judged before the masons patch the walls up
   const mend = Math.min(S.maxHp - S.hp, S.fort.masons * 2 + perk("crown") + S.towers.reduce((a, t) => a + ((dragonSecret(t) || {}).mend || 0), 0));
   if (mend > 0) { S.hp += mend; S.texts.push({ x: CASTLE.x + 50, y: CASTLE.y + 30, txt: "+" + mend + " ♥", life: 1.4, col: "#9fe08a" }); }
   let msg = `Level ${L} cleared! +${bonus + tpay} gold${tpay ? ` (${tpay} from the treasury)` : ""}`;
@@ -1510,7 +1515,7 @@ function clearWave() {
   if (S.vs) { vsLevelCleared(L); updateHud(); renderUpNext(); renderPanel(); return; }
   savePlayer(L);
   [10, 25, 50, 100].forEach(n => { if (L >= n) unlock("lv" + n); });
-  if (L % 10 === 0 && S.hp >= S.waveHp) unlock("untouched");
+  if (L % 10 === 0 && unhurt) unlock("untouched");
   persist();
   updateHud(); renderUpNext(); renderPanel();
 }
@@ -1562,7 +1567,7 @@ function update(dt) {
     if (e.dead) continue;
     e.t += dt;
     if (e.slowT > 0) { e.slowT -= dt; if (e.slowT <= 0) e.slowA = 0; }
-    if (e.burnT > 0) { e.burnT -= dt; hurt(e, e.burnDps * dt, true, e.burnSrc); if (e.dead) continue; }
+    if (e.burnT > 0) { e.burnT -= dt; if (Math.random() < .25) S.fx.push(emberFx(e)); hurt(e, e.burnDps * dt, true, e.burnSrc); if (e.dead) continue; }
     if (e.regen) e.hp = Math.min(e.max, e.hp + e.max * e.regen * dt);
     const px = e.x;
     const moat = S.fort.moat && !e.fly && e.x > 770 ? 1 - .12 * S.fort.moat : 1;
@@ -1762,7 +1767,7 @@ cv.addEventListener("pointerdown", ev => {
   else {
     const why = canBuild(x, y);
     if (!why) sel = { kind: "place", x, y };
-    else { sel = null; const msg = { road: "Towers can't go on the road.", pond: "Towers can't go in the pond.", tower: "Too close to another tower.", tree: "A tree is in the way. Tap it to chop it down.", edge: "Too close to the edge." }[why]; if (msg) toast(msg); }
+    else { sel = null; if (BUILD_MSG[why]) toast(BUILD_MSG[why]); }
   }
   renderPanel();
   if (sel && sel.kind !== "tree" && window.innerWidth < 900) $("selPanel").scrollIntoView({ block: "nearest", behavior: reduceMotion ? "auto" : "smooth" });
@@ -1831,7 +1836,7 @@ function renderPanel() {
     const tr = sel.t;
     if (!S.trees.includes(tr) || tr.fall) { sel = null; renderPanel(); return; }
     const planted = tr.planted != null, gi = planted ? tr.stage : -1, next = planted ? GROWTH[gi + 1] : null;
-    const left = next ? next.at - (S.level - tr.planted) : 0, lv = n => `${n} level${n === 1 ? "" : "s"}`;
+    const left = next ? next.at - treeAge(tr) : 0, lv = n => `${n} level${n === 1 ? "" : "s"}`;
     if (planted && !tr.max) {
       p.append(el("h3", "", "Sapling"));
       p.append(el("p", "hint", `You planted this at level ${tr.planted}. It becomes a young tree in ${lv(left)}, then keeps growing into an oak worth more firewood the longer you leave it. It takes up space a tower could use until you clear it.`));
@@ -1891,7 +1896,7 @@ function renderPanel() {
   }
   const t = sel.t;
   if (!S.towers.includes(t)) { sel = null; renderPanel(); return; }
-  const d = TOWERS[t.type], st = tStats(t), nx = tStats({ type: t.type, lvl: t.lvl + 1, x: t.x, y: t.y });
+  const d = TOWERS[t.type], st = tStats(t), nx = tStats({ type: t.type, lvl: t.lvl + 1, x: t.x, y: t.y, name: t.name });
   p.append(el("h3", "", t.type === "dragon" ? `${dragonLabel(t)} · ${dragonStage(t.lvl).name} · level ${t.lvl}` : `${d.name} · level ${t.lvl}`));
   { const bw = el("p", "best"); bw.append(el("b", "", "Best against: "), document.createTextNode(d.best)); p.append(bw); }
   { const sp = dragonSecret(t); if (sp) { const sw = el("p", "best"); sw.append(el("b", "", "A special name! "), document.createTextNode(sp.msg)); p.append(sw); } }
@@ -2233,7 +2238,7 @@ function openCollection() {
 }
 
 /* ---------- export / import: move heirlooms and your saved game between devices or between the app and the Claude page ---------- */
-const b64e = str => btoa(String.fromCharCode(...new TextEncoder().encode(str)));
+const b64e = str => { const b = new TextEncoder().encode(str); let s = ""; for (let i = 0; i < b.length; i += 8192) s += String.fromCharCode(...b.subarray(i, i + 8192)); return btoa(s); };
 const b64d = str => new TextDecoder().decode(Uint8Array.from(atob(str), c => c.charCodeAt(0)));
 function exportCode() {
   const data = { app: "endless-keep", v: 1, at: Date.now(), name: playerName, meta, save: savedGame && savedGame.level ? savedGame : null };
@@ -2311,7 +2316,11 @@ function begin(sv) {
 }
 $("btnNew").addEventListener("click", () => begin(null));
 $("btnContinue").addEventListener("click", () => begin(savedGame));
-$("btnAgain").addEventListener("click", () => { savedGame = null; showStart(); if (meta.picks) openPicker(); });
+$("btnAgain").addEventListener("click", () => {
+  if (S && (S.vs || S.vsGuest)) { netClose(); $("overCard").querySelector("h2").textContent = "The keep has fallen"; newRun(); renderPalette(); }  // a two-player game never touched your own save
+  else savedGame = null;
+  showStart(); if (meta.picks) openPicker();
+});
 $("pname").addEventListener("keydown", ev => { if (ev.key === "Enter") (savedGame ? $("btnContinue") : $("btnNew")).click(); });
 
 /* ---------- cloud: leaderboard + saves ---------- */
@@ -2446,7 +2455,8 @@ function renderBoard() {
   renderAch();
 }
 /* ---------- shared Hall of Heroes for the installed app (a small server; see leaderboard/) ---------- */
-const LB_URL = window.claude ? "" : (location.hostname === "localhost" && ls.get("ek_lb_dev")) || "https://endless-keep-leaderboard.REPLACE.workers.dev";
+const LB_URL = window.claude ? "" : [(location.hostname === "localhost" && ls.get("ek_lb_dev")) || "https://endless-keep-leaderboard.REPLACE.workers.dev"]
+  .map(u => typeof u === "string" && /^https?:\/\//.test(u) && !u.includes(".REPLACE.") ? u.replace(/\/+$/, "") : "")[0];  // set the real Worker URL here once it's deployed
 let lbNote = "";
 function lbToken() {
   let t = ls.get("ek_lbtoken");
@@ -2768,6 +2778,7 @@ function guestTick(dt) {
     e.t += dt; const px = e.x;
     e.d = Math.min(e.path.len, e.d + e.spd * (1 - (e.slowT > 0 ? e.slowA : 0)) * (vsOn("swift") ? 1.2 : 1) * dt);
     [e.x, e.y] = posAt(e.path, e.d); if (Math.abs(e.x - px) > .01) e.face = e.x >= px ? 1 : -1;
+    if (e.burnT > 0) { e.burnT -= dt; if (Math.random() < .25) S.fx.push(emberFx(e, true)); }
   }
   for (const q of S.shots) { const dx = q.tx - q.x, dy = q.ty - q.y, d = Math.hypot(dx, dy), st = q.spd * dt; if (d > st) { q.x += dx / d * st; q.y += dy / d * st; q.trav += st; } }
   for (const f of S.fx) { f.life -= dt; if (!f.ring && !f.bolt) { f.x += (f.vx || 0) * dt; f.y += (f.vy || 0) * dt; if (f.g) f.vy += f.g * dt; } }
@@ -2836,7 +2847,6 @@ function renderDL() {
 $("btnVersus").addEventListener("click", openVersus);
 $("boardVer").addEventListener("change", ev => { viewV = Number(ev.target.value) || 0; if (boardMode === "api" && viewV >= 1) fetchBoard(); else renderBoard(); });
 $("verNote").textContent = `Version ${GAME_VERSION} · rules v${RULES_VERSION}. Each rules version has its own Hall of Heroes.`;
-$("btnAgain").addEventListener("click", () => { if (S && (S.vs || S.vsGuest)) { netClose(); $("overCard").querySelector("h2").textContent = "The keep has fallen"; newRun(); renderPalette(); } }, true);
 
 /* ---------- boot ---------- */
 buildBg(); resize();
