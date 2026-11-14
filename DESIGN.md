@@ -39,13 +39,35 @@ typography:
     fontWeight: 400
     lineHeight: 1
     letterSpacing: "0.02em"
+  title-large:
+    fontFamily: "Uncial Antiqua, Palatino Linotype, Georgia, serif"
+    fontSize: "1.4rem"
+    fontWeight: 400
+  headline-phone:
+    fontFamily: "Uncial Antiqua, Palatino Linotype, Georgia, serif"
+    fontSize: "1.35rem"
+    fontWeight: 400
+    lineHeight: 1
   title:
     fontFamily: "Uncial Antiqua, Palatino Linotype, Georgia, serif"
     fontSize: "1.15rem"
     fontWeight: 400
+  title-small:
+    fontFamily: "Uncial Antiqua, Palatino Linotype, Georgia, serif"
+    fontSize: "1.05rem"
+    fontWeight: 400
+  lead:
+    fontFamily: "Alegreya Sans, Trebuchet MS, system-ui, sans-serif"
+    fontSize: "1.25rem"
+    fontWeight: 400
   body:
     fontFamily: "Alegreya Sans, Trebuchet MS, system-ui, sans-serif"
     fontSize: "16px"
+    fontWeight: 400
+    lineHeight: 1.45
+  panel-body:
+    fontFamily: "Alegreya Sans, Trebuchet MS, system-ui, sans-serif"
+    fontSize: "0.95rem"
     fontWeight: 400
     lineHeight: 1.45
   body-strong:
@@ -207,8 +229,12 @@ A dusk palette: near-black greens and parchment, with lamplit gold and a few sma
 - **Title** (400, 1.05–1.4rem): panel headings, Bestiary entries, heirloom names and event titles, in the display font.
 - **Body** (400, 16px, 1.45): rules text, card copy and hints (0.95rem in panels). Option names and stats step up to 700–800.
 - **Stat** (800, 1.15rem, tabular): HUD numbers, with fixed minimum widths so they never jitter.
-- **Small** (400, 0.78–0.85rem): descriptions under options, chips, fine print and board notes.
-- **Label** (700–800, 0.68–0.78rem, 0.05–0.1em tracking, uppercase): stat captions, field labels, sub-headings, rarity names and monster tags.
+- **Lead** (400, 1.25rem): the one result line on a card, such as "You held for 12 levels".
+- **Panel body** (400, 0.95rem): rules text and lists inside panels, events, heirloom and Bestiary text.
+- **Small** (400, 0.82rem): descriptions under options, chips, fine print, board notes and tile names and costs.
+- **Label** (700–800, 0.72rem, 0.04–0.1em tracking, uppercase): stat captions, field labels, sub-headings, rarity names, tile roles and monster tags. Never smaller than 11px. On phones 420px or narrower, tile roles drop the capitals and tracking (0.75rem) so they fit without truncating.
+
+The scale is closed: 1.9, 1.7, 1.4, 1.35, 1.25, 1.15, 1.05, 1, 0.95, 0.82 and 0.72rem, plus the two monospace code sizes. Don't add steps in between.
 
 ### Named Rules
 **The Uncial Names Things Rule.** The display font is only for names and headings. Never set a sentence, a number, a button label or anything the player must parse quickly in Uncial Antiqua.
@@ -222,7 +248,8 @@ The page is a centred grid, at most 1320px wide with 12px gaps: a top bar (title
 - **Top controls** are a fixed grid: the primary button is 1.8fr and six others are 1fr each. That becomes 4 columns at 820px or narrower (primary spans 2), and 3 columns at 520px or narrower (primary spans the full row). Labels truncate with an ellipsis; they never reflow the grid.
 - **At 900px or narrower** the layout stacks to one column. Between 620 and 900px the sidebar panels sit two across.
 - **Full-screen mode** fixes the wrap to the viewport, respects all safe-area insets and sizes the board with container queries to the largest 960:560 rectangle that fits. Below 520px of height (landscape phones) it hides the title, narrows the sidebar to 230px and shrinks the palette tiles to icons only. In portrait at 900px or narrower it stacks, and the sidebar scrolls.
-- **Modals** (heirlooms, export/import, Bestiary, two-player) cover the viewport with a dark scrim and centre a card up to 780px wide, which scrolls inside `100dvh`.
+- **Modals** (heirlooms, export/import, Bestiary, two-player) cover the viewport with a dark scrim and centre a card up to 780px wide, which scrolls inside `100dvh`. While one is open the page behind is `inert`; it takes its accessible name from its first heading, and focus goes back to the button that opened it.
+- **Cards over the board on phones.** At 700px or narrower the board is too short to hold the start, pause and game-over cards, so an open card grows the stage instead of scrolling inside it: the board stays at its true shape along the top, and the card sits over it and pushes the defenders bar down. Every button on the card is reachable by scrolling the page.
 
 Spacing is a tight 4–14px rhythm: 6px between controls, tiles and chips; 8–10px inside rows and lists; 12px between panels; 14px panel padding; 20–22px card padding (14px on phones).
 
@@ -284,7 +311,7 @@ There is no navigation chrome. The top bar is the HUD (stat pills) plus the fixe
 A Deep Moss pill (10px radius) with a tiny uppercase caption and a large tabular 800-weight number. Gold is coloured Keep Gold, the castle's hearts Heart Rose, and the Dark Lord's dread Dark Lord Violet.
 
 ### Defender Tile
-A palette button with a 44px canvas portrait, a name and a Frost uppercase role label underneath, and the gold cost below that. A tile you can't afford fades to 55% with an ember cost; a locked tile fades to 45%; the active tile gets a gold border on a lighter moss fill. Tiles are drag sources: `touch-action: none`, no text selection, and a grab cursor.
+A palette button with a 44px canvas portrait, a name and a Frost uppercase role label underneath, and the gold cost below that. A tile you can't afford fades only its portrait (to 45%) and turns its cost Ember Glow, so the price stays readable. A locked tile fades its portrait and sets its text in Faded Parchment. Never fade the whole tile, because that fades the text that says why. The active tile gets a gold border on a 14% gold tint of Lichen Moss. Tiles are drag sources: `touch-action: none`, no text selection, and a grab cursor.
 
 ### Leaderboard Row
 Four columns (rank, name, level, badges) on a faint alternating stripe. Your own row gets a 14% gold tint, and first place has a gold rank.
@@ -297,7 +324,8 @@ Four columns (rank, name, level, badges) on a faint alternating stripe. Your own
 - **Do** use the existing semantic families: Hearth Ember for danger and bosses, Frost for tower roles and info, Spring Leaf for gains and good events, and Dark Lord Violet only for the Dark Lord, two-player mode and Epic.
 - **Do** set names and headings in Uncial Antiqua at weight 400, and everything else in Alegreya Sans with tabular figures for changing numbers.
 - **Do** separate surfaces with a one-step tonal lift and a 1px Mossy Line border, and keep shadows for things that float.
-- **Do** use the 2px Keep Gold focus outline (2px offset) on every interactive element.
+- **Do** use the 2px Keep Gold focus outline (2px offset) on every interactive element. The board canvas is focusable too: its outline sits inside the edge, and the arrow keys move a gold ring cursor that Enter taps.
+- **Do** take every colour in the CSS from a `:root` custom property. New shades are `color-mix()` of existing tokens, not new hex values.
 - **Do** check every change at phone width, in phone landscape (520px tall or less) and in full-screen mode.
 
 ### Don't:

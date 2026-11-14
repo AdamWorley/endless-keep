@@ -16,6 +16,18 @@
   --ember: #e2683e;
   --frost: #94d6ea;
   --leaf: #8cc06a;
+  --gold-bright: #f3c95e;
+  --gold-ink: #2a1d05;
+  --ember-glow: #ffc1a8;
+  --rose: #f08a7a;
+  --leaf-on: #3c5444;
+  --leaf-on-ink: #e4f5d6;
+  --meadow: #5e9444;
+  --wing: #6c8fb0;
+  --violet: #c58bff;
+  --violet-edge: #7a4a9a;
+  --violet-night: #2c2338;
+  --violet-ink: #e3d2ff;
   --font-display: "Uncial Antiqua", "Palatino Linotype", Georgia, serif;
   --font-body: "Alegreya Sans", "Trebuchet MS", system-ui, sans-serif;
   color-scheme: dark;
@@ -34,6 +46,11 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 * { box-sizing: border-box; }
+[hidden]:not([hidden=until-found i]) { display: none !important; }
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+::placeholder { color: color-mix(in srgb, var(--parch-dim) 80%, var(--night)); opacity: 1; }
+p, .ds, .bo, .bd { text-wrap: pretty; }
+::selection { background: color-mix(in srgb, var(--gold) 40%, transparent); color: var(--parch); }
 .wrap { max-width: 1320px; margin: 0 auto; display: grid; gap: 12px; }
 header.top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
 header.top h1 { font-family: var(--font-display); font-weight: 400; font-size: 1.7rem; margin: 0; color: var(--gold); letter-spacing: .02em; line-height: 1; }
@@ -43,36 +60,37 @@ header.top h1 { font-family: var(--font-display); font-weight: 400; font-size: 1
 #hLevel { min-width: 2ch; } #hGold { min-width: 5.5ch; } #hHearts { min-width: 4.5ch; }
 .stat span { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--parch-dim); }
 .stat.gold b { color: var(--gold); }
-.stat.hearts b { color: #f08a7a; }
+.stat.hearts b { color: var(--rose); }
 /* fixed-size button grid: labels change ("Sound: off", "Level 12 under way") but no button ever moves or resizes */
 .controls { display: grid; width: 100%; grid-template-columns: minmax(0, 1.8fr) repeat(6, minmax(0, 1fr)); gap: 6px; }
 .controls button { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; padding-inline: 6px; }
-.hud { flex: 1 0 auto; }
+.hud { flex: 1 1 auto; }
 @media (max-width: 820px) {
   .controls { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   #btnWave { grid-column: span 2; }
 }
 button { font: inherit; cursor: pointer; border-radius: 10px; border: 1px solid var(--line); background: var(--moss-2); color: var(--parch); padding: 7px 12px; font-weight: 700; touch-action: manipulation; }
 button:hover:not(:disabled) { border-color: var(--parch-dim); }
-button:focus-visible, input:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 button:disabled { opacity: .45; cursor: not-allowed; }
-button.primary { background: var(--gold); color: #2a1d05; border-color: var(--gold-deep); }
-button.primary:hover:not(:disabled) { background: #f3c95e; border-color: var(--gold-deep); }
-button.on { background: #3c5444; border-color: var(--leaf); color: #e4f5d6; }
+button.primary { background: var(--gold); color: var(--gold-ink); border-color: var(--gold-deep); }
+button.primary:hover:not(:disabled) { background: var(--gold-bright); border-color: var(--gold-deep); }
+button.on { background: var(--leaf-on); border-color: var(--leaf); color: var(--leaf-on-ink); }
 .layout { display: grid; grid-template-columns: minmax(0, 1fr) 310px; gap: 12px; align-items: start; }
 @media (max-width: 900px) { .layout { grid-template-columns: minmax(0, 1fr); } }
-.stage { position: relative; width: 100%; aspect-ratio: 960 / 560; max-width: 100%; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: #5e9444; box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+.stage { position: relative; width: 100%; aspect-ratio: 960 / 560; max-width: 100%; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: var(--meadow); box-shadow: 0 10px 30px rgba(0,0,0,.35); }
 canvas#board { display: block; width: 100%; height: 100%; touch-action: manipulation; }
+canvas#board:focus-visible { outline-offset: -3px; }
 .overlay { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(12, 18, 15, .55); padding: 12px; }
 .card { background: var(--moss); border: 1px solid var(--line); border-radius: 14px; padding: 20px 22px; width: min(440px, 100%); display: grid; gap: 12px; box-shadow: 0 12px 40px rgba(0,0,0,.45); max-height: 100%; overflow: auto; }
 .card h2 { font-family: var(--font-display); font-weight: 400; color: var(--gold); margin: 0; font-size: 1.9rem; line-height: 1.1; text-wrap: balance; }
 .card p { margin: 0; color: var(--parch-dim); }
 .card .big { font-size: 1.25rem; color: var(--parch); }
-.card label { font-size: .78rem; text-transform: uppercase; letter-spacing: .08em; color: var(--parch-dim); }
+.card label { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--parch-dim); }
 .card input { font: inherit; font-size: 1.05rem; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--night); color: var(--parch); width: 100%; }
 .row { display: flex; flex-wrap: wrap; gap: 8px; }
 .row button { flex: 1 1 140px; padding: 10px 14px; }
-.fine { font-size: .85rem; }
+.fine { font-size: .82rem; }
 .toast { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); background: rgba(20, 29, 25, .92); border: 1px solid var(--gold-deep); color: var(--parch); padding: 8px 16px; border-radius: 999px; font-weight: 700; font-size: .95rem; white-space: nowrap; max-width: calc(100% - 24px); overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
 .side { display: grid; gap: 12px; min-width: 0; }
 @media (max-width: 900px) and (min-width: 620px) { .side { grid-template-columns: 1fr 1fr; } }
@@ -85,7 +103,7 @@ canvas#board { display: block; width: 100%; height: 100%; touch-action: manipula
 .opt .ds { font-size: .82rem; color: var(--parch-dim); grid-column: 2 / 4; }
 .opt.noico { grid-template-columns: 1fr auto; }
 .opt.noico .ds { grid-column: 1 / 3; }
-.panel h4 { margin: 2px 0 -4px; font-size: .74rem; text-transform: uppercase; letter-spacing: .08em; color: var(--parch-dim); font-weight: 700; }
+.panel h4 { margin: 2px 0 -4px; font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--parch-dim); font-weight: 700; }
 .opt .cs { font-weight: 800; color: var(--gold); font-variant-numeric: tabular-nums; }
 .opts { display: grid; gap: 6px; }
 .kv { display: grid; grid-template-columns: 1fr auto; gap: 3px 10px; font-variant-numeric: tabular-nums; font-size: .95rem; }
@@ -106,37 +124,37 @@ ol.board .bd img { width: 18px; height: 18px; display: block; }
 ol.board .bd .more { font-size: .72rem; color: var(--parch-dim); }
 #achBox summary { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; cursor: pointer; list-style: none; }
 #achBox summary::-webkit-details-marker { display: none; }
-#achBox summary::after { content: "Show"; font-size: .8rem; color: var(--parch-dim); }
+#achBox summary::after { content: "Show"; font-size: .82rem; color: var(--parch-dim); }
 #achBox[open] summary::after { content: "Hide"; }
-.achcount { font-size: .85rem; color: var(--gold); font-variant-numeric: tabular-nums; margin-left: auto; }
+.achcount { font-size: .82rem; color: var(--gold); font-variant-numeric: tabular-nums; margin-left: auto; }
 .achlist { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
 .achlist li { display: grid; grid-template-columns: 34px 1fr; gap: 0 10px; align-items: center; }
 .achlist img { width: 34px; height: 34px; grid-row: span 2; display: block; }
-.achlist b { font-size: .92rem; }
-.achlist span { font-size: .8rem; color: var(--parch-dim); }
+.achlist b { font-size: .95rem; }
+.achlist span { font-size: .82rem; color: var(--parch-dim); }
 .achlist li.locked img { filter: grayscale(1) brightness(.6); opacity: .55; }
 .achlist li.locked b { color: var(--parch-dim); }
 .overbadges { display: grid; gap: 6px; }
 .namefield { display: grid; gap: 4px; }
-.namefield label { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: var(--parch-dim); }
+.namefield label { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--parch-dim); }
 .namefield .row2 { display: flex; gap: 6px; }
 .namefield input { flex: 1; min-width: 0; font: inherit; padding: 7px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--night); color: var(--parch); }
 .namefield button { padding: 7px 10px; font-weight: 700; }
 .overbadges .nb { display: flex; align-items: center; gap: 8px; font-weight: 700; }
 .overbadges img { width: 30px; height: 30px; }
 .boardhead { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
-.boardhead select { font: inherit; font-size: .82rem; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--moss-2); color: var(--parch); }
+.boardhead select { font: inherit; font-size: .82rem; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--moss-2); color: var(--parch); }
 .boardnote { font-size: .82rem; color: var(--parch-dim); margin: 0; }
 .upnext { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { display: inline-flex; align-items: center; gap: 5px; font-size: .82rem; padding: 2px 10px 2px 4px; border-radius: 999px; background: var(--moss-2); border: 1px solid var(--line); }
-.chip.boss { border-color: var(--ember); color: #ffc1a8; }
-.chip.fly { border-color: #6c8fb0; }
+.chip.boss { border-color: var(--ember); color: var(--ember-glow); }
+.chip.fly { border-color: var(--wing); }
 .chip.plain { padding-left: 10px; }
-.upnext.later .chip { opacity: .8; font-size: .78rem; }
-.event { flex: 1 1 100%; display: grid; gap: 4px; padding: 9px 11px; border-radius: 10px; border: 1px solid var(--line); background: var(--moss-2); font-size: .9rem; }
+.upnext.later .chip { opacity: .8; }
+.event { flex: 1 1 100%; display: grid; gap: 4px; padding: 9px 11px; border-radius: 10px; border: 1px solid var(--line); background: var(--moss-2); font-size: .95rem; }
 .event b { font-family: var(--font-display); font-weight: 400; font-size: 1.05rem; }
-.event.bad { border-color: var(--ember); } .event.bad b { color: #ffb39c; }
-.event.good { border-color: var(--leaf); } .event.good b { color: #bfe6a4; }
+.event.bad { border-color: var(--ember); } .event.bad b { color: var(--ember-glow); }
+.event.good { border-color: var(--leaf); } .event.good b { color: var(--leaf); }
 .event.choice { border-color: var(--gold); } .event.choice b { color: var(--gold); }
 .event .row button { padding: 6px 10px; flex: 1 1 120px; }
 .chip canvas { width: 26px; height: 26px; display: block; }
@@ -144,15 +162,15 @@ ol.board .bd .more { font-size: .72rem; color: var(--parch-dim); }
 .palette { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
 .tile { display: grid; justify-items: center; gap: 0; padding: 4px 4px 6px; font-weight: 700; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; cursor: grab; }
 .tile canvas { width: 44px; height: 44px; display: block; pointer-events: none; }
-.tile .tn { font-size: .8rem; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-.tile .tr { font-size: .68rem; line-height: 1.1; color: var(--frost); text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.tile .tn { font-size: .82rem; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.tile .tr { font-size: .72rem; line-height: 1.1; color: var(--frost); text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .best { margin: 0; font-size: .95rem; padding: 8px 10px; border-radius: 10px; background: rgba(148,214,234,.08); border: 1px solid rgba(148,214,234,.25); }
 .best b { color: var(--frost); }
-.tile .tc { font-size: .8rem; color: var(--gold); font-variant-numeric: tabular-nums; }
-.tile.poor { opacity: .55; }
-.tile.poor .tc { color: var(--ember); }
-.tile.locked { opacity: .45; }
-.tile.active { border-color: var(--gold); background: #34473c; }
+.tile .tc { font-size: .82rem; color: var(--gold); font-variant-numeric: tabular-nums; }
+.tile.poor canvas, .tile.locked canvas { opacity: .45; }
+.tile.poor .tc { color: var(--ember-glow); }
+.tile.locked .tn, .tile.locked .tr, .tile.locked .tc { color: var(--parch-dim); }
+.tile.active { border-color: var(--gold); background: color-mix(in srgb, var(--gold) 14%, var(--moss-2)); }
 .dragfloat { position: fixed; left: 0; top: 0; width: 56px; height: 56px; pointer-events: none; z-index: 100; transform: translate(-50%, -70%); filter: drop-shadow(0 4px 6px rgba(0,0,0,.4)); }
 .infohead { display: flex; gap: 10px; align-items: center; }
 .infohead canvas { width: 56px; height: 56px; flex: none; }
@@ -187,32 +205,32 @@ html.lock, html.lock body { overflow: hidden; overscroll-behavior: none; height:
         background: linear-gradient(180deg, color-mix(in srgb, var(--rc) 20%, var(--moss-2)), var(--moss-2) 70%); transition: transform .15s; }
 .heirloom:hover:not(:disabled) { transform: translateY(-3px); border-color: var(--rc); }
 .heirloom .rr { font-size: .72rem; text-transform: uppercase; letter-spacing: .1em; color: var(--rc); font-weight: 800; }
-.heirloom .bn { font-family: var(--font-display); font-size: 1.2rem; color: var(--parch); line-height: 1.15; }
-.heirloom .bd { font-size: .92rem; color: var(--parch); }
-.heirloom .bo { font-size: .78rem; color: var(--parch-dim); }
+.heirloom .bn { font-family: var(--font-display); font-size: 1.15rem; color: var(--parch); line-height: 1.15; }
+.heirloom .bd { font-size: .95rem; color: var(--parch); }
+.heirloom .bo { font-size: .82rem; color: var(--parch-dim); }
 /* bestiary */
 .beasts { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 6px; }
-.beasts button { display: grid; justify-items: center; gap: 2px; padding: 6px 4px; font-weight: 700; font-size: .78rem; line-height: 1.15; }
+.beasts button { display: grid; justify-items: center; gap: 2px; padding: 6px 4px; font-weight: 700; font-size: .82rem; line-height: 1.15; }
 .beasts button canvas { width: 44px; height: 44px; }
 .beasts button.on { border-color: var(--gold); background: color-mix(in srgb, var(--gold) 14%, var(--moss-2)); }
-.beasts button.boss { color: #ffc1a8; }
+.beasts button.boss { color: var(--ember-glow); }
 .beasts button.unknown { color: var(--parch-dim); }
 .beast { display: grid; grid-template-columns: 132px minmax(0, 1fr); gap: 4px 16px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--moss-2); }
-.beast > canvas { width: 132px; height: 132px; border-radius: 12px; background: radial-gradient(circle at 50% 60%, #33493c, var(--night) 72%); }
+.beast > canvas { width: 132px; height: 132px; border-radius: 12px; background: radial-gradient(circle at 50% 60%, var(--line), var(--night) 72%); }
 .beast .bt { display: grid; gap: 6px; align-content: start; min-width: 0; }
 .beast h3 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 1.4rem; color: var(--parch); }
 .beast .tags { display: flex; flex-wrap: wrap; gap: 4px; }
 .beast .tags span { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; font-weight: 800; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--parch-dim); }
-.beast .tags .boss { border-color: var(--ember); color: #ffb39c; } .beast .tags .fly { border-color: #6c8fb0; color: #b9d4ec; }
+.beast .tags .boss { border-color: var(--ember); color: var(--ember-glow); } .beast .tags .fly { border-color: var(--wing); color: var(--parch); }
 .beast blockquote { margin: 0; font-style: italic; color: var(--parch); }
 .beast .kv { grid-column: 1 / -1; margin: 6px 0 0; }
 .beast .kv { grid-template-columns: minmax(8.5em, 1fr) minmax(0, max-content); }
 .beast .kv dd { margin: 0; text-align: right; }
-.beast .tips { grid-column: 1 / -1; margin: 4px 0 0; padding-left: 18px; display: grid; gap: 3px; font-size: .92rem; }
+.beast .tips { grid-column: 1 / -1; margin: 4px 0 0; padding-left: 18px; display: grid; gap: 3px; font-size: .95rem; }
 @media (max-width: 520px) { .beast { grid-template-columns: 88px minmax(0, 1fr); } .beast > canvas { width: 88px; height: 88px; } }
 .chip.link { cursor: pointer; } .chip.link:hover, .chip.link:focus-visible { border-color: var(--gold); outline: none; }
 .panelhead { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.panelhead button { padding: 3px 10px; font-size: .8rem; }
+.panelhead button { padding: 5px 12px; font-size: .82rem; }
 .heirloom.legendary { box-shadow: 0 0 18px rgba(233, 185, 73, .35); }
 .perklist { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .perklist li { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; padding: 8px 10px; border-radius: 10px; background: var(--moss-2); border-left: 4px solid var(--rc); }
@@ -220,28 +238,28 @@ html.lock, html.lock body { overflow: hidden; overscroll-behavior: none; height:
 .perklist .n { color: var(--rc); font-weight: 800; justify-self: end; grid-column: 2; grid-row: 1; }
 .dynasty { display: grid; gap: 8px; padding: 12px; border-radius: 12px; border: 1px solid var(--gold-deep); background: rgba(233, 185, 73, .07); }
 .dynasty h3 { margin: 0; font-family: var(--font-display); font-weight: 400; color: var(--gold); }
-.dynasty p { font-size: .9rem; }
-.perklist span.d { grid-column: 1 / 3; font-size: .85rem; color: var(--parch-dim); }
+.dynasty p { font-size: .95rem; }
+.perklist span.d { grid-column: 1 / 3; font-size: .82rem; color: var(--parch-dim); }
 textarea.code { width: 100%; min-height: 96px; font: 12px/1.4 ui-monospace, Menlo, monospace; background: var(--night); color: var(--parch); border: 1px solid var(--line); border-radius: 10px; padding: 8px; word-break: break-all; resize: vertical; }
 button.glow { border-color: var(--gold); color: var(--gold); box-shadow: 0 0 12px rgba(233, 185, 73, .35); }
 /* two-player mode */
-button.versus { width: 100%; padding: 10px 14px; border-color: #7a4a9a; background: #2c2338; color: #e3d2ff; }
-button.versus:hover:not(:disabled) { border-color: #c58bff; }
+button.versus { width: 100%; padding: 10px 14px; border-color: var(--violet-edge); background: var(--violet-night); color: var(--violet-ink); }
+button.versus:hover:not(:disabled) { border-color: var(--violet); }
 .vs #btnAuto, .dl #btnSpeed, .dl #btnPause, .vs #hallPanel, .vs #achPanel { display: none; }
-.dl .stat.gold b { color: #c58bff; }
+.dl .stat.gold b { color: var(--violet); }
 .roomcode { font: 800 2.4rem/1 ui-monospace, Menlo, monospace; letter-spacing: .18em; color: var(--gold); text-align: center; padding: 12px; border: 2px dashed var(--gold-deep); border-radius: 12px; user-select: all; }
 .codein { font: 800 1.6rem/1 ui-monospace, Menlo, monospace !important; letter-spacing: .2em; text-transform: uppercase; text-align: center; }
 .army { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
-.army li { display: grid; grid-template-columns: 30px 1fr auto auto; gap: 8px; align-items: center; font-size: .92rem; }
+.army li { display: grid; grid-template-columns: 30px 1fr auto auto; gap: 8px; align-items: center; font-size: .95rem; }
 .army canvas { width: 30px; height: 30px; }
-.army button { padding: 2px 10px; }
+.army button { padding: 4px 12px; }
 .dlstat { display: flex; justify-content: space-between; gap: 8px; font-variant-numeric: tabular-nums; }
-.dlstat b { color: #c58bff; font-size: 1.15rem; }
-.spell { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; text-align: left; font-weight: 400; padding: 8px 10px; border-color: #7a4a9a; }
-.spell .nm { font-weight: 800; color: #e3d2ff; } .spell .cs { font-weight: 800; color: #c58bff; } .spell .ds { grid-column: 1 / 3; font-size: .82rem; color: var(--parch-dim); }
-.spell.on { background: #3a2a4a; }
-.tile.summon .tc { color: #c58bff; }
-.keys { font-size: .8rem; color: var(--parch-dim); margin: 0; }
+.dlstat b { color: var(--violet); font-size: 1.15rem; }
+.spell { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; text-align: left; font-weight: 400; padding: 8px 10px; border-color: var(--violet-edge); }
+.spell .nm { font-weight: 800; color: var(--violet-ink); } .spell .cs { font-weight: 800; color: var(--violet); } .spell .ds { grid-column: 1 / 3; font-size: .82rem; color: var(--parch-dim); }
+.spell.on { background: color-mix(in srgb, var(--violet) 14%, var(--violet-night)); }
+.tile.summon .tc { color: var(--violet); }
+.keys { font-size: .82rem; color: var(--parch-dim); margin: 0; }
 @media (max-width: 520px) {
   header.top h1 { font-size: 1.35rem; }
   .stat { padding: 4px 9px; }
@@ -251,19 +269,34 @@ button.versus:hover:not(:disabled) { border-color: #c58bff; }
   .card { padding: 14px; gap: 9px; }
   .card h2 { font-size: 1.4rem; }
 }
-@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+/* phones: the board is too short to hold a card, so an open card grows the stage instead of scrolling inside it.
+   The board stays at its true shape along the top and the card sits over it, pushing the defenders bar down. */
+@media (max-width: 700px) {
+  .stage:has(> .overlay:not([hidden])) { aspect-ratio: auto; }
+  .stage:has(> .overlay:not([hidden])) canvas#board { position: absolute; inset: 0 0 auto 0; height: auto; }
+  .stage > .overlay:not([hidden]) { position: relative; aspect-ratio: 960 / 560; }
+  .stage > .overlay .card { max-height: none; overflow: visible; }
+  .wrap.full .gamecol:has(.overlay:not([hidden])) { flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+}
+@media (max-width: 420px) {
+  .stat { gap: 4px; padding: 4px 8px; }
+  .stat span { letter-spacing: .05em; }
+  .tile { padding-inline: 2px; }
+  .tile .tr { text-transform: none; letter-spacing: 0; font-size: .75rem; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } .heirloom { transition: none; } }
 </style>
 
 <div class="wrap" id="wrap">
   <header class="top">
     <h1>Endless Keep</h1>
-    <div class="hud" aria-live="polite">
+    <div class="hud">
       <div class="stat"><span>Level</span><b id="hLevel">1</b></div>
       <div class="stat gold"><span id="hGoldLbl">Gold</span><b id="hGold">0</b></div>
       <div class="stat hearts"><span>Castle</span><b id="hHearts">20/20</b></div>
     </div>
     <div class="controls">
-      <button id="btnWave" class="primary">Start level 1</button>
+      <button id="btnWave" disabled>Start level 1</button>
       <button id="btnAuto" title="Start each level on its own">Auto: off</button>
       <button id="btnSpeed" title="Game speed">Speed 1×</button>
       <button id="btnPause">Pause</button>
@@ -277,8 +310,8 @@ button.versus:hover:not(:disabled) { border-color: #c58bff; }
     <div class="gamecol">
     <div class="stagebox">
     <div class="stage" id="stage">
-      <canvas id="board" aria-label="Game board: a meadow road leading to your castle"></canvas>
-      <div id="toast" class="toast" hidden></div>
+      <canvas id="board" tabindex="0" aria-label="Game board: a meadow road leading to your castle. Use the arrow keys to move the cursor (hold Shift for big steps) and Enter to tap."></canvas>
+      <div id="toast" class="toast" hidden aria-hidden="true"></div>
 
       <div id="startCard" class="overlay">
         <div class="card">
@@ -323,7 +356,7 @@ button.versus:hover:not(:disabled) { border-color: #c58bff; }
       </div>
     </div>
     </div>
-    <div class="palette" id="palette" aria-label="Defenders: tap for details, drag onto the grass to build"></div>
+    <div class="palette" id="palette" role="group" aria-label="Defenders: tap for details, drag onto the grass to build"></div>
     </div>
 
     <aside class="side">
@@ -333,7 +366,7 @@ button.versus:hover:not(:disabled) { border-color: #c58bff; }
         <div class="upnext" id="upNext"></div>
         <h4>Later</h4>
         <div class="upnext later" id="upLater"></div>
-        <p class="keys">Drag a defender from the bar under the map onto open grass, or tap a tree to chop it. Tap open grass to plant a sapling. Tap the castle to repair it, fortify it or grow your treasury. Keys: Space starts a level, P pauses, F toggles fullscreen.</p>
+        <p class="keys">Drag a defender from the bar under the map onto open grass, or tap a tree to chop it. Tap open grass to plant a sapling. Tap the castle to repair it, fortify it or grow your treasury. Keys: Space starts a level, P pauses, F toggles fullscreen. On the map, the arrow keys move a cursor and Enter taps.</p>
       </section>
       <section class="panel" id="hallPanel">
         <div class="boardhead"><h3>Hall of Heroes</h3><select id="boardVer" aria-label="Which rules version's scores to show" hidden></select></div>
@@ -350,6 +383,7 @@ button.versus:hover:not(:disabled) { border-color: #c58bff; }
   </div>
 </div>
 
+<div id="srStatus" class="sr-only" role="status" aria-live="polite"></div>
 <div id="modal" class="modal" hidden><div class="card" id="modalCard" role="dialog" aria-modal="true"></div></div>
 
 <canvas id="dragFloat" class="dragfloat" width="112" height="112" hidden></canvas>
@@ -359,7 +393,7 @@ button.versus:hover:not(:disabled) { border-color: #c58bff; }
 "use strict";
 // GAME_VERSION changes with any update. RULES_VERSION goes up ONLY when a balance change makes the game easier or
 // harder: each rules version gets its own leaderboard, so scores from different rules are never mixed.
-const GAME_VERSION = "1.2.1", RULES_VERSION = 2;   // v2: special dragon names give bonuses
+const GAME_VERSION = "1.3.0", RULES_VERSION = 2;   // v2: special dragon names give bonuses
 const W = 960, H = 560;
 const $ = id => document.getElementById(id);
 const cv = $("board"), ctx = cv.getContext("2d");
@@ -468,6 +502,8 @@ const SECRET_DRAGONS = {
   nibnib:    { name: "Nibnib",     msg: "Nibnib has the sharpest eyes in the valley: +15% range.",       range: 1.15 },
   nightfury: { name: "Night Fury", msg: "Scales as dark as midnight and purple fire: +10% damage, +25% at night.", dark: true },
   baby:      { name: "Baby",       msg: "Baby will always be a baby. While Baby is on guard, the castle mends a heart after every level.", tiny: true, mend: 1 },
+  mushu:     { name: "Mushu",      msg: "Mushu is small, pink and part axolotl, but very fierce: breathes fire 10% faster, and the flames cling 50% longer.", tiny: true, rate: 1.1, burn: 1.5,
+               look: { body: "#f4a3bf", wing: "#e57fa4", belly: "#fcd8e3", gill: "#d9467f", axolotl: true } },
 };
 const secretKey = n => String(n || "").toLowerCase().replace(/[^a-z]/g, "");
 const dragonSecret = t => (t && t.type === "dragon" && SECRET_DRAGONS[secretKey(t.name)]) || null;
@@ -653,7 +689,7 @@ function newRun() {
   S = { rv: RULES_VERSION, level: 1, gold: 180, hp: 20, maxHp: 20, walls: 0, treasury: 0, dragon: false, fort: { archers: 0, moat: 0, masons: 0 },
         towers: [], trees: freshTrees(), enemies: [], shots: [], fx: [], texts: [],
         phase: "build", queue: [], spawnT: 0, nextT: 6, income: 0, shake: 0, waveHp: 20, newBadges: [],
-        stats: { kills: 0, gold: 0, bosses: 0, chopped: 0, built: 0, slowed: 0 } };
+        stats: { kills: 0, gold: 0, bosses: 0, chopped: 0, built: 0, slowed: 0, grown: 0, events: 0 } };
 }
 function makeSave() {
   return { v: 1, level: S.level, gold: Math.floor(S.gold), hp: S.hp, maxHp: S.maxHp, walls: S.walls, treasury: S.treasury, fort: S.fort,
@@ -985,7 +1021,7 @@ function drawTowerShape(c, type, x, y, ang, flash, lvl, name) {
       c.fillStyle = "#6d5134"; ell(c, x, y - 2, 20, 8);
       c.strokeStyle = "#8a6a44"; c.lineWidth = 1.5; for (let i = -2; i <= 2; i++) { c.beginPath(); c.moveTo(x - 18, y - 2 + i * 2); c.lineTo(x + 18, y - 4 - i * 2); c.stroke(); }
       const sp = SECRET_DRAGONS[secretKey(name)] || {};
-      const ds = sp.dark ? { ...dragonStage(lvl), ...DARK_DRAGON } : dragonStage(lvl), sc = sp.tiny ? .7 : ds.s;
+      const ds = { ...dragonStage(lvl), ...(sp.dark ? DARK_DRAGON : sp.look || {}) }, sc = sp.tiny ? .7 : ds.s;
       c.save(); c.translate(x, y - 10); c.scale(face * sc, sc);
       const flap = Math.sin(time * 5) * 6;
       c.fillStyle = ds.wing; tri(c, -2, -4, -16, -26 - flap, 8, -6);
@@ -993,11 +1029,30 @@ function drawTowerShape(c, type, x, y, ang, flash, lvl, name) {
       c.fillStyle = ds.belly; ell(c, 2, 3, 8, 4);
       c.strokeStyle = ds.body; c.lineWidth = 4; c.lineCap = "round"; c.beginPath(); c.moveTo(-10, 2); c.quadraticCurveTo(-22, 2, -20, -8); c.stroke();
       if (lvl >= 4) { c.fillStyle = ds.wing; tri(c, -9, -5, -6, -11, -3, -6); tri(c, -3, -7, 0, -13, 3, -7); }
-      c.fillStyle = ds.body; ell(c, 12, -8, 7, 6); ell(c, 18, -6, 5, 3.5);
-      c.fillStyle = lvl >= 10 ? "#fff3c4" : "#e9b949"; tri(c, 8, -12, 6, -20, 12, -13);
-      if (lvl >= 7) tri(c, 12, -13, 13, -21, 15, -12);
-      c.fillStyle = "#1b1b1b"; ell(c, 13, -10, 1.6, 1.6);
+      if (ds.axolotl) {  // a wide, round head and a little smile; the feathery gills go on after the near wing
+        c.fillStyle = ds.body; ell(c, 13, -7, 8.5, 6.5); ell(c, 19, -5.5, 4.5, 4);
+        c.fillStyle = "#1b1b1b"; ell(c, 15, -9.5, 1.5, 1.5);
+        c.strokeStyle = "#9c3a5f"; c.lineWidth = 1; c.beginPath(); c.arc(18, -6, 3.2, .35, 1.45); c.stroke();
+        if (lvl >= 7) { c.fillStyle = lvl >= 10 ? "#fff3c4" : "#e9b949"; ell(c, 12, -13.5, 2, 1.4); }  // a tiny crown of sparkle as it grows
+      } else {
+        c.fillStyle = ds.body; ell(c, 12, -8, 7, 6); ell(c, 18, -6, 5, 3.5);
+        c.fillStyle = lvl >= 10 ? "#fff3c4" : "#e9b949"; tri(c, 8, -12, 6, -20, 12, -13);
+        if (lvl >= 7) tri(c, 12, -13, 13, -21, 15, -12);
+        c.fillStyle = "#1b1b1b"; ell(c, 13, -10, 1.6, 1.6);
+      }
       c.fillStyle = ds.wing; tri(c, 2, -4, 10, -24 + flap, 12, -4);
+      if (ds.axolotl) {  // three feathery gills fanning up and back from the head, swaying gently
+        const sway = Math.sin(time * 3) * .1;
+        c.lineCap = "round"; c.fillStyle = ds.gill; c.strokeStyle = ds.gill;
+        for (const [bx, by, a0, len] of [[9, -10, -2.5, 10], [11, -12, -2.0, 11.5], [14, -12.5, -1.55, 10]]) {
+          const a = a0 + sway, ux = Math.cos(a), uy = Math.sin(a);
+          c.lineWidth = 2.2; c.beginPath(); c.moveTo(bx, by); c.lineTo(bx + ux * len, by + uy * len); c.stroke();
+          for (let k = .35; k <= 1.01; k += .22) {  // little frills on both sides of each stalk
+            const px = bx + ux * len * k, py = by + uy * len * k;
+            ell(c, px - uy * 2, py + ux * 2, 1.5, 1.5); ell(c, px + uy * 2, py - ux * 2, 1.5, 1.5);
+          }
+        }
+      }
       if (lvl >= 10 && Math.sin(time * 3) > .6) { c.fillStyle = "rgba(255,250,210,.95)"; ell(c, -2, -10, 1.6, 1.6); ell(c, 6, 2, 1.2, 1.2); }
       c.restore();
       break;
@@ -1535,7 +1590,7 @@ function kill(e, src) {
   e.dead = true;
   const g = Math.max(1, Math.round(e.gold * goldScale(S.level) * (1 + .04 * perk("bounty") + .1 * perk("chest") + .05 * dyn()) * (evOn("goldrush") ? 2 : 1) * ((dragonSecret(src) || {}).gold || 1)));
   earn(g); S.stats.kills++;
-  if (BEAST_KEYS.includes(e.k)) { meta.slain[e.k] = (meta.slain[e.k] || 0) + 1; beastDirty = true; }
+  if (BEAST_KEYS.includes(e.k)) { meta.slain[e.k] = (meta.slain[e.k] || 0) + 1; beastDirty = true; if (BEAST_KEYS.reduce((a, k) => a + (meta.slain[k] || 0), 0) >= 10000) unlock("slayer"); }
   S.texts.push({ x: e.x, y: e.y - (e.fly ? 30 : 12), txt: "+" + g, life: 1, col: "#ffe08a" });
   for (let i = 0; i < (e.boss ? 30 : 8); i++) { const a = Math.random() * 6.28, sp = 30 + Math.random() * (e.boss ? 120 : 60); S.fx.push({ x: e.x, y: e.y - (e.fly ? 22 : 0), vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 20, life: .6, max: .6, col: e.boss ? "#ffd25e" : "rgba(240,235,220,.9)", r: e.boss ? 3.5 : 2.5, g: 60 }); }
   sfx("coin");
@@ -1674,7 +1729,8 @@ function clearWave() {
   sfx("clear");
   const tpay = S.treasury ? treasPay(S.treasury, L) : 0;
   if (tpay) earn(tpay);
-  const unhurt = S.hp >= S.waveHp;  // judged before the masons patch the walls up
+  const unhurt = S.hp >= S.waveHp, thread = S.hp === 1;  // judged before the masons patch the walls up
+  if (S.ev && S.ev.L === L) S.stats.events = (S.stats.events || 0) + 1;
   const mend = Math.min(S.maxHp - S.hp, S.fort.masons * 2 + perk("crown") + S.towers.reduce((a, t) => a + ((dragonSecret(t) || {}).mend || 0), 0));
   if (mend > 0) { S.hp += mend; S.texts.push({ x: CASTLE.x + 50, y: CASTLE.y + 30, txt: "+" + mend + " ♥", life: 1.4, col: "#9fe08a" }); }
   let msg = `Level ${L} cleared! +${bonus + tpay} gold${tpay ? ` (${tpay} from the treasury)` : ""}`;
@@ -1684,12 +1740,17 @@ function clearWave() {
     grew++;
     for (let i = 0; i < 8; i++) S.fx.push({ x: t.x + (Math.random() - .5) * 20 * t.s, y: t.y - 16 * t.s, vx: (Math.random() - .5) * 40, vy: -30 - Math.random() * 30, life: .8, max: .8, col: "#c9f29a", r: 2.2, g: 40 });
   }
+  S.stats.grown = (S.stats.grown || 0) + grew;
   if (grew) msg += ` · ${grew === 1 ? "A tree has" : grew + " trees have"} grown`;
   toast(msg);
   if (S.vs) { vsLevelCleared(L); updateHud(); renderUpNext(); renderPanel(); return; }
   savePlayer(L);
   [10, 25, 50, 100].forEach(n => { if (L >= n) unlock("lv" + n); });
   if (L % 10 === 0 && unhurt) unlock("untouched");
+  if (thread) unlock("laststand");
+  if (BEAST_KEYS.every(beastMet)) unlock("scholar");
+  if (S.stats.grown >= 10) unlock("greenthumb");
+  if (S.stats.events >= 10) unlock("eventful");
   persist();
   updateHud(); renderUpNext(); renderPanel();
 }
@@ -1816,6 +1877,11 @@ function render() {
   if (S && sel && sel.kind === "place") drawGhost(sel.x, sel.y, true, true);
   const dragGhost = S && drag && drag.moved && drag.over;
   if (S && hoverPt && !(sel && sel.kind === "place" && Math.hypot(sel.x - hoverPt.x, sel.y - hoverPt.y) < 4) && !towerAt(hoverPt.x, hoverPt.y) && !treeAt(hoverPt.x, hoverPt.y) && !hitCastle(hoverPt.x, hoverPt.y)) drawGhost(hoverPt.x, hoverPt.y, !canBuild(hoverPt.x, hoverPt.y), false);
+  if (kbd && document.activeElement === cv) {
+    ctx.strokeStyle = "rgba(20,29,25,.7)"; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(kbd.x, kbd.y, 18, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = "#e9b949"; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(kbd.x, kbd.y, 18, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); for (const [a, b] of [[-26, -12], [12, 26]]) { ctx.moveTo(kbd.x + a, kbd.y); ctx.lineTo(kbd.x + b, kbd.y); ctx.moveTo(kbd.x, kbd.y + a); ctx.lineTo(kbd.x, kbd.y + b); } ctx.stroke();
+  }
   drawCastle();
   // depth-sort towers and ground enemies by y; fliers on top
   const items = [];
@@ -1903,7 +1969,7 @@ function drawAmbient() {
 }
 
 /* ---------- loop ---------- */
-let last = performance.now();
+let last = performance.now(), lastDraw = 0;
 function frame(now) {
   let dt = Math.min(.05, (now - last) / 1000); last = now;
   if (NET.role === "guest") {  // the Dark Lord's screen: draw the Keeper's game, moving things along between updates
@@ -1917,7 +1983,9 @@ function frame(now) {
   if (fadeT > 0) fadeT -= dt;
   ambient(dt);
   musicTick();
-  render();
+  // behind a card, while paused or after the keep falls, only the gentle scenery moves: redraw at ~20 fps (4 with reduced motion) to save battery
+  const idle = !running && (!S || paused || S.phase === "over" || !$("startCard").hidden || !$("modal").hidden);
+  if (!idle || drag || now - lastDraw >= (reduceMotion ? 250 : 50)) { render(); lastDraw = now; }
   hudTick();
   requestAnimationFrame(frame);
 }
@@ -1931,10 +1999,25 @@ new ResizeObserver(resize).observe(cv);
 function toLogical(ev) { const r = cv.getBoundingClientRect(); return [(ev.clientX - r.left) * W / r.width, (ev.clientY - r.top) * H / r.height]; }
 function towerAt(x, y) { let best = null, bd = 30; if (S) for (const t of S.towers) { const d = Math.min(Math.hypot(t.x - x, t.y - y), Math.hypot(t.x - x, t.y - 26 - y)); if (d < bd) { bd = d; best = t; } } return best; }
 function hitCastle(x, y) { return x > CASTLE.x - 6 && x < CASTLE.x + CASTLE.w + 6 && y > CASTLE.y - 30 && y < CASTLE.y + CASTLE.h + 20; }
-cv.addEventListener("pointerdown", ev => {
+cv.addEventListener("pointerdown", ev => { kbd = null; tapBoard(...toLogical(ev), true); });
+// keyboard: the arrow keys move a cursor over the map and Enter (or Space) taps where it is
+let kbd = null;
+cv.addEventListener("keydown", ev => {
+  const dir = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[ev.key];
+  if (dir) {
+    ev.preventDefault(); const st = ev.shiftKey ? 60 : 20;
+    kbd = kbd || { x: W / 2, y: H / 2 };
+    kbd.x = Math.max(10, Math.min(W - 10, kbd.x + dir[0] * st)); kbd.y = Math.max(10, Math.min(H - 10, kbd.y + dir[1] * st));
+    hoverPt = { ...kbd }; return;
+  }
+  if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); kbd = kbd || { x: W / 2, y: H / 2 }; hoverPt = { ...kbd }; tapBoard(kbd.x, kbd.y, false); }
+});
+cv.addEventListener("focus", () => { if (cv.matches(":focus-visible")) { kbd = kbd || { x: W / 2, y: H / 2 }; hoverPt = { ...kbd }; } });
+cv.addEventListener("blur", () => { if (kbd) hoverPt = null; kbd = null; });
+function tapBoard(x, y, byPointer) {
   audio();
   if (!S || S.phase === "over" || NET.role === "guest") return;
-  const [x, y] = toLogical(ev), t = towerAt(x, y);
+  const t = towerAt(x, y);
   const tr = !t && treeAt(x, y);
   if (t) sel = { kind: "tower", t };
   else if (tr) { sel = { kind: "tree", t: tr }; chop(tr); }
@@ -1945,15 +2028,15 @@ cv.addEventListener("pointerdown", ev => {
     else { sel = null; if (BUILD_MSG[why]) toast(BUILD_MSG[why]); }
   }
   renderPanel();
-  if (sel && sel.kind !== "tree" && window.innerWidth < 900) $("selPanel").scrollIntoView({ block: "nearest", behavior: reduceMotion ? "auto" : "smooth" });
-});
+  if (byPointer && sel && sel.kind !== "tree" && window.innerWidth < 900) $("selPanel").scrollIntoView({ block: "nearest", behavior: reduceMotion ? "auto" : "smooth" });
+}
 cv.addEventListener("pointermove", ev => {
   if (ev.pointerType !== "mouse") return;
   if (NET.role === "guest" || (S && S.vsGuest)) return;
   const [x, y] = toLogical(ev); hoverPt = { x, y };
   cv.style.cursor = towerAt(x, y) || treeAt(x, y) || hitCastle(x, y) || !canBuild(x, y) ? "pointer" : "not-allowed";
 });
-cv.addEventListener("pointerleave", () => { hoverPt = null; });
+cv.addEventListener("pointerleave", () => { hoverPt = kbd ? { ...kbd } : null; });
 
 /* ---------- side panel ---------- */
 function fmt(n) { return Math.round(n).toLocaleString(); }
@@ -2000,7 +2083,7 @@ function renderPanel() {
       row("Raise the walls", wallCost(), `+5 max hearts (to ${S.maxHp + 5}), and fills those 5 now.`, false, () => { S.walls++; S.maxHp += 5; S.hp += 5; }));
     for (const k of ["archers", "moat", "masons"]) {
       const f = FORT[k], n = S.fort[k], maxed = n >= f.max;
-      walls.append(row(n ? `${f.name} · level ${n}` : f.name, f.cost(n), f.desc(maxed ? n : n || 0), maxed, () => { S.fort[k]++; }));
+      walls.append(row(n ? `${f.name} · level ${n}` : f.name, f.cost(n), f.desc(maxed ? n : n || 0), maxed, () => { S.fort[k]++; if (S.fort.moat >= FORT.moat.max && S.fort.masons >= FORT.masons.max) unlock("fortress"); }));
     }
     econ.append(row(S.treasury ? `Treasury · level ${S.treasury}` : "Open a treasury", treasCost(),
       `Pays ${S.treasury ? `${treasPay()} → ${treasPay(S.treasury + 1)}` : treasPay(1)} gold every time you clear a level.`, false, () => { S.treasury++; }));
@@ -2107,6 +2190,7 @@ function renderPanel() {
     t.lvl++; sfx("up");
     if (before && dragonStage(t.lvl) !== before) toast(`${dragonLabel(t)} has grown into a ${dragonStage(t.lvl).name}!`);
     if (t.type === "dragon" && t.lvl >= 10) unlock("greatwyrm");
+    if (t.lvl >= 10) unlock("toplevel");
     schedulePersist(); renderPanel(); updateHud();
   }, "primary"));
   const refund = Math.floor(t.spent * .7);
@@ -2198,6 +2282,7 @@ function placeTower(k, x, y) {
   if (k === "dragon") { nt.name = suggestDragonName(); toast(`${nt.name} the dragon has hatched! Tap it to give it a new name.`); }
   S.towers.push(nt); sel = { kind: "tower", t: nt }; S.stats.built++;
   if (S.towers.length >= 25) unlock("architect");
+  if (Object.keys(TOWERS).every(type => S.towers.some(t => t.type === type))) unlock("allfive");
   sfx("build"); schedulePersist(); renderPanel(); updateHud();
   return true;
 }
@@ -2271,15 +2356,22 @@ document.addEventListener("fullscreenchange", () => { if (!document.fullscreenEl
 /* ---------- HUD ---------- */
 let hudCache = "";
 function updateHud() { hudCache = ""; hudTick(); }
+const waveBtn = $("btnWave"), startCardEl = $("startCard");
 function hudTick() {
-  if (!S) return;
-  const btn = $("btnWave");
+  const onStart = !startCardEl.hidden;
+  if (!S || onStart) {  // on the start screen the next move is New game or Continue, not this button
+    if (!waveBtn.disabled) waveBtn.disabled = true;
+    if (waveBtn.classList.contains("primary")) waveBtn.classList.remove("primary");
+    hudCache = ""; if (!S) return;
+  } else if (!waveBtn.classList.contains("primary")) waveBtn.classList.add("primary");
+  const btn = waveBtn;
   let label;
   if (S.phase === "build") label = S.vs && S.vs.dl ? (S.vs.ready.k ? "Waiting for the Dark Lord…" : S.vs.ready.d ? `Start level ${S.level} (they're ready)` : `Ready for level ${S.level}`)
     : auto ? `Start level ${S.level} (${Math.max(0, Math.ceil(S.nextT))})` : `Start level ${S.level}`;
   else if (S.phase === "wave") label = `Level ${S.level} under way`;
   else label = "Game over";
   const key = [S.level, Math.floor(S.gold), S.hp, S.maxHp, label].join("|");
+  if (onStart) { if (btn.textContent !== label) btn.textContent = label; return; }
   if (key === hudCache) return; hudCache = key;
   if (S.gold >= 5000 && S.phase !== "over") unlock("rich");
   $("hLevel").textContent = S.level; $("hGold").textContent = Math.floor(S.gold).toLocaleString(); $("hHearts").textContent = `${S.hp}/${S.maxHp}`;
@@ -2291,7 +2383,7 @@ const toastQ = [];
 function toast(msg) {
   const t = $("toast");
   if (!t.hidden) { if (toastQ.length < 4 && !toastQ.includes(msg) && t.textContent !== msg) toastQ.push(msg); return; }
-  t.textContent = msg; t.hidden = false; clearTimeout(toastTimer);
+  t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); $("srStatus").textContent = msg;
   toastTimer = setTimeout(() => { t.hidden = true; if (toastQ.length) toast(toastQ.shift()); }, toastQ.length ? 2400 : 3000);
 }
 
@@ -2307,12 +2399,13 @@ $("btnQuit").addEventListener("click", () => { if (S && S.phase === "build") per
 document.addEventListener("visibilitychange", () => { if (document.hidden && S && S.phase === "wave") setPaused(true); });
 document.addEventListener("keydown", ev => {
   if (!$("modal").hidden) { if (ev.key === "Escape") closeModal(); return; }
-  if (ev.target.tagName === "INPUT" || ev.target.tagName === "TEXTAREA") return;
-  if (ev.code === "Space") { ev.preventDefault(); if (S && S.phase === "build" && $("startCard").hidden && !paused) startWave(); }
+  if (ev.target.tagName === "INPUT" || ev.target.tagName === "TEXTAREA" || ev.target.tagName === "SELECT") return;
+  const onControl = ev.target.closest && ev.target.closest("button, a, summary, [tabindex]");
+  if (ev.code === "Space" && !onControl) { ev.preventDefault(); if (S && S.phase === "build" && $("startCard").hidden && !paused) startWave(); }
   if (NET.role === "guest") return;
   if (ev.key === "p" || ev.key === "P") setPaused(!paused);
   if (ev.key === "Escape") { sel = null; renderPanel(); }
-  if (ev.key === "f" || ev.key === "F") setFull(!full);
+  if ((ev.key === "f" || ev.key === "F") && !ev.ctrlKey && !ev.metaKey && !ev.altKey) setFull(!full);
 });
 (function prefs() {
   const a = ls.get("ek_auto"), s = ls.get("ek_sound");
@@ -2339,16 +2432,22 @@ function showStart() {
   bb.classList.toggle("glow", !!meta.picks);
   renderPanel();
 }
-let modalDone = null;
+let modalDone = null, modalFrom = null;
 function openModal(build, onClose) {
   const card = $("modalCard"); card.textContent = ""; build(card);
-  modalDone = onClose || null; $("modal").hidden = false;
-  const f = card.querySelector("button, textarea"); if (f) f.focus({ preventScroll: true });
+  if ($("modal").hidden) modalFrom = document.activeElement;
+  const h = card.querySelector("h2, h3");
+  if (h) { h.id = "modalTitle"; card.setAttribute("aria-labelledby", "modalTitle"); } else card.removeAttribute("aria-labelledby");
+  modalDone = onClose || null; $("modal").hidden = false; $("wrap").inert = true;
+  const f = card.querySelector("button, textarea, input, select"); if (f) f.focus({ preventScroll: true });
 }
 function closeModal() {
   if ($("modal").hidden) return;
-  $("modal").hidden = true; const f = modalDone; modalDone = null; if (f) f();
+  $("modal").hidden = true; $("wrap").inert = false; const f = modalDone; modalDone = null; if (f) f();
   if (!$("startCard").hidden) showStart();
+  const back = modalFrom; modalFrom = null;
+  if (back && back.isConnected && back.offsetParent !== null && !back.disabled) back.focus({ preventScroll: true });
+  else if (!$("startCard").hidden) $("btnNew").focus({ preventScroll: true });
 }
 $("modal").addEventListener("click", ev => { if (ev.target === $("modal")) closeModal(); });
 /* ---------- bestiary: every monster, with its numbers and how to beat it ----------
@@ -2636,7 +2735,15 @@ const ACH = [
   { id: "architect",  name: "Master Builder",      desc: "Have 25 defenders at once" },
   { id: "frosty",     name: "Winter's Grip",       desc: "Slow 1,000 monsters in one game" },
   { id: "namesake",   name: "What's in a Name",    desc: "Give a dragon a very special name" },
-  { id: "whisperer",  name: "Dragon Whisperer",    desc: "Find all seven special dragon names" },
+  { id: "whisperer",  name: "Dragon Whisperer",    desc: "Find all eight special dragon names" },
+  { id: "laststand",  name: "By a Thread",         desc: "Clear a level with only 1 heart left" },
+  { id: "allfive",    name: "Every Banner Flies",  desc: "Have all five kinds of defender at once" },
+  { id: "toplevel",   name: "Tower of Strength",   desc: "Upgrade any defender to level 10" },
+  { id: "fortress",   name: "Fortress",            desc: "Fill the moat and hire all five masons" },
+  { id: "greenthumb", name: "Green Thumb",         desc: "Grow 10 saplings into trees in one game" },
+  { id: "eventful",   name: "Through Thick and Thin", desc: "Clear 10 levels with a random event in one game" },
+  { id: "scholar",    name: "Monster Scholar",     desc: "Meet every monster in the Bestiary" },
+  { id: "slayer",     name: "Ten Thousand Fallen", desc: "Defeat 10,000 monsters across all your games" },
 ];
 const badgeCache = {};
 function medal(g, text, col = "#2a1d05") {
@@ -2654,10 +2761,37 @@ function badgeImg(id) {
   else if (id === "namesake" || id === "whisperer") {
     g.fillStyle = id === "whisperer" ? "#3a2a4a" : "#2a3a32"; ell(g, 26, 26, 25, 25);
     g.save(); g.translate(-6, 6); drawTowerShape(g, "dragon", 32, 40, 0, 0, id === "whisperer" ? 7 : 1, id === "whisperer" ? "Night Fury" : "Baby"); g.restore();
-    if (id === "whisperer") { g.fillStyle = "#e9b949"; for (let i = 0; i < 7; i++) { const a = -Math.PI / 2 + i * Math.PI * 2 / 7; ell(g, 26 + Math.cos(a) * 21, 26 + Math.sin(a) * 21, 2, 2); } }
+    if (id === "whisperer") { g.fillStyle = "#e9b949"; const nSecret = Object.keys(SECRET_DRAGONS).length; for (let i = 0; i < nSecret; i++) { const a = -Math.PI / 2 + i * Math.PI * 2 / nSecret; ell(g, 26 + Math.cos(a) * 21, 26 + Math.sin(a) * 21, 2, 2); } }
   }
   else if (id === "rich") { for (const [x, y] of [[18, 36], [34, 36], [26, 28], [26, 18]]) { g.fillStyle = "#a8790c"; ell(g, x, y + 2, 10, 5); g.fillStyle = "#f2c94c"; ell(g, x, y, 10, 5); } }
   else if (id === "lumberjack") { const keep = season; season = SEASONS[1]; drawTree(g, 26, 46, 1.3, 0); season = keep; g.strokeStyle = "#8a8f96"; g.lineWidth = 3; g.beginPath(); g.moveTo(36, 48); g.lineTo(46, 30); g.stroke(); g.fillStyle = "#c9ced4"; tri(g, 42, 28, 50, 31, 45, 37); }
+  else if (id === "slayer") medal(g, "10k");
+  else if (id === "laststand") medal(g, "1\u2665", "#b8322a");
+  else if (id === "greenthumb") { const keep = season; season = SEASONS[0]; drawTree(g, 26, 46, 1.3, 0); season = keep; }
+  else if (id === "allfive") {
+    g.fillStyle = "#2a3a32"; ell(g, 26, 26, 25, 25);
+    Object.keys(TOWERS).forEach((type, i) => { const a = -Math.PI / 2 + i * Math.PI * 2 / 5; g.drawImage(towerIcon(type), 26 + Math.cos(a) * 14 - 13, 26 + Math.sin(a) * 14 - 15, 26, 26); });
+  }
+  else if (id === "fortress") {
+    g.fillStyle = "#2a3a32"; ell(g, 26, 26, 25, 25);
+    g.fillStyle = "#4d8fb0"; ell(g, 26, 42, 21, 6); g.fillStyle = "#94d6ea"; ell(g, 22, 41, 8, 1.4);
+    g.fillStyle = "#8d949b"; g.fillRect(14, 16, 24, 24); for (let i = 0; i < 4; i++) g.fillRect(14 + i * 7, 11, 4, 6);
+    g.fillStyle = "#a9b2ba"; g.fillRect(14, 16, 24, 3); g.fillStyle = "#3a2a20"; g.beginPath(); g.arc(26, 40, 5, Math.PI, 0); g.fill(); g.fillRect(21, 35, 10, 5);
+    g.strokeStyle = "#5a3f26"; g.lineWidth = 1.5; g.beginPath(); g.moveTo(26, 11); g.lineTo(26, 2); g.stroke(); g.fillStyle = "#e9b949"; tri(g, 26, 2, 35, 4.5, 26, 7);
+  }
+  else if (id === "eventful") {
+    g.fillStyle = "#2a3a32"; ell(g, 26, 26, 25, 25);
+    g.fillStyle = "#e9b949"; g.beginPath(); g.moveTo(28, 26); g.lineTo(20, 38); g.lineTo(26, 38); g.lineTo(22, 49); g.lineTo(34, 33); g.lineTo(28, 33); g.lineTo(32, 26); g.fill();
+    g.fillStyle = "#8d949b"; ell(g, 18, 22, 9, 7); ell(g, 30, 18, 11, 9); ell(g, 37, 24, 8, 6); g.fillStyle = "#b7bec5"; ell(g, 27, 15, 7, 4);
+  }
+  else if (id === "scholar") {
+    g.fillStyle = "#2a3a32"; ell(g, 26, 26, 25, 25);
+    g.fillStyle = "#b7ae93"; g.beginPath(); g.moveTo(26, 22); g.lineTo(6, 18); g.lineTo(6, 42); g.lineTo(26, 46); g.lineTo(46, 42); g.lineTo(46, 18); g.closePath(); g.fill();
+    g.fillStyle = "#f1e6c8"; g.beginPath(); g.moveTo(26, 21); g.lineTo(8, 17); g.lineTo(8, 39); g.lineTo(26, 43); g.lineTo(44, 39); g.lineTo(44, 17); g.closePath(); g.fill();
+    g.strokeStyle = "#8a7a58"; g.lineWidth = 1; g.beginPath(); g.moveTo(26, 21); g.lineTo(26, 43); for (let i = 0; i < 3; i++) { g.moveTo(30, 28 + i * 4); g.lineTo(41, 26 + i * 4); } g.stroke();
+    g.drawImage(enemyIcon("goblin", null, 26), 7, 15, 20, 20);
+  }
+  else if (id === "toplevel") { g.fillStyle = "#2a3a32"; ell(g, 26, 26, 25, 25); g.drawImage(towerIcon("mage", 10), 1, -1, 50, 50); }
   else { const type = { greatwyrm: "dragon", architect: "archer", frosty: "frost" }[id] || "archer"; g.drawImage(towerIcon(type, id === "greatwyrm" ? 10 : 1), -8, -12, 68, 68); }
   return (badgeCache[id] = c.toDataURL());
 }
