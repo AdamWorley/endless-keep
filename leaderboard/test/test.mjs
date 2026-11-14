@@ -1,5 +1,5 @@
 // Run: npm test   — exercises the API with an in-memory store (no network, no Cloudflare needed)
-import { handle } from "../src/core.js";
+import { handle, minRunMs } from "../src/core.js";
 import { cleanName, isProfane } from "../src/names.js";
 import assert from "node:assert/strict";
 
@@ -16,14 +16,24 @@ function memStore() {
   };
 }
 const ORIGIN = "https://adamworley.github.io";
-let clock = 1_000_000;
+let clock = 1_700_000_000_000;
 const store = memStore();
-const opts = (ip = "1.2.3.4") => ({ store, origins: [ORIGIN], salt: "test-salt", ip, now: () => clock });
+const opts = (ip = "1.2.3.4", extra = {}) => ({ store, origins: [ORIGIN], salt: "test-salt", ip, now: () => clock, ...extra });
+// start a run; ago = how long before "now" it started (tests default to a run long enough for any level)
+const startRun = async (token, v = 1, { ago = 0, ip = "100.0.0.1", extra, body } = {}) => {
+  const saved = clock; clock -= ago;
+  const r = await handle(new Request("https://lb.example/runs", { method: "POST", headers: { "Content-Type": "application/json", Origin: ORIGIN },
+    body: JSON.stringify(body || { token, v }) }), opts(ip, extra));
+  clock = saved; return r;
+};
+const ticketFor = async (token, v = 1, ago = 1e10) => { const r = await startRun(token, v, { ago, ip: "100.0." + (ago % 250) + ".1" }); return r.ok ? (await r.json()).ticket : undefined; };
 const tok = () => [...crypto.getRandomValues(new Uint8Array(16))].map(b => b.toString(16).padStart(2, "0")).join("");
 // every post is for rules version 1 unless the test says otherwise
-const post = (body, { origin = ORIGIN, ip, type = "application/json", raw } = {}) =>
-  handle(new Request("https://lb.example/scores", { method: "POST", headers: { "Content-Type": type, ...(origin ? { Origin: origin } : {}) },
+const post = async (body, { origin = ORIGIN, ip, type = "application/json", raw } = {}) => {
+  if (body && typeof body === "object" && !Array.isArray(body) && !("ticket" in body)) body = { ...body, ticket: await ticketFor(body.token, "v" in body ? body.v : 1) };
+  return handle(new Request("https://lb.example/scores", { method: "POST", headers: { "Content-Type": type, ...(origin ? { Origin: origin } : {}) },
     body: raw ?? JSON.stringify(body && typeof body === "object" && !Array.isArray(body) && !("v" in body) ? { ...body, v: 1 } : body) }), opts(ip));
+};
 const get = (origin = ORIGIN, v = 1) => handle(new Request("https://lb.example/scores?v=" + v, { headers: origin ? { Origin: origin } : {} }), opts());
 let pass = 0; const t = async (name, fn) => { await fn(); pass++; console.log("ok -", name); };
 
@@ -121,5 +131,40 @@ await t("each rules version has its own board", async () => {
   assert.ok(vers.versions.some(x => x.v === 2 && x.players === 1));
   for (const bad of [0, 1000, "2", 1.5, null]) assert.equal((await post({ token: tok(), name: "Eli", level: 3, v: bad }, { ip: "11.0.0.9" })).status, 400, String(bad));
   for (const q of ["", "?v=", "?v=abc", "?v=0", "?v=1000", "?v=1;DROP"]) assert.equal((await handle(new Request("https://lb.example/scores" + q), opts())).status, 400, q);
+});
+await t("scores need a genuine ticket for this player and version", async () => {
+  clock += 60000; const me = tok(), other = tok(), good = await ticketFor(me);
+  const sc = (ticket, extra = {}) => post({ token: me, name: "Fay", level: 5, ticket, ...extra }, { ip: "12.0.0." + (Math.random() * 250 | 0) });
+  assert.equal((await sc(undefined)).status, 403);
+  assert.equal((await sc("nope")).status, 403);
+  const [pid, v, t0, sig] = good.split(".");
+  assert.equal((await sc([pid, v, t0 - 1e9, sig].join("."))).status, 403);                 // backdated start
+  assert.equal((await sc([pid, v, t0, sig.replace(/^./, c => c === "a" ? "b" : "a")].join("."))).status, 403);   // bad signature
+  assert.equal((await sc(await ticketFor(other))).status, 403);                               // someone else's ticket
+  assert.equal((await sc(await ticketFor(me, 2))).status, 403);                               // another version's ticket
+  assert.equal((await sc(good)).status, 200);
+});
+await t("a level can't arrive sooner than the game allows", async () => {
+  clock += 60000; const me = tok(), ip = "13.0.0.1";
+  assert.ok(minRunMs(1) > 1500 && minRunMs(1) < 3000 && minRunMs(100) > 5 * 60000 && minRunMs(100) < 8 * 60000);
+  const tk = (await (await startRun(me, 1, { ago: minRunMs(30) - 1000 })).json()).ticket;
+  const r = await post({ token: me, name: "Gus", level: 30, ticket: tk }, { ip });
+  assert.equal(r.status, 403); assert.equal((await r.json()).error, "too_fast");
+  clock += 6000;   // a second past the limit (and past the player cooldown)
+  assert.equal((await post({ token: me, name: "Gus", level: 30, ticket: tk }, { ip })).status, 200);
+  assert.equal((await post({ token: me, name: "Gus", level: 31, ticket: tk }, { ip })).status, 429);   // cooldown still applies
+});
+await t("starting runs: origin, rate limit, Turnstile when enabled, and a salt is required", async () => {
+  clock += 60000;
+  const bad = await handle(new Request("https://lb.example/runs", { method: "POST", headers: { "Content-Type": "application/json", Origin: "https://evil.example" }, body: JSON.stringify({ token: tok(), v: 1 }) }), opts());
+  assert.equal(bad.status, 403);
+  let last; for (let i = 0; i < 12; i++) last = await startRun(tok(), 1, { ip: "14.0.0.1" });
+  assert.equal(last.status, 429);
+  const human = ok => ({ verifyHuman: async tokn => ok && tokn === "pass" });
+  assert.equal((await startRun(tok(), 1, { ip: "14.0.0.2", extra: human(true) })).status, 403);              // no Turnstile token
+  assert.equal((await startRun(null, 1, { ip: "14.0.0.3", extra: human(true), body: { token: tok(), v: 1, human: "fail" } })).status, 403);
+  assert.equal((await startRun(null, 1, { ip: "14.0.0.4", extra: human(true), body: { token: tok(), v: 1, human: "pass" } })).status, 200);
+  const nosalt = await handle(new Request("https://lb.example/runs", { method: "POST", headers: { "Content-Type": "application/json", Origin: ORIGIN }, body: JSON.stringify({ token: tok(), v: 1 }) }), { ...opts(), salt: "" });
+  assert.equal(nosalt.status, 503);
 });
 console.log(`\n${pass} checks passed`);

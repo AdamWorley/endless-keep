@@ -335,7 +335,7 @@ button.versus:hover:not(:disabled) { border-color: #c58bff; }
 "use strict";
 // GAME_VERSION changes with any update. RULES_VERSION goes up ONLY when a balance change makes the game easier or
 // harder: each rules version gets its own leaderboard, so scores from different rules are never mixed.
-const GAME_VERSION = "1.1.1", RULES_VERSION = 2;   // v2: special dragon names give bonuses
+const GAME_VERSION = "1.1.2", RULES_VERSION = 2;   // v2: special dragon names give bonuses
 const W = 960, H = 560;
 const $ = id => document.getElementById(id);
 const cv = $("board"), ctx = cv.getContext("2d");
@@ -603,7 +603,7 @@ function newRun() {
 }
 function makeSave() {
   return { v: 1, level: S.level, gold: Math.floor(S.gold), hp: S.hp, maxHp: S.maxHp, walls: S.walls, treasury: S.treasury, fort: S.fort,
-           dragon: S.dragon, cleared: TREES.filter(t => !S.trees.some(x => x.id === t.id && !x.fall)).map(t => t.id), towers: S.towers.map(t => [t.type, t.lvl, t.spent, Math.round(t.x), Math.round(t.y), Math.round(t.dmg || 0), t.kills || 0, t.slowed || 0, t.name || ""]), planted: S.trees.filter(t => t.planted != null && !t.fall).map(t => [t.x, t.y, t.planted, t.tone, Math.max(0, t.max - t.hp)]), stats: S.stats, rv: S.rv, perks: S.perks, dyn: S.dyn || 0, windUsed: !!S.windUsed, plan: S.plan, planL: S.planL, ev: S.ev || null, name: playerName, savedAt: Date.now() };
+           dragon: S.dragon, cleared: TREES.filter(t => !S.trees.some(x => x.id === t.id && !x.fall)).map(t => t.id), towers: S.towers.map(t => [t.type, t.lvl, t.spent, Math.round(t.x), Math.round(t.y), Math.round(t.dmg || 0), t.kills || 0, t.slowed || 0, t.name || ""]), planted: S.trees.filter(t => t.planted != null && !t.fall).map(t => [t.x, t.y, t.planted, t.tone, Math.max(0, t.max - t.hp)]), stats: S.stats, rv: S.rv, perks: S.perks, dyn: S.dyn || 0, windUsed: !!S.windUsed, plan: S.plan, planL: S.planL, ev: S.ev || null, lbt: S.lbt || null, name: playerName, savedAt: Date.now() };
 }
 function restore(sv) {
   newRun();
@@ -621,6 +621,7 @@ function restore(sv) {
   S.rv = Number.isInteger(sv.rv) && sv.rv >= 1 && sv.rv <= 999 ? sv.rv : RULES_VERSION;  // a game keeps the rules it started under
   S.perks = normMeta({ perks: sv.perks }).perks; S.dyn = Math.max(0, Math.min(99, Math.floor(+sv.dyn || 0))); S.windUsed = !!sv.windUsed;
   if (Array.isArray(sv.plan) && sv.planL === S.level && sv.plan.every(q => q && (q.k === "boss" || ENEMIES[q.k]))) { S.plan = sv.plan; S.planL = S.level; S.ev = sv.ev && EVENTS[sv.ev.id] && sv.ev.L === S.level ? { id: sv.ev.id, L: sv.ev.L, choice: sv.ev.choice || null } : null; }
+  if (typeof sv.lbt === "string" && sv.lbt.length < 200) S.lbt = sv.lbt;   // the shared board's ticket for this run
   const gone = new Set(sv.cleared || []);
   S.trees = S.trees.filter(tr => !gone.has(tr.id) && !S.towers.some(t => Math.hypot(t.x - tr.x, t.y - tr.y) < 34));
   (sv.planted || []).forEach(([x, y, planted, tone, chopped]) => {
@@ -2289,6 +2290,7 @@ function begin(sv) {
     S.treasury = perk("mint"); S.fort.archers = perk("sentries"); S.fort.moat = perk("moat");
   }
   if (sv && sv.name && !playerName) { playerName = sv.name; }
+  lbStartRun();
   sel = null; paused = false; S.nextT = 6;
   $("startCard").hidden = true; $("overCard").hidden = true;
   renderPanel(); renderUpNext(); updateHud(); renderBoard();
@@ -2342,7 +2344,8 @@ function savePlayer(level, badge) {
   const players = { ...src, [k]: entry };
   if (cloudOn()) { myScoreDoc = { players }; enqueue(() => db.doc("scores/" + uid).set({ players })); renderAch(); }
   else { ls.set("ek_scores", players); renderBoard(); }
-  if (LB_URL && best > 0) submitScore(best, badges, rv);
+  // the shared board takes the level this run has reached (it keeps the best), with the run's ticket
+  if (LB_URL && S && !S.vs && !S.vsGuest && S.level > 1) submitScore(S.level - 1, badges, rv);
 }
 const ACH = [
   { id: "lv10",       name: "Seasoned Defender",   desc: "Reach level 10" },
@@ -2471,14 +2474,58 @@ async function fetchBoard() {
     boardMode = "api"; renderBoard(); return true;
   } catch { return false; }
 }
+// Cloudflare Turnstile site key: when set, starting a run asks Turnstile (usually invisibly) that a person is playing.
+// The server enforces it once its TURNSTILE_SECRET is set. Leave empty to skip.
+const TS_SITEKEY = "";
+let tsLoad = null;
+function humanCheck() {
+  if (!TS_SITEKEY) return Promise.resolve(undefined);
+  tsLoad = tsLoad || new Promise((ok, fail) => {
+    const sc = document.createElement("script");
+    sc.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"; sc.async = true;
+    sc.onload = ok; sc.onerror = () => { tsLoad = null; fail(new Error("turnstile")); };
+    document.head.appendChild(sc);
+  });
+  return tsLoad.then(() => new Promise((ok, fail) => {
+    // only appears if Turnstile needs the player to tick a box; otherwise it stays invisible
+    const box = document.createElement("div"); box.style.cssText = "position:fixed;right:12px;bottom:12px;z-index:60";
+    document.body.appendChild(box);
+    let id = null;
+    const done = tok => { try { window.turnstile.remove(id); } catch {} box.remove(); tok ? ok(tok) : fail(new Error("turnstile")); };
+    id = window.turnstile.render(box, { sitekey: TS_SITEKEY, appearance: "interaction-only", action: "run",
+      callback: done, "error-callback": () => done(), "expired-callback": () => done(), "timeout-callback": () => done() });
+  }));
+}
+// Every run gets a signed ticket from the server when it starts; scores must carry it, and the server refuses levels
+// reached faster than the game allows. A run without one (offline at the start, or an old save) asks when it next can.
+let lbRunAsk = null;
+function lbStartRun() {
+  if (!LB_URL || !S || S.vs || S.vsGuest || S.lbt) return Promise.resolve();
+  if (lbRunAsk && lbRunAsk.run === S) return lbRunAsk.p;
+  const run = S, p = (async () => {
+    try {
+      const human = await humanCheck();
+      const r = await fetch(LB_URL + "/runs", { method: "POST", mode: "cors", credentials: "omit", referrerPolicy: "no-referrer", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: lbToken(), v: run.rv || RULES_VERSION, human }) });
+      const d = r.ok ? await r.json() : null;
+      if (d && typeof d.ticket === "string" && d.ticket.length < 200 && !run.lbt) run.lbt = d.ticket;
+    } catch {} finally { if (lbRunAsk && lbRunAsk.run === run) lbRunAsk = null; }
+  })();
+  lbRunAsk = { run, p };
+  return p;
+}
 async function submitScore(level, badges, v = RULES_VERSION, retry = true) {
   const name = cleanName(playerName) || "A keeper";
   if (isProfane(name)) { lbNote = "Your name can't go on the shared board. Pick another on the start screen."; renderBoard(); return; }
+  const run = S;
+  if (!run.lbt) await lbStartRun();
+  if (!run.lbt) return;   // no ticket yet (offline?): this level stays on the device; the next one will try again
   try {
     const r = await fetch(LB_URL + "/scores", { method: "POST", mode: "cors", credentials: "omit", referrerPolicy: "no-referrer", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token: lbToken(), name, level, v, badges: badges.filter(b => ACH.some(a => a.id === b)) }) });
+      body: JSON.stringify({ token: lbToken(), ticket: run.lbt, name, level, v, badges: badges.filter(b => ACH.some(a => a.id === b)) }) });
     if (r.status === 422) { lbNote = "Your name can't go on the shared board. Pick another on the start screen."; renderBoard(); return; }
     if (r.status === 429 && retry) { setTimeout(() => submitScore(level, badges, v, false), 6500); return; }
+    if (r.status === 403) { const d = await r.json().catch(() => null); if (d && d.error === "ticket") { run.lbt = null; lbStartRun(); } return; }  // too_fast: the next level will count
     if (r.ok) { lbNote = ""; fetchBoard(); }
   } catch { /* offline: the score is still kept on this device */ }
 }

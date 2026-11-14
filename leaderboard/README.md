@@ -6,7 +6,8 @@ A tiny JSON API for the installed app's Hall of Heroes. The game only knows the 
 ```
 GET  /scores?v=N -> { "v", "scores": [ { "name", "best", "at", "badges" } ] }   (top 50 for rules version N)
 GET  /versions   -> { "versions": [ { "v", "players" } ] }
-POST /scores     <- { "token": "<32 hex>", "name", "level", "v", "badges" }
+POST /runs       <- { "token": "<32 hex>", "v", "human"? }   -> { "ticket" }   (start of each run)
+POST /scores     <- { "token", "ticket", "name", "level", "v", "badges" }
 GET  /health     -> { "ok": true }
 ```
 
@@ -31,7 +32,9 @@ rules version it started under, and older boards stay viewable from the picker i
 - Each player has a secret random token; the server stores only a salted hash, so nobody can overwrite another player's score.
 - Rate limits: 20 submissions per minute per (hashed) IP, and one save per player every 5 seconds.
 - Responses carry `nosniff`, `default-src 'none'` CSP, `frame-ancestors 'none'`, HSTS, no-referrer.
-- Limits: the game runs in the browser, so a determined cheater can still submit a made-up level. The server caps levels at 5000 and you can delete rows with `wrangler d1 execute ... --command "DELETE FROM players WHERE ..."`.
+- **Run tickets:** each run asks `POST /runs` for a ticket, which is signed with a key derived from `HASH_SALT` and tied to the player and rules version. A score without a valid ticket is refused. So is a level reached sooner after the ticket than the game allows (`fastestWave` in `core.js`: the quickest a wave's monsters can all arrive at 3× speed, with 20% slack, so level 10 needs about 23 s and level 100 about 6 min). Keep `fastestWave` in step with `makeWave()` in the game. Without `HASH_SALT`, writes are refused (503), because tickets could be forged.
+- **Turnstile (optional):** set the Worker secret `TURNSTILE_SECRET` and the game's `TS_SITEKEY`, and starting a run needs a passing Cloudflare Turnstile token issued on one of the allowed sites. 10 run starts per minute per IP.
+- Limits: the game runs in the browser, so a patient cheater can still start a run, wait, and submit a made-up level that the timing allows. The server caps levels at 5000 and you can delete rows with `wrangler d1 execute ... --command "DELETE FROM players WHERE ..."`.
 
 ## Cloudflare (current host)
 ```sh
@@ -39,7 +42,8 @@ npm install
 npx wrangler login
 npx wrangler d1 create endless-keep-leaderboard          # put the id in wrangler.jsonc
 npx wrangler d1 execute endless-keep-leaderboard --remote --file schema.sql
-npx wrangler secret put HASH_SALT                        # any long random string
+npx wrangler secret put HASH_SALT                        # any long random string; never change it afterwards
+npx wrangler secret put TURNSTILE_SECRET                 # optional: Turnstile widget's secret key
 npx wrangler deploy
 npm test                                                 # offline tests of the API
 ```

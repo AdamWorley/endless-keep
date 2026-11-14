@@ -31,6 +31,7 @@ Ticked items are in the game. Rough order within each section is by value for ef
 ## Leaderboard
 - [x] **Shared Hall of Heroes for the installed app** — portable server in `leaderboard/` (Cloudflare Worker + D1 first), profanity filter, XSS/injection-safe, rate limited.
 - [x] **Versioned boards** — `RULES_VERSION` in the game; bump it on any balance change and scores go to a fresh board (older boards stay viewable).
+- [x] **Harder to fake scores** — signed run tickets, a minimum time per level, and an optional Turnstile bot check when a run starts.
 - [ ] **Separate boards for heirloom-free runs** — heirlooms and dynasty ranks make runs easier; a "pure" board could keep those apart.
 
 ## Feel and UI
