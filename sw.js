@@ -1,5 +1,5 @@
 // Offline support: the game is one page, so cache it plus its icons, and keep a copy of the Google Fonts once fetched.
-const CACHE = "endless-keep-20261114123448";
+const CACHE = "endless-keep-20261114123647";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./icon.svg", "./apple-touch-icon.png"];
 
 self.addEventListener("install", e => {

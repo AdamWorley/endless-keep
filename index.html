@@ -150,6 +150,12 @@ ol.board .bd .more { font-size: .72rem; color: var(--parch-dim); }
 .chip.fly { border-color: #6c8fb0; }
 .chip.plain { padding-left: 10px; }
 .upnext.later .chip { opacity: .8; font-size: .78rem; }
+.event { flex: 1 1 100%; display: grid; gap: 4px; padding: 9px 11px; border-radius: 10px; border: 1px solid var(--line); background: var(--moss-2); font-size: .9rem; }
+.event b { font-family: var(--font-display); font-weight: 400; font-size: 1.05rem; }
+.event.bad { border-color: var(--ember); } .event.bad b { color: #ffb39c; }
+.event.good { border-color: var(--leaf); } .event.good b { color: #bfe6a4; }
+.event.choice { border-color: var(--gold); } .event.choice b { color: var(--gold); }
+.event .row button { padding: 6px 10px; flex: 1 1 120px; }
 .chip canvas { width: 26px; height: 26px; display: block; }
 .gamecol { display: grid; gap: 8px; min-width: 0; }
 .palette { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
@@ -389,8 +395,8 @@ const lookoutTrees = t => (S && t.x != null) ? S.trees.filter(tr => !tr.fall && 
 function tStats(t) {
   const d = TOWERS[t.type], n = t.lvl - 1;
   return {
-    dmg: d.dmg * Math.pow(1.5, n) * (1 + .06 * perk(TYPE_PERK[t.type]) + .1 * perk("crown")),
-    range: d.range * Math.min(1.6, 1 + 0.04 * n) * (1 + TREE_BONUS * lookoutTrees(t).length + .04 * perk("eagle")),
+    dmg: d.dmg * Math.pow(1.5, n) * (1 + .06 * perk(TYPE_PERK[t.type]) + .1 * perk("crown")) * (evOn("wizard") ? 1.3 : 1),
+    range: d.range * Math.min(1.6, 1 + 0.04 * n) * (1 + TREE_BONUS * lookoutTrees(t).length + .04 * perk("eagle")) * (evOn("fog") ? .8 : 1),
     rate: d.rate * Math.min(1.5, 1 + 0.03 * n) * (1 + .08 * perk("volley")),
     slow: d.slow ? Math.min(0.8, d.slow + 0.02 * n + .03 * perk("chill")) : 0,
   };
@@ -510,7 +516,7 @@ function newRun() {
 }
 function makeSave() {
   return { v: 1, level: S.level, gold: Math.floor(S.gold), hp: S.hp, maxHp: S.maxHp, walls: S.walls, treasury: S.treasury, fort: S.fort,
-           dragon: S.dragon, cleared: TREES.filter(t => !S.trees.some(x => x.id === t.id && !x.fall)).map(t => t.id), towers: S.towers.map(t => [t.type, t.lvl, t.spent, Math.round(t.x), Math.round(t.y), Math.round(t.dmg || 0), t.kills || 0, t.slowed || 0, t.name || ""]), planted: S.trees.filter(t => t.planted != null && !t.fall).map(t => [t.x, t.y, t.planted, t.tone, Math.max(0, t.max - t.hp)]), stats: S.stats, perks: S.perks, windUsed: !!S.windUsed, plan: S.plan, planL: S.planL, name: playerName, savedAt: Date.now() };
+           dragon: S.dragon, cleared: TREES.filter(t => !S.trees.some(x => x.id === t.id && !x.fall)).map(t => t.id), towers: S.towers.map(t => [t.type, t.lvl, t.spent, Math.round(t.x), Math.round(t.y), Math.round(t.dmg || 0), t.kills || 0, t.slowed || 0, t.name || ""]), planted: S.trees.filter(t => t.planted != null && !t.fall).map(t => [t.x, t.y, t.planted, t.tone, Math.max(0, t.max - t.hp)]), stats: S.stats, perks: S.perks, windUsed: !!S.windUsed, plan: S.plan, planL: S.planL, ev: S.ev || null, name: playerName, savedAt: Date.now() };
 }
 function restore(sv) {
   newRun();
@@ -523,7 +529,7 @@ function restore(sv) {
   });
   S.stats = { ...S.stats, ...(sv.stats || {}) };
   S.perks = normMeta({ perks: sv.perks }).perks; S.windUsed = !!sv.windUsed;
-  if (Array.isArray(sv.plan) && sv.planL === sv.level && sv.plan.every(q => q && (q.k === "boss" || ENEMIES[q.k]))) { S.plan = sv.plan; S.planL = sv.planL; }
+  if (Array.isArray(sv.plan) && sv.planL === sv.level && sv.plan.every(q => q && (q.k === "boss" || ENEMIES[q.k]))) { S.plan = sv.plan; S.planL = sv.planL; S.ev = sv.ev && EVENTS[sv.ev.id] && sv.ev.L === sv.level ? { id: sv.ev.id, L: sv.ev.L, choice: sv.ev.choice || null } : null; }
   const gone = new Set(sv.cleared || []);
   S.trees = S.trees.filter(tr => !gone.has(tr.id) && !S.towers.some(t => Math.hypot(t.x - tr.x, t.y - tr.y) < 34));
   (sv.planted || []).forEach(([x, y, planted, tone, chopped]) => {
@@ -1226,6 +1232,8 @@ function spawn(item) {
   const e = { v: Math.random(), v2: Math.random(), sz: d.boss ? 1 : .93 + Math.random() * .14, k: d.k, path, d: 0, x: -40, y: 0, hp, max: hp, spd: d.spd * (1 + Math.min(.35, L * .004)) * (0.92 + Math.random() * .16),
               armor: d.armor, gold: d.gold, fly: !!d.fly, r: d.r, col: cols ? cols[(Math.random() * cols.length) | 0] : d.col, dmg: d.dmg, regen: d.regen || 0, boss: !!d.boss,
               slowT: 0, slowA: 0, burnT: 0, burnDps: 0, t: Math.random() * 6, face: 1, dead: false };
+  if (evOn("swift")) e.spd *= 1.2;
+  if (evOn("ironclad")) e.armor = Math.min(.75, e.armor + .25);
   [e.x, e.y] = posAt(path, 0);
   S.enemies.push(e);
 }
@@ -1239,7 +1247,7 @@ function hurt(e, amt, magic, src) {
 function earn(g) { S.gold += g; S.stats.gold += g; }
 function kill(e) {
   e.dead = true;
-  const g = Math.max(1, Math.round(e.gold * goldScale(S.level) * (1 + .04 * perk("bounty") + .1 * perk("chest"))));
+  const g = Math.max(1, Math.round(e.gold * goldScale(S.level) * (1 + .04 * perk("bounty") + .1 * perk("chest")) * (evOn("goldrush") ? 2 : 1)));
   earn(g); S.stats.kills++;
   S.texts.push({ x: e.x, y: e.y - (e.fly ? 30 : 12), txt: "+" + g, life: 1, col: "#ffe08a" });
   for (let i = 0; i < (e.boss ? 30 : 8); i++) { const a = Math.random() * 6.28, sp = 30 + Math.random() * (e.boss ? 120 : 60); S.fx.push({ x: e.x, y: e.y - (e.fly ? 22 : 0), vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 20, life: .6, max: .6, col: e.boss ? "#ffd25e" : "rgba(240,235,220,.9)", r: e.boss ? 3.5 : 2.5, g: 60 }); }
@@ -1298,15 +1306,73 @@ function affect(e, s) {
 
 // the next level's monsters are decided in advance so "Up next" can show exactly what's coming
 function planFor() {
-  if (!S.plan || S.planL !== S.level) { S.plan = makeWave(S.level); S.planL = S.level; }
+  if (!S.plan || S.planL !== S.level) {
+    S.plan = makeWave(S.level); S.planL = S.level;
+    S.ev = rollEvent(S.level); if (S.ev) shapeWave(S.plan, S.ev.id, S.level);
+  }
   return S.plan;
+}
+
+/* ---------- random events: some levels come with a twist, shown in "Up next" before they start ----------
+   They get more frequent, and more often bad, the more boons you bring into a game, to balance the upgrades. */
+const EVENTS = {
+  fog:      { kind: "bad",    name: "Fog",              desc: () => "Thick fog: every tower has 20% less range this level." },
+  swift:    { kind: "bad",    name: "Tailwind",         desc: () => "Monsters move 20% faster this level." },
+  ironclad: { kind: "bad",    name: "Scrap armour",     desc: () => "Monsters strap on scrap metal: +25% armour. Magic still pierces it." },
+  horde:    { kind: "bad",    name: "Horde",            desc: () => "40% more monsters than usual this level." },
+  stampede: { kind: "bad",    name: "Stampede",         from: 9, desc: () => "Every monster arrives riding a wolf, and there are 25% more of them." },
+  storm:    { kind: "good",   name: "Thunderstorm",     desc: () => "Lightning strikes a monster every two seconds." },
+  goldrush: { kind: "good",   name: "Gold rush",        desc: () => "Monsters drop double gold this level." },
+  toll:     { kind: "choice", name: "Goblin toll",      cost: L => Math.round(45 * goldScale(L)),
+              desc: L => `A goblin chief wants ${Math.round(45 * goldScale(L))} gold. Pay and 30% fewer monsters come. Refuse and 30% more come.`,
+              pay: "Pay the toll", refuse: "Refuse" },
+  wizard:   { kind: "choice", name: "Wandering wizard", cost: L => Math.round(35 * goldScale(L)),
+              desc: L => `A wizard offers to bless your towers for ${Math.round(35 * goldScale(L))} gold: +30% damage this level.`,
+              pay: "Pay the wizard", refuse: "No thanks" },
+};
+const runBoons = () => Object.values(S.perks || {}).reduce((a, b) => a + b, 0);
+function rollEvent(L) {
+  if (L < 4 || L % 10 === 0) return null;
+  const nb = runBoons();
+  if (Math.random() > Math.min(.6, .22 + .02 * nb)) return null;
+  const w = { good: 3, choice: 3, bad: 2.5 + .35 * nb };
+  const ids = Object.keys(EVENTS).filter(id => (EVENTS[id].from || 0) <= L);
+  const tot = ids.reduce((a, id) => a + w[EVENTS[id].kind], 0); let r = Math.random() * tot;
+  return { id: ids.find(id => (r -= w[EVENTS[id].kind]) <= 0) || ids[0], L, choice: null };
+}
+// change the planned wave for events that alter who turns up (so the preview counts are right)
+function shapeWave(q, id, L) {
+  const extra = f => { const base = q.filter(x => x.k !== "boss"), n = Math.round(base.length * f); for (let i = 0; i < n; i++) q.splice(Math.floor(Math.random() * (base.length + i)), 0, { ...base[(Math.random() * base.length) | 0] }); };
+  if (id === "horde") extra(.4);
+  if (id === "stampede") {
+    const riders = ["wolfrider", "orcrider"].filter(k => ENEMIES[k].from <= L);
+    q.forEach(x => { if (x.k !== "boss") x.k = riders[(Math.random() * riders.length) | 0]; });
+    extra(.25);
+  }
+}
+const curEv = () => (S && S.ev && S.ev.L === S.level) ? S.ev : null;
+const evOn = id => { const e = curEv(); return !!e && e.id === id && (EVENTS[id].kind !== "choice" || e.choice === "pay"); };
+function chooseEvent(pay) {
+  const e = curEv(); if (!e || e.choice || S.phase !== "build") return;
+  const E = EVENTS[e.id];
+  if (pay) { const c = E.cost(S.level); if (S.gold < c) { toast(`You need ${c - Math.floor(S.gold)} more gold.`); return; } S.gold -= c; sfx("coin"); }
+  e.choice = pay ? "pay" : "refuse";
+  schedulePersist(); renderUpNext(); renderPanel(); updateHud();
 }
 function startWave() {
   if (!S || S.phase !== "build") return;
   audio();
-  S.queue = planFor().map(q => ({ ...q })); S.phase = "wave"; S.spawnT = .5; S.waveHp = S.hp;
+  S.queue = planFor().map(q => ({ ...q })); S.phase = "wave"; S.spawnT = .5; S.waveHp = S.hp; S.stormT = 2;
+  const ev = curEv();
+  if (ev && ev.id === "toll") {  // the goblins keep their word, one way or the other
+    if (!ev.choice) ev.choice = "refuse";
+    const base = S.queue.filter(x => x.k !== "boss"), n = Math.round(base.length * .3);
+    if (ev.choice === "pay") for (let i = 0; i < n; i++) { const idx = S.queue.map((x, j) => x.k !== "boss" ? j : -1).filter(j => j >= 0); if (!idx.length) break; S.queue.splice(idx[(Math.random() * idx.length) | 0], 1); }
+    else for (let i = 0; i < n; i++) S.queue.splice((Math.random() * S.queue.length) | 0, 0, { ...base[(Math.random() * base.length) | 0] });
+  }
+  if (ev && !ev.choice) ev.choice = "refuse";
   if (S.level % 10 === 0) { sfx("boss"); toast(`Boss level! The ${bossFor(S.level).name} approaches.`); }
-  else sfx("wave");
+  else { sfx("wave"); if (ev) toast(`${EVENTS[ev.id].name}! ${EVENTS[ev.id].kind === "choice" ? (ev.choice === "pay" ? "Paid." : "Refused.") : EVENTS[ev.id].desc(S.level)}`); }
   updateHud(); renderUpNext();
 }
 function clearWave() {
@@ -1413,7 +1479,19 @@ function update(dt) {
   }
   S.shots = S.shots.filter(s => !s.done);
   S.enemies = S.enemies.filter(e => !e.dead);
-  for (const f of S.fx) { f.life -= dt; if (!f.ring) { f.x += f.vx * dt; f.y += f.vy * dt; if (f.g) f.vy += f.g * dt; } }
+  if (evOn("storm") && S.phase === "wave") {
+    S.stormT -= dt;
+    if (S.stormT <= 0) {
+      S.stormT = 2;
+      const live = S.enemies.filter(e => !e.dead && e.d > 0);
+      if (live.length) {
+        const e = live[(Math.random() * live.length) | 0], ey = e.fly ? e.y - 22 : e.y;
+        S.fx.push({ bolt: true, x: e.x, y: ey, vx: 0, vy: 0, life: .3, max: .3, seed: Math.random() * 99 });
+        sfx("boom"); hurt(e, e.max * .15, true, null);
+      }
+    }
+  }
+  for (const f of S.fx) { f.life -= dt; if (!f.ring && !f.bolt) { f.x += f.vx * dt; f.y += f.vy * dt; if (f.g) f.vy += f.g * dt; } }
   S.fx = S.fx.filter(f => f.life > 0);
   for (const t of S.texts) { t.life -= dt; t.y -= 22 * dt; }
   S.texts = S.texts.filter(t => t.life > 0);
@@ -1467,6 +1545,11 @@ function render() {
     S.shots.forEach(drawShot);
     for (const f of S.fx) {
       const a = Math.max(0, f.life / f.max);
+      if (f.bolt) {
+        const r = rng(f.seed | 0); ctx.strokeStyle = `rgba(255,248,190,${a})`; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(f.x + (r() - .5) * 30, f.y - 160);
+        for (let i = 1; i <= 6; i++) ctx.lineTo(f.x + (r() - .5) * (i < 6 ? 22 : 0), f.y - 160 + i * 160 / 6); ctx.stroke();
+        ctx.fillStyle = `rgba(255,248,190,${a * .4})`; ell(ctx, f.x, f.y, 16, 8); continue;
+      }
       if (f.ring) { ctx.strokeStyle = f.col + (a * .8) + ")"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(f.x, f.y, f.r * (1 - a * .5), 0, Math.PI * 2); ctx.stroke(); }
       else { ctx.globalAlpha = a; ctx.fillStyle = f.col; ell(ctx, f.x, f.y, f.r, f.r); ctx.globalAlpha = 1; }
     }
@@ -1725,7 +1808,7 @@ function renderPanel() {
 }
 function refreshAfford() {
   updatePalette();
-  document.querySelectorAll("#selPanel [data-cost]").forEach(b => { if (!b.dataset.full) b.disabled = S.gold < +b.dataset.cost; });
+  document.querySelectorAll("#selPanel [data-cost], #upNext [data-cost]").forEach(b => { if (!b.dataset.full) b.disabled = S.gold < +b.dataset.cost; });
 }
 function enemyIcon(k, boss) {
   const def = boss || ENEMIES[k], r = def.r;
@@ -1744,6 +1827,21 @@ function renderUpNext() {
   if (!S) return;
   const L = S.level, plan = planFor();
   $("upTitle").textContent = S.phase === "wave" ? `Level ${L} (under way)` : `Coming in level ${L}`;
+  const ev = curEv();
+  if (ev) {
+    const E = EVENTS[ev.id], bx = el("div", "event " + E.kind);
+    bx.append(el("b", "", E.name), el("span", "", E.desc(L)));
+    if (E.kind === "choice") {
+      if (ev.choice) bx.append(el("span", "fine", ev.choice === "pay" ? "You paid." : "You refused."));
+      else if (S.phase === "build") {
+        const r = el("div", "row"), c = E.cost(L), py = el("button", "primary", `${E.pay} · ${c} g`), no = el("button", "", E.refuse);
+        py.dataset.cost = c; py.disabled = S.gold < c;
+        py.addEventListener("click", () => chooseEvent(true)); no.addEventListener("click", () => chooseEvent(false));
+        r.append(py, no); bx.append(r);
+      }
+    }
+    box.append(bx);
+  }
   if (L % 10 === 0) { const b = bossFor(L); box.append(chip("boss", enemyIcon(b.key, b), "Boss: " + b.name + (b.fly ? " (flying)" : ""))); }
   const counts = new Map(); plan.forEach(q => { if (q.k !== "boss") counts.set(q.k, (counts.get(q.k) || 0) + 1); });
   [...counts].sort((a, b) => b[1] - a[1]).forEach(([k, n]) => box.append(chip(ENEMIES[k].fly ? "fly" : "", enemyIcon(k), `${n} × ${ENEMIES[k].name}` + (ENEMIES[k].fly ? " (flying)" : ""))));
