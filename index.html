@@ -189,6 +189,26 @@ html.lock, html.lock body { overflow: hidden; overscroll-behavior: none; height:
   .wrap.full .stage { width: 100%; }
   .wrap.full .side { flex: 1; }
 }
+/* boons and export/import dialogs sit above everything, so they work at phone sizes too */
+.modal { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; background: rgba(8, 12, 10, .72); padding: 16px; }
+.modal .card { width: min(780px, 100%); max-height: calc(100dvh - 32px); }
+.boons { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 640px) { .boons { grid-template-columns: minmax(0, 1fr); } }
+.boon { display: grid; align-content: start; gap: 6px; text-align: left; padding: 14px; border: 2px solid var(--rc); font-weight: 400;
+        background: linear-gradient(180deg, color-mix(in srgb, var(--rc) 20%, var(--moss-2)), var(--moss-2) 70%); transition: transform .15s; }
+.boon:hover:not(:disabled) { transform: translateY(-3px); border-color: var(--rc); }
+.boon .rr { font-size: .72rem; text-transform: uppercase; letter-spacing: .1em; color: var(--rc); font-weight: 800; }
+.boon .bn { font-family: var(--font-display); font-size: 1.2rem; color: var(--parch); line-height: 1.15; }
+.boon .bd { font-size: .92rem; color: var(--parch); }
+.boon .bo { font-size: .78rem; color: var(--parch-dim); }
+.boon.legendary { box-shadow: 0 0 18px rgba(233, 185, 73, .35); }
+.perklist { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.perklist li { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; padding: 8px 10px; border-radius: 10px; background: var(--moss-2); border-left: 4px solid var(--rc); }
+.perklist b { color: var(--parch); }
+.perklist .n { color: var(--rc); font-weight: 800; justify-self: end; grid-column: 2; grid-row: 1; }
+.perklist span.d { grid-column: 1 / 3; font-size: .85rem; color: var(--parch-dim); }
+textarea.code { width: 100%; min-height: 96px; font: 12px/1.4 ui-monospace, Menlo, monospace; background: var(--night); color: var(--parch); border: 1px solid var(--line); border-radius: 10px; padding: 8px; word-break: break-all; resize: vertical; }
+button.glow { border-color: var(--gold); color: var(--gold); box-shadow: 0 0 12px rgba(233, 185, 73, .35); }
 .keys { font-size: .8rem; color: var(--parch-dim); margin: 0; }
 @media (max-width: 520px) {
   header.top h1 { font-size: 1.35rem; }
@@ -238,6 +258,10 @@ html.lock, html.lock body { overflow: hidden; overscroll-behavior: none; height:
             <button id="btnContinue" class="primary" hidden>Continue</button>
             <button id="btnNew" class="primary">New game</button>
           </div>
+          <div class="row">
+            <button id="btnBoons">Boons</button>
+            <button id="btnTransfer">Export / import</button>
+          </div>
           <p class="fine" id="saveNote">Your game saves after every level, so you can stop and come back.</p>
         </div>
       </div>
@@ -254,6 +278,7 @@ html.lock, html.lock body { overflow: hidden; overscroll-behavior: none; height:
         <div class="card">
           <h2>The keep has fallen</h2>
           <p class="big" id="overScore">You held for 0 levels.</p>
+          <p id="overBoons"></p>
           <p id="overNote"></p>
           <dl class="kv" id="overStats"></dl>
           <p id="overMvp"></p>
@@ -289,6 +314,8 @@ html.lock, html.lock body { overflow: hidden; overscroll-behavior: none; height:
     </aside>
   </div>
 </div>
+
+<div id="modal" class="modal" hidden><div class="card" id="modalCard" role="dialog" aria-modal="true"></div></div>
 
 <canvas id="dragFloat" class="dragfloat" width="112" height="112" hidden></canvas>
 
@@ -337,7 +364,7 @@ const TOWERS = {
   mage:     { name: "Mage Tower",   cost: 90,  range: 125, dmg: 20, rate: 0.7, air: true,  magic: true,  splash: 42, role: "Armour", desc: "Arcane blasts that pierce armour.", best: "Skeleton knights, orcs and the Bone Wyrm: magic ignores their armour." },
   frost:    { name: "Frost Spire",  cost: 70,  range: 115, dmg: 4,  rate: 0.8, air: true,  magic: true,  splash: 48, slow: 0.45, role: "Slow", desc: "Slows everything it touches.", best: "Trolls, fast wolves and riders, and bosses. Low damage, so place it beside your hard hitters." },
   catapult: { name: "Catapult",     cost: 110, range: 178, dmg: 34, rate: 0.4, air: false, magic: false, splash: 58, role: "Crowds", desc: "Big splash damage. Ground only.", best: "Big packs of goblins and orcs on the road. Can't hit bats or wyverns." },
-  dragon:   { name: "Dragon Roost", cost: 350, range: 155, dmg: 26, rate: 1.1, air: true,  magic: true,  splash: 40, burn: true, role: "All-round", desc: "Your own dragon breathes fire. Unlocks after level 10.", best: "Anything, flying or armoured. Its fire keeps burning, which is great against healing trolls." },
+  dragon:   { name: "Dragon Roost", cost: 350, range: 155, dmg: 26, rate: 1.1, air: true,  magic: true,  splash: 40, burn: true, role: "All-round", desc: "Your own dragon breathes fire. Unlocks partway through a game.", best: "Anything, flying or armoured. Its fire keeps burning, which is great against healing trolls." },
 };
 const DRAGON_STAGES = [
   { upto: 3,   name: "Hatchling",    s: .8,   body: "#3f9a6a", wing: "#2f7a52", belly: "#9fd39a", fire: ["rgba(255,140,50,.4)", "#ffb347", "#fff0a8"] },
@@ -362,13 +389,59 @@ const lookoutTrees = t => (S && t.x != null) ? S.trees.filter(tr => !tr.fall && 
 function tStats(t) {
   const d = TOWERS[t.type], n = t.lvl - 1;
   return {
-    dmg: d.dmg * Math.pow(1.5, n),
-    range: d.range * Math.min(1.6, 1 + 0.04 * n) * (1 + TREE_BONUS * lookoutTrees(t).length),
-    rate: d.rate * Math.min(1.5, 1 + 0.03 * n),
-    slow: d.slow ? Math.min(0.7, d.slow + 0.02 * n) : 0,
+    dmg: d.dmg * Math.pow(1.5, n) * (1 + .06 * perk(TYPE_PERK[t.type]) + .1 * perk("crown")),
+    range: d.range * Math.min(1.6, 1 + 0.04 * n) * (1 + TREE_BONUS * lookoutTrees(t).length + .04 * perk("eagle")),
+    rate: d.rate * Math.min(1.5, 1 + 0.03 * n) * (1 + .08 * perk("volley")),
+    slow: d.slow ? Math.min(0.8, d.slow + 0.02 * n + .03 * perk("chill")) : 0,
   };
 }
-const upCost = t => Math.round(TOWERS[t.type].cost * 0.75 * Math.pow(1.55, t.lvl - 1));
+const upCost = t => Math.round(TOWERS[t.type].cost * 0.75 * Math.pow(1.55, t.lvl - 1) * (1 - .05 * perk("masonry")));
+const tCost = k => Math.round(TOWERS[k].cost * (1 - .05 * perk("quarter")));
+const dragonAt = () => perk("egg") ? 5 : 10;
+
+/* ---------- boons: permanent upgrades chosen between games (meta progression) ---------- */
+const RARITY = {
+  common:    { name: "Common",    col: "#c9bf9f", w: 60 },
+  rare:      { name: "Rare",      col: "#6fb6e0", w: 28 },
+  epic:      { name: "Epic",      col: "#c58bff", w: 10 },
+  legendary: { name: "Legendary", col: "#e9b949", w: 2 },
+};
+const PERKS = {
+  purse:    { r: "common", name: "Deep pockets",    max: 10, desc: n => `Start each game with +${25 * n} gold.` },
+  stones:   { r: "common", name: "Sturdy stones",   max: 10, desc: n => `Start each game with +${2 * n} castle hearts.` },
+  arrows:   { r: "common", name: "Sharp arrows",    max: 10, desc: n => `Archer Towers deal +${6 * n}% damage.` },
+  arcane:   { r: "common", name: "Arcane focus",    max: 10, desc: n => `Mage Towers deal +${6 * n}% damage.` },
+  boulders: { r: "common", name: "Heavier stones",  max: 10, desc: n => `Catapults deal +${6 * n}% damage.` },
+  embers:   { r: "common", name: "Hotter embers",   max: 10, desc: n => `Dragons deal +${6 * n}% damage.` },
+  chill:    { r: "common", name: "Bitter cold",     max: 5,  desc: n => `Frost Spires slow monsters ${3 * n}% more.` },
+  lumber:   { r: "common", name: "Lumber rights",   max: 5,  desc: n => `Firewood sells for +${20 * n}% and woodcutters cost ${10 * n}% less.` },
+  bounty:   { r: "common", name: "Bounty hunter",   max: 10, desc: n => `Monsters drop +${4 * n}% gold.` },
+  quarter:  { r: "rare", name: "Quartermaster",     max: 5,  desc: n => `Towers cost ${5 * n}% less to build.` },
+  masonry:  { r: "rare", name: "Guild of masons",   max: 5,  desc: n => `Tower upgrades cost ${5 * n}% less.` },
+  eagle:    { r: "rare", name: "Eagle eyes",        max: 5,  desc: n => `Every tower gets +${4 * n}% range.` },
+  mint:     { r: "rare", name: "Royal mint",        max: 3,  desc: n => `Start each game with a level ${n} treasury.` },
+  thumb:    { r: "rare", name: "Green thumb",       max: 3,  desc: n => `Saplings grow as if planted ${n} level${n === 1 ? "" : "s"} earlier.` },
+  sentries: { r: "rare", name: "Castle sentries",   max: 3,  desc: n => `Start each game with level ${n} castle archers.` },
+  chest:    { r: "epic", name: "War chest",         max: 3,  desc: n => `+${10 * n}% gold from monsters and level bonuses.` },
+  volley:   { r: "epic", name: "Volley drills",     max: 3,  desc: n => `Every tower shoots ${8 * n}% faster.` },
+  moat:     { r: "epic", name: "Moat diggers",      max: 1,  desc: () => "Start each game with a level 1 moat." },
+  egg:      { r: "epic", name: "Early egg",         max: 1,  desc: () => "Dragon Roosts unlock after level 5 instead of 10." },
+  crown:    { r: "legendary", name: "Crown of the keep", max: 3, desc: n => `Every tower deals +${10 * n}% damage, and the castle mends ${n} heart${n === 1 ? "" : "s"} after each level.` },
+  wind:     { r: "legendary", name: "Second wind",  max: 1,  desc: () => "Once a game, when the castle would fall, it springs back to half its hearts." },
+};
+const TYPE_PERK = { archer: "arrows", mage: "arcane", catapult: "boulders", dragon: "embers" };
+// boons active in the current game (copied from your collection when a new game starts, and kept in its save)
+const perk = id => (id && S && S.perks && S.perks[id]) || 0;
+function normMeta(m) {
+  m = m && typeof m === "object" ? m : {};
+  const perks = {}, src = m.perks && typeof m.perks === "object" ? m.perks : {};
+  for (const id in PERKS) { const n = Math.floor(+src[id] || 0); if (n > 0) perks[id] = Math.min(PERKS[id].max, n); }
+  const offer = Array.isArray(m.offer) && m.offer.length && m.offer.every(id => PERKS[id]) ? m.offer.slice(0, 3) : null;
+  return { v: 1, perks, picks: Math.max(0, Math.min(50, Math.floor(+m.picks || 0))), luck: Math.max(0, Math.floor(+m.luck || 0)),
+           runs: Math.max(0, Math.floor(+m.runs || 0)), offer, savedAt: +m.savedAt || 0 };
+}
+let meta = normMeta(ls.get("ek_meta"));
+const boonCount = () => Object.values(meta.perks).reduce((a, b) => a + b, 0);
 
 const ENEMIES = {
   goblin: { name: "Goblins",          hp: 1,    spd: 52, armor: 0,   gold: 4,  from: 1,  r: 9,  col: "#7fb04a", dmg: 1, w: 5 },
@@ -437,7 +510,7 @@ function newRun() {
 }
 function makeSave() {
   return { v: 1, level: S.level, gold: Math.floor(S.gold), hp: S.hp, maxHp: S.maxHp, walls: S.walls, treasury: S.treasury, fort: S.fort,
-           dragon: S.dragon, cleared: TREES.filter(t => !S.trees.some(x => x.id === t.id && !x.fall)).map(t => t.id), towers: S.towers.map(t => [t.type, t.lvl, t.spent, Math.round(t.x), Math.round(t.y), Math.round(t.dmg || 0), t.kills || 0, t.slowed || 0, t.name || ""]), planted: S.trees.filter(t => t.planted != null && !t.fall).map(t => [t.x, t.y, t.planted, t.tone, Math.max(0, t.max - t.hp)]), stats: S.stats, plan: S.plan, planL: S.planL, name: playerName, savedAt: Date.now() };
+           dragon: S.dragon, cleared: TREES.filter(t => !S.trees.some(x => x.id === t.id && !x.fall)).map(t => t.id), towers: S.towers.map(t => [t.type, t.lvl, t.spent, Math.round(t.x), Math.round(t.y), Math.round(t.dmg || 0), t.kills || 0, t.slowed || 0, t.name || ""]), planted: S.trees.filter(t => t.planted != null && !t.fall).map(t => [t.x, t.y, t.planted, t.tone, Math.max(0, t.max - t.hp)]), stats: S.stats, perks: S.perks, windUsed: !!S.windUsed, plan: S.plan, planL: S.planL, name: playerName, savedAt: Date.now() };
 }
 function restore(sv) {
   newRun();
@@ -449,6 +522,7 @@ function restore(sv) {
     S.towers.push({ type: t[0], lvl: t[1], spent: t[2], cd: 0, ang: 0, flash: 0, x, y, dmg: t[5] || 0, kills: t[6] || 0, slowed: t[7] || 0, name: t[0] === "dragon" ? (cleanName(t[8]) || suggestDragonName()) : undefined });
   });
   S.stats = { ...S.stats, ...(sv.stats || {}) };
+  S.perks = normMeta({ perks: sv.perks }).perks; S.windUsed = !!sv.windUsed;
   if (Array.isArray(sv.plan) && sv.planL === sv.level && sv.plan.every(q => q && (q.k === "boss" || ENEMIES[q.k]))) { S.plan = sv.plan; S.planL = sv.planL; }
   const gone = new Set(sv.cleared || []);
   S.trees = S.trees.filter(tr => !gone.has(tr.id) && !S.towers.some(t => Math.hypot(t.x - tr.x, t.y - tr.y) < 34));
@@ -601,9 +675,9 @@ const TREES = (() => {
   return out;
 })();
 const freshTrees = () => TREES.map(t => ({ ...t, hp: t.max, shake: 0, fall: 0, dir: 1 }));
-const fellCost = () => 15 + 2 * S.level;
+const fellCost = () => Math.round((15 + 2 * S.level) * (1 - .1 * perk("lumber")));
 // chopping a tree yourself sells the firewood for gold; big oaks give more, and it scales with the level like monster bounties
-const woodValue = t => Math.round((t.wood || (t.max > 4 ? 8 : 5)) * goldScale(S.level));
+const woodValue = t => Math.round((t.wood || (t.max > 4 ? 8 : 5)) * goldScale(S.level) * (1 + .2 * perk("lumber")));
 // saplings the player plants: an investment that grows each level cleared, but takes up tower space meanwhile
 const GROWTH = [
   { name: "Sapling",    at: 0,  s: .45, max: 0, wood: 0 },
@@ -612,7 +686,7 @@ const GROWTH = [
   { name: "Mighty oak", at: 15, s: 1.4, max: 8, wood: 13 },
 ];
 const plantCost = () => Math.round(4 * goldScale(S.level));
-const treeStage = t => { const age = S.level - t.planted; let i = 0; while (i < GROWTH.length - 1 && age >= GROWTH[i + 1].at) i++; return i; };
+const treeStage = t => { const age = S.level - t.planted + perk("thumb"); let i = 0; while (i < GROWTH.length - 1 && age >= GROWTH[i + 1].at) i++; return i; };
 function growTree(t) {
   const i = treeStage(t), g = GROWTH[i], grew = t.stage !== undefined && i > t.stage, chopped = Math.max(0, (t.max || 0) - (t.hp || 0));
   t.stage = i; t.s = g.s; t.max = g.max; t.wood = g.wood; t.hp = g.max ? Math.max(1, g.max - chopped) : 0;
@@ -1165,7 +1239,7 @@ function hurt(e, amt, magic, src) {
 function earn(g) { S.gold += g; S.stats.gold += g; }
 function kill(e) {
   e.dead = true;
-  const g = Math.max(1, Math.round(e.gold * goldScale(S.level)));
+  const g = Math.max(1, Math.round(e.gold * goldScale(S.level) * (1 + .04 * perk("bounty") + .1 * perk("chest"))));
   earn(g); S.stats.kills++;
   S.texts.push({ x: e.x, y: e.y - (e.fly ? 30 : 12), txt: "+" + g, life: 1, col: "#ffe08a" });
   for (let i = 0; i < (e.boss ? 30 : 8); i++) { const a = Math.random() * 6.28, sp = 30 + Math.random() * (e.boss ? 120 : 60); S.fx.push({ x: e.x, y: e.y - (e.fly ? 22 : 0), vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 20, life: .6, max: .6, col: e.boss ? "#ffd25e" : "rgba(240,235,220,.9)", r: e.boss ? 3.5 : 2.5, g: 60 }); }
@@ -1236,15 +1310,15 @@ function startWave() {
   updateHud(); renderUpNext();
 }
 function clearWave() {
-  const L = S.level, bonus = Math.round(15 + 4 * L);
+  const L = S.level, bonus = Math.round((15 + 4 * L) * (1 + .1 * perk("chest")));
   earn(bonus); S.phase = "build"; S.level++; S.nextT = 5;
   sfx("clear");
   const tpay = S.treasury ? treasPay(S.treasury, L) : 0;
   if (tpay) earn(tpay);
-  const mend = Math.min(S.maxHp - S.hp, S.fort.masons * 2);
+  const mend = Math.min(S.maxHp - S.hp, S.fort.masons * 2 + perk("crown"));
   if (mend > 0) { S.hp += mend; S.texts.push({ x: CASTLE.x + 50, y: CASTLE.y + 30, txt: "+" + mend + " ♥", life: 1.4, col: "#9fe08a" }); }
   let msg = `Level ${L} cleared! +${bonus + tpay} gold${tpay ? ` (${tpay} from the treasury)` : ""}`;
-  if (L >= 10 && !S.dragon) { S.dragon = true; msg = "A dragon egg has hatched! Dragon Roosts are now unlocked."; }
+  if (L >= dragonAt() && !S.dragon) { S.dragon = true; msg = "A dragon egg has hatched! Dragon Roosts are now unlocked."; }
   let grew = 0;
   for (const t of S.trees) if (t.planted != null && !t.fall && growTree(t)) {
     grew++;
@@ -1280,6 +1354,11 @@ function gameOver() {
     ob.append(el("p", "", "New achievements this game:"));
     S.newBadges.forEach(id => { const a = ACH.find(x => x.id === id); if (!a) return; const d = el("div", "nb"), im = new Image(); im.src = badgeImg(id); im.alt = ""; d.append(im, document.createTextNode(a.name)); ob.append(d); });
   }
+  const earned = held >= 5 ? 1 + Math.floor(held / 10) : 0;
+  if (earned) { meta.picks += earned; meta.luck = held; }
+  meta.runs++; saveMeta();
+  $("overBoons").textContent = earned ? `You earned ${earned} boon${earned === 1 ? "" : "s"} to keep for future games.` : "Hold out to level 5 to earn a boon for future games.";
+  $("btnAgain").textContent = meta.picks ? `Choose your boon${meta.picks === 1 ? "" : "s"}` : "Play again";
   $("overCard").hidden = false;
   clearSave();
   renderPanel(); updateHud();
@@ -1309,7 +1388,10 @@ function update(dt) {
     if (e.d >= e.path.len) {
       e.dead = true; S.hp -= e.dmg; S.shake = reduceMotion ? 0 : .3; sfx("leak");
       S.texts.push({ x: CASTLE.x + 40, y: CASTLE.y + 40, txt: "-" + e.dmg, life: 1.2, col: "#ff9a86" });
-      if (S.hp <= 0) { S.hp = 0; gameOver(); return; }
+      if (S.hp <= 0) {
+        if (perk("wind") && !S.windUsed) { S.windUsed = true; S.hp = Math.ceil(S.maxHp / 2); toast("Second wind! The castle springs back to half its hearts."); sfx("clear"); }
+        else { S.hp = 0; gameOver(); return; }
+      }
     }
   }
   if (S.fort.archers) {
@@ -1505,6 +1587,8 @@ function renderPanel() {
     p.append(el("h3", "", "Your defences"), el("p", "hint", "Drag a defender from the bar under the map onto open grass (or tap the grass, then pick one). Trees are in the way until you chop them down: tap one to swing the axe. Tap open grass to plant a sapling that grows into gold. Grown trees near a tower give it extra range. Tap a tower to upgrade it, or the castle to repair and fortify it and grow your treasury."));
     const built = S.towers.length;
     p.append(el("p", "hint", built ? `${built} defender${built === 1 ? "" : "s"} on guard.` : "No defenders yet."));
+    const act = Object.entries(S.perks || {});
+    if (act.length) p.append(el("p", "hint", "Boons this game: " + act.map(([id, n]) => PERKS[id].name + (n > 1 ? ` ×${n}` : "")).join(", ") + "."));
     return;
   }
   if (sel.kind === "castle") {
@@ -1562,12 +1646,12 @@ function renderPanel() {
     tx.append(el("h3", "", d.name), el("p", "hint", d.desc)); head.append(towerIcon(k), tx); p.append(head);
     const bw = el("p", "best"); bw.append(el("b", "", "Best against: "), document.createTextNode(d.best)); p.append(bw);
     const kv = el("dl", "kv"), add = (a, b) => kv.append(el("dt", "", a), el("dd", "", String(b)));
-    add("Cost", d.cost + " gold"); add("Damage", d.dmg); add("Range", d.range); add("Shots/sec", d.rate.toFixed(1));
+    add("Cost", tCost(k) + " gold"); add("Damage", d.dmg); add("Range", d.range); add("Shots/sec", d.rate.toFixed(1));
     add("Splash damage", d.splash ? "Yes" : "No"); add("Hits flying", d.air ? "Yes" : "No"); add("Pierces armour", d.magic ? "Yes" : "No");
     if (d.slow) add("Slows by", Math.round(d.slow * 100) + "%");
     if (d.burn) add("Sets foes on fire", "Yes");
     p.append(kv);
-    p.append(el("p", "hint", locked ? "Unlocks after you clear level 10." : S.gold < d.cost ? `You need ${d.cost - Math.floor(S.gold)} more gold. Drag it onto open grass once you can afford it.` : "Drag it from the bar under the map onto open grass to build it."));
+    p.append(el("p", "hint", locked ? `Unlocks after you clear level ${dragonAt()}.` : S.gold < tCost(k) ? `You need ${tCost(k) - Math.floor(S.gold)} more gold. Drag it onto open grass once you can afford it.` : "Drag it from the bar under the map onto open grass to build it."));
     return;
   }
   if (sel.kind === "place") {
@@ -1575,10 +1659,10 @@ function renderPanel() {
     const opts = el("div", "opts");
     for (const k of TORDER) {
       const d = TOWERS[k], locked = k === "dragon" && !S.dragon;
-      const b = el("button", "opt"); b.append(towerIcon(k), el("span", "nm", d.name), el("span", "cs", locked ? "Locked" : d.cost + " g"), el("span", "ds", d.best));
-      if (locked) b.disabled = true; else { b.dataset.cost = d.cost; b.disabled = S.gold < d.cost; }
+      const b = el("button", "opt"); b.append(towerIcon(k), el("span", "nm", d.name), el("span", "cs", locked ? "Locked" : tCost(k) + " g"), el("span", "ds", d.best));
+      if (locked) b.disabled = true; else { b.dataset.cost = tCost(k); b.disabled = S.gold < tCost(k); }
       b.addEventListener("click", () => {
-        if (locked || S.gold < d.cost || !sel || sel.kind !== "place" || canBuild(sel.x, sel.y)) return;
+        if (locked || S.gold < tCost(k) || !sel || sel.kind !== "place" || canBuild(sel.x, sel.y)) return;
         placeTower(k, sel.x, sel.y);
       });
       opts.append(b);
@@ -1674,12 +1758,13 @@ function renderUpNext() {
 const BUILD_MSG = { road: "Towers can't go on the road.", pond: "Towers can't go in the pond.", tower: "Too close to another tower.", tree: "A tree is in the way. Tap it to chop it down.", edge: "Too close to the edge.", castle: "That's the castle!" };
 function placeTower(k, x, y) {
   const d = TOWERS[k];
-  if (k === "dragon" && !S.dragon) { toast("The Dragon Roost unlocks after level 10."); return false; }
-  if (S.gold < d.cost) { toast(`You need ${d.cost - Math.floor(S.gold)} more gold for a ${d.name}.`); return false; }
+  if (k === "dragon" && !S.dragon) { toast(`The Dragon Roost unlocks after level ${dragonAt()}.`); return false; }
+  const cost = tCost(k);
+  if (S.gold < cost) { toast(`You need ${cost - Math.floor(S.gold)} more gold for a ${d.name}.`); return false; }
   const why = canBuild(x, y);
   if (why) { toast(BUILD_MSG[why] || "You can't build there."); return false; }
-  S.gold -= d.cost;
-  const nt = { type: k, lvl: 1, spent: d.cost, cd: .2, ang: 0, flash: 0, x, y };
+  S.gold -= cost;
+  const nt = { type: k, lvl: 1, spent: cost, cd: .2, ang: 0, flash: 0, x, y };
   if (k === "dragon") { nt.name = suggestDragonName(); toast(`${nt.name} the dragon has hatched! Tap it to give it a new name.`); }
   S.towers.push(nt); sel = { kind: "tower", t: nt }; S.stats.built++;
   if (S.towers.length >= 25) unlock("architect");
@@ -1695,7 +1780,7 @@ function dragMove(ev) {
   drag.over = px >= r.left && px <= r.right && py >= r.top && py <= r.bottom && !paused && S.phase !== "over";
   if (drag.over) {
     drag.x = (px - r.left) * W / r.width; drag.y = (py - r.top) * H / r.height;
-    drag.ok = !canBuild(drag.x, drag.y) && S.gold >= TOWERS[drag.type].cost && !(drag.type === "dragon" && !S.dragon);
+    drag.ok = !canBuild(drag.x, drag.y) && S.gold >= tCost(drag.type) && !(drag.type === "dragon" && !S.dragon);
     floatEl.hidden = true;
   } else { floatEl.hidden = false; floatEl.style.left = px + "px"; floatEl.style.top = py + "px"; }
 }
@@ -1704,8 +1789,8 @@ function renderPalette() {
   const pal = $("palette"); pal.textContent = "";
   for (const k of TORDER) {
     const d = TOWERS[k], b = el("button", "tile"); b.dataset.type = k;
-    b.append(towerIcon(k), el("span", "tn", SHORT[k]), el("span", "tr", d.role), el("span", "tc", d.cost + " g"));
-    b.setAttribute("aria-label", `${d.name}, ${d.cost} gold. Best against: ${d.best} Tap for details, drag onto the grass to build.`);
+    b.append(towerIcon(k), el("span", "tn", SHORT[k]), el("span", "tr", d.role), el("span", "tc", tCost(k) + " g"));
+    b.setAttribute("aria-label", `${d.name}, ${tCost(k)} gold. Best against: ${d.best} Tap for details, drag onto the grass to build.`);
     b.addEventListener("pointerdown", ev => {
       if (!S || S.phase === "over" || !$("startCard").hidden) return;
       ev.preventDefault(); audio();
@@ -1733,9 +1818,9 @@ function updatePalette() {
   if (!S) return;
   document.querySelectorAll("#palette .tile").forEach(b => {
     const k = b.dataset.type, d = TOWERS[k], locked = k === "dragon" && !S.dragon;
-    b.classList.toggle("locked", locked); b.classList.toggle("poor", !locked && S.gold < d.cost);
+    b.classList.toggle("locked", locked); b.classList.toggle("poor", !locked && S.gold < tCost(k));
     b.classList.toggle("active", !!sel && sel.kind === "info" && sel.type === k);
-    const tc = b.querySelector(".tc"), txt = locked ? "Level 10" : d.cost + " g"; if (tc.textContent !== txt) tc.textContent = txt;
+    const tc = b.querySelector(".tc"), txt = locked ? `Level ${dragonAt()}` : tCost(k) + " g"; if (tc.textContent !== txt) tc.textContent = txt;
   });
 }
 
@@ -1789,7 +1874,8 @@ $("btnResume").addEventListener("click", () => setPaused(false));
 $("btnQuit").addEventListener("click", () => { if (S && S.phase === "build") persist(); paused = false; $("pauseCard").hidden = true; $("btnPause").textContent = "Pause"; showStart(); });
 document.addEventListener("visibilitychange", () => { if (document.hidden && S && S.phase === "wave") setPaused(true); });
 document.addEventListener("keydown", ev => {
-  if (ev.target.tagName === "INPUT") return;
+  if (!$("modal").hidden) { if (ev.key === "Escape") closeModal(); return; }
+  if (ev.target.tagName === "INPUT" || ev.target.tagName === "TEXTAREA") return;
   if (ev.code === "Space") { ev.preventDefault(); if (S && S.phase === "build" && $("startCard").hidden && !paused) startWave(); }
   if (ev.key === "p" || ev.key === "P") setPaused(!paused);
   if (ev.key === "Escape") { sel = null; renderPanel(); }
@@ -1811,11 +1897,151 @@ function showStart() {
   const c = $("btnContinue");
   if (savedGame && savedGame.level) { c.hidden = false; c.textContent = `Continue from level ${savedGame.level}`; $("btnNew").classList.remove("primary"); }
   else { c.hidden = true; $("btnNew").classList.add("primary"); }
+  const bb = $("btnBoons"); bb.textContent = meta.picks ? `Choose ${meta.picks} boon${meta.picks === 1 ? "" : "s"}` : `Your boons (${boonCount()})`;
+  bb.classList.toggle("glow", !!meta.picks);
   renderPanel();
+}
+let modalDone = null;
+function openModal(build, onClose) {
+  const card = $("modalCard"); card.textContent = ""; build(card);
+  modalDone = onClose || null; $("modal").hidden = false;
+  const f = card.querySelector("button, textarea"); if (f) f.focus({ preventScroll: true });
+}
+function closeModal() {
+  if ($("modal").hidden) return;
+  $("modal").hidden = true; const f = modalDone; modalDone = null; if (f) f();
+  if (!$("startCard").hidden) showStart();
+}
+$("modal").addEventListener("click", ev => { if (ev.target === $("modal")) closeModal(); });
+// three different boons, weighted by rarity; deeper runs tilt the odds toward the rarer ones
+function rollOffer() {
+  const L = meta.luck, w = { common: 60, rare: 28 + L * .15, epic: 10 + L * .12, legendary: 2 + L * .05 };
+  let pool = Object.keys(PERKS).filter(id => (meta.perks[id] || 0) < PERKS[id].max);
+  const out = [];
+  while (out.length < 3 && pool.length) {
+    const tot = pool.reduce((a, id) => a + w[PERKS[id].r], 0); let r = Math.random() * tot;
+    const id = pool.find(id => (r -= w[PERKS[id].r]) <= 0) || pool[pool.length - 1];
+    out.push(id); pool = pool.filter(x => x !== id);
+  }
+  return out;
+}
+function boonCard(id, n, cls = "boon") {
+  const P = PERKS[id], R = RARITY[P.r], b = el("button", `${cls} ${P.r}`); b.style.setProperty("--rc", R.col);
+  b.append(el("span", "rr", R.name), el("span", "bn", P.name), el("span", "bd", P.desc(n + 1)), el("span", "bo", n ? `You have ${n} of ${P.max}` : P.max > 1 ? `Stacks up to ${P.max} times` : "One of a kind"));
+  return b;
+}
+function openPicker() {
+  if (!meta.picks) return openCollection();
+  if (!meta.offer) { meta.offer = rollOffer(); saveMeta(); }  // kept until chosen, so closing the dialog can't reroll it
+  if (!meta.offer.length) { meta.picks = 0; meta.offer = null; saveMeta(); return openCollection(); }
+  openModal(card => {
+    card.append(el("h2", "", "Choose a boon"), el("p", "", `It stays with you for every game from now on.${meta.picks > 1 ? ` ${meta.picks} choices left.` : ""}`));
+    const g = el("div", "boons");
+    meta.offer.forEach(id => {
+      const b = boonCard(id, meta.perks[id] || 0);
+      b.addEventListener("click", () => {
+        meta.perks[id] = Math.min(PERKS[id].max, (meta.perks[id] || 0) + 1); meta.picks--; meta.offer = null; saveMeta(); sfx("up");
+        toast(`${PERKS[id].name} is yours.`);
+        if (meta.picks) openPicker(); else { closeModal(); }
+      });
+      g.append(b);
+    });
+    const later = el("button", "", "Decide later");
+    later.addEventListener("click", closeModal);
+    card.append(g, el("div", "row"));
+    card.lastChild.append(later);
+  });
+}
+function openCollection() {
+  openModal(card => {
+    card.append(el("h2", "", "Your boons"));
+    const ids = Object.keys(PERKS).filter(id => meta.perks[id]);
+    if (!ids.length) card.append(el("p", "", "No boons yet. Reach level 5 to earn your first, plus one more for every 10 levels you hold. Each one makes every future game a little easier."));
+    else {
+      card.append(el("p", "", "These apply to every new game you start."));
+      const ul = el("ul", "perklist");
+      const order = Object.keys(RARITY);
+      ids.sort((a, b) => order.indexOf(PERKS[b].r) - order.indexOf(PERKS[a].r)).forEach(id => {
+        const P = PERKS[id], n = meta.perks[id], li = el("li"); li.style.setProperty("--rc", RARITY[P.r].col);
+        li.append(el("b", "", P.name), el("span", "n", P.max > 1 ? `${n} / ${P.max}` : RARITY[P.r].name), el("span", "d", P.desc(n)));
+        ul.append(li);
+      });
+      card.append(ul);
+    }
+    const r = el("div", "row"), x = el("button", "primary", "Close"); x.addEventListener("click", closeModal); r.append(x); card.append(r);
+  });
+}
+
+/* ---------- export / import: move boons and your saved game between devices or between the app and the Claude page ---------- */
+const b64e = str => btoa(String.fromCharCode(...new TextEncoder().encode(str)));
+const b64d = str => new TextDecoder().decode(Uint8Array.from(atob(str), c => c.charCodeAt(0)));
+function exportCode() {
+  const data = { app: "endless-keep", v: 1, at: Date.now(), name: playerName, meta, save: savedGame && savedGame.level ? savedGame : null };
+  return "EK1." + b64e(JSON.stringify(data));
+}
+function parseImport(text) {
+  text = String(text || "").trim();
+  let data;
+  try { data = JSON.parse(text.startsWith("EK1.") ? b64d(text.slice(4).replace(/\s+/g, "")) : text); } catch { return null; }
+  if (!data || data.app !== "endless-keep") return null;
+  const save = data.save && typeof data.save === "object" && Number.isFinite(data.save.level) && data.save.level >= 1 && Array.isArray(data.save.towers) ? data.save : null;
+  return { meta: normMeta(data.meta), save, name: typeof data.name === "string" ? data.name.slice(0, 16) : "" };
+}
+function openTransfer() {
+  openModal(card => {
+    card.append(el("h2", "", "Export / import"));
+    card.append(el("p", "", "Copy this code (or save it as a file) to carry your boons and saved game to another device, or between the installed app and the Claude page."));
+    const out = document.createElement("textarea"); out.className = "code"; out.readOnly = true; out.value = exportCode(); out.setAttribute("aria-label", "Your export code");
+    const r1 = el("div", "row"), copy = el("button", "primary", "Copy code"), dl = el("button", "", "Save as file");
+    copy.addEventListener("click", async () => {
+      out.select();
+      try { await navigator.clipboard.writeText(out.value); copy.textContent = "Copied"; }
+      catch { try { document.execCommand("copy"); copy.textContent = "Copied"; } catch { copy.textContent = "Select and copy it"; } }
+    });
+    dl.addEventListener("click", () => {
+      try { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([out.value], { type: "text/plain" })); a.download = `endless-keep-${new Date().toISOString().slice(0, 10)}.ekeep`; document.body.append(a); a.click(); a.remove(); }
+      catch { toast("Saving a file isn't allowed here. Copy the code instead."); }
+    });
+    r1.append(copy, dl);
+    card.append(out, r1, el("h3", "", "Import"));
+    const inp = document.createElement("textarea"); inp.className = "code"; inp.placeholder = "Paste a code that starts with EK1."; inp.setAttribute("aria-label", "Code to import");
+    const file = document.createElement("input"); file.type = "file"; file.accept = ".ekeep,.txt,.json,text/plain"; file.hidden = true;
+    const note = el("p", "fine", "Importing replaces the boons and saved game on this device.");
+    const r2 = el("div", "row"), pick = el("button", "", "Open a file"), go = el("button", "primary", "Import");
+    pick.addEventListener("click", () => file.click());
+    file.addEventListener("change", async () => { const f = file.files && file.files[0]; if (f) inp.value = (await f.text()).slice(0, 200000); });
+    go.addEventListener("click", () => {
+      const d = parseImport(inp.value);
+      if (!d) { note.textContent = "That code doesn't look right. Check it was copied in full."; return; }
+      if (go.dataset.sure !== "1") {
+        go.dataset.sure = "1"; go.textContent = "Yes, replace";
+        note.textContent = `This code has ${Object.values(d.meta.perks).reduce((a, b) => a + b, 0)} boon(s)${d.meta.picks ? ` and ${d.meta.picks} to choose` : ""}${d.save ? `, plus a game saved at level ${d.save.level}` : ""}. It will replace what's on this device.`;
+        return;
+      }
+      meta = d.meta; saveMeta();
+      if (d.save) { savedGame = d.save; ls.set("ek_save", d.save); if (db && uid && cloudWritable) enqueue(() => db.doc("data/users/" + uid + "/save").set(d.save)); }
+      if (d.name && !playerName) { playerName = d.name; ls.set("ek_name", playerName); }
+      toast("Imported."); closeModal();
+    });
+    r2.append(pick, go);
+    card.append(inp, file, r2, note);
+    const r3 = el("div", "row"), x = el("button", "", "Close"); x.addEventListener("click", closeModal); r3.append(x); card.append(r3);
+  });
+}
+$("btnBoons").addEventListener("click", () => meta.picks ? openPicker() : openCollection());
+$("btnTransfer").addEventListener("click", openTransfer);
+function saveMeta() {
+  meta.savedAt = Date.now(); ls.set("ek_meta", meta);
+  if (db && uid && cloudWritable) enqueue(() => db.doc("data/users/" + uid + "/meta").set(meta));
 }
 function begin(sv) {
   audio(); readName();
-  if (sv) restore(sv); else newRun();
+  if (sv) restore(sv);
+  else {  // a fresh game: bring in every boon you own
+    newRun(); S.perks = { ...meta.perks };
+    S.gold += 25 * perk("purse"); S.maxHp += 2 * perk("stones"); S.hp = S.maxHp;
+    S.treasury = perk("mint"); S.fort.archers = perk("sentries"); S.fort.moat = perk("moat");
+  }
   if (sv && sv.name && !playerName) { playerName = sv.name; }
   sel = null; paused = false; S.nextT = 6;
   $("startCard").hidden = true; $("overCard").hidden = true;
@@ -1825,7 +2051,7 @@ function begin(sv) {
 }
 $("btnNew").addEventListener("click", () => begin(null));
 $("btnContinue").addEventListener("click", () => begin(savedGame));
-$("btnAgain").addEventListener("click", () => { savedGame = null; showStart(); });
+$("btnAgain").addEventListener("click", () => { savedGame = null; showStart(); if (meta.picks) openPicker(); });
 $("pname").addEventListener("keydown", ev => { if (ev.key === "Enter") (savedGame ? $("btnContinue") : $("btnNew")).click(); });
 
 /* ---------- cloud: leaderboard + saves ---------- */
@@ -1948,6 +2174,9 @@ async function initCloud() {
   }, () => { clearTimeout(timer); boardMode = "local"; renderBoard(); });
   if (uid && cloudWritable) {
     try {
+      const ms = await db.doc("data/users/" + uid + "/meta").get().catch(() => null);
+      const cm = ms && ms.exists ? ms.data() : null;
+      if (cm && (+cm.savedAt || 0) > meta.savedAt) { meta = normMeta(cm); ls.set("ek_meta", meta); if (!$("startCard").hidden) showStart(); }
       const snap = await db.doc("data/users/" + uid + "/save").get();
       const cs = snap.exists ? snap.data() : null;
       if (cs && cs.level && (!savedGame || (cs.savedAt || 0) > (savedGame.savedAt || 0))) { savedGame = cs; if (!$("startCard").hidden) showStart(); }
