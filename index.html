@@ -2002,7 +2002,7 @@ function openTransfer() {
       try { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([out.value], { type: "text/plain" })); a.download = `endless-keep-${new Date().toISOString().slice(0, 10)}.ekeep`; document.body.append(a); a.click(); a.remove(); }
       catch { toast("Saving a file isn't allowed here. Copy the code instead."); }
     });
-    r1.append(copy, dl);
+    r1.append(copy); if (!window.claude) r1.append(dl);  // the Claude page can't hand out files, so copying the code is the way there
     card.append(out, r1, el("h3", "", "Import"));
     const inp = document.createElement("textarea"); inp.className = "code"; inp.placeholder = "Paste a code that starts with EK1."; inp.setAttribute("aria-label", "Code to import");
     const file = document.createElement("input"); file.type = "file"; file.accept = ".ekeep,.txt,.json,text/plain"; file.hidden = true;
