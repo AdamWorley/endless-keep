@@ -9,7 +9,7 @@
     "ALLOWED_ORIGINS": "https://adamworley.github.io,http://localhost:8420"
   },
   "d1_databases": [
-    { "binding": "DB", "database_name": "endless-keep-leaderboard", "database_id": "REPLACE_AFTER_CREATE" }
+    { "binding": "DB", "database_name": "endless-keep-leaderboard", "database_id": "c698067c-5de7-4811-8732-34cf760820e5" }
   ],
   "observability": { "enabled": true }
 }
