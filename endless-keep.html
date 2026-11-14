@@ -2436,8 +2436,8 @@ function renderBoard() {
   renderAch();
 }
 /* ---------- shared Hall of Heroes for the installed app (a small server; see leaderboard/) ---------- */
-const LB_URL = window.claude ? "" : [(location.hostname === "localhost" && ls.get("ek_lb_dev")) || "https://endless-keep-leaderboard.REPLACE.workers.dev"]
-  .map(u => typeof u === "string" && /^https?:\/\//.test(u) && !u.includes(".REPLACE.") ? u.replace(/\/+$/, "") : "")[0];  // set the real Worker URL here once it's deployed
+const LB_URL = window.claude ? "" : [(location.hostname === "localhost" && ls.get("ek_lb_dev")) || "https://endless-keep-leaderboard.adamworley.workers.dev"]
+  .map(u => typeof u === "string" && /^https?:\/\//.test(u) && !u.includes(".REPLACE.") ? u.replace(/\/+$/, "") : "")[0];  // the shared board (leaderboard/, deployed by Cloudflare Workers Builds)
 let lbNote = "";
 function lbToken() {
   let t = ls.get("ek_lbtoken");
