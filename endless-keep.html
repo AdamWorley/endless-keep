@@ -359,7 +359,7 @@ button.versus:hover:not(:disabled) { border-color: #c58bff; }
 "use strict";
 // GAME_VERSION changes with any update. RULES_VERSION goes up ONLY when a balance change makes the game easier or
 // harder: each rules version gets its own leaderboard, so scores from different rules are never mixed.
-const GAME_VERSION = "1.2.0", RULES_VERSION = 2;   // v2: special dragon names give bonuses
+const GAME_VERSION = "1.2.1", RULES_VERSION = 2;   // v2: special dragon names give bonuses
 const W = 960, H = 560;
 const $ = id => document.getElementById(id);
 const cv = $("board"), ctx = cv.getContext("2d");
@@ -583,29 +583,29 @@ const bossFor = L => BOSSES[(L / 10 - 1) % BOSSES.length];
 // the bestiary's words for each monster: a line of flavour and how to beat it
 const LORE = {
   goblin:    { lore: "Small, green and endlessly confident. Goblins come in noisy mobs and fear nothing, mostly because they haven't noticed it yet.",
-               tip: "Anything kills them. Catapults clear a whole pack in one shot." },
+               tip: "Any tower will do. A Catapult can clear a whole pack in one shot." },
   wolf:      { lore: "Lean grey wolves that run the road faster than anything else on four legs. They don't bite hard, but they don't stop either.",
-               tip: "Archers fire fast enough to catch them. Frost slows them to a trot." },
+               tip: "Archer Towers fire fast enough to catch them, and a Frost Spire slows them to a trot." },
   orc:       { lore: "Broad, slow and wrapped in boiled hide. An orc walks up the road as if it already owns the castle and is only coming to collect.",
-               tip: "Catapult splash softens a column of them; Mages get through the hide." },
+               tip: "Catapult splash wears down a whole column, and Mage Towers ignore their armour." },
   bat:       { lore: "Cave bats pour out of the hills in squeaking clouds and fly straight over the road, the walls and the catapult crews' heads.",
-               tip: "Archer Towers are the cheap answer. Keep a couple near the castle." },
-  wolfrider: { lore: "A goblin who has discovered wolves. Twice the speed, all of the attitude, and the wolf doesn't seem to mind.",
-               tip: "Slow them with Frost first, then let archers do the rest." },
+               tip: "Catapults can't hit them. Archer Towers are the cheap answer: keep a couple near the castle." },
+  wolfrider: { lore: "A goblin who has discovered wolves. Nearly twice the speed, all of the attitude, and the wolf doesn't seem to mind.",
+               tip: "Slow them with a Frost Spire first, then let Archer Towers do the rest." },
   knight:    { lore: "Soldiers from a war nobody remembers, still marching. Their rusted plate turns arrows and stones, but spells pass straight through.",
-               tip: "Bring magic. Mage Towers and Dragon Roosts ignore their armour entirely." },
+               tip: "Bring magic. Mage Towers and the Dragon Roost ignore their armour entirely." },
   troll:     { lore: "Huge, patient and very hard to hurt for long: a troll's cuts close up while you watch, and it hits the gate like a falling tree.",
-               tip: "Hit it hard and keep hitting. Frost holds it in range; dragon fire stops the healing from keeping up." },
+               tip: "Hit it hard and keep hitting. A Frost Spire holds it in range, and the Dragon Roost's fire keeps burning while it heals." },
   wyvern:    { lore: "Lesser cousins of the dragons, scaled like armour and far too proud to walk. They glide in high and low, never by the road.",
-               tip: "Catapults can't touch them. Archers, Mages and your own dragon can." },
+               tip: "Catapults can't hit them. Every other tower can." },
   orcrider:  { lore: "Orc raiders ride hard and hit harder, charging past the outer towers before the archers have finished taking aim.",
-               tip: "Frost at the start of the road buys the time to deal with them." },
+               tip: "A Frost Spire at the start of the road buys time for your other towers." },
   trollking: { lore: "The oldest troll under the mountain, crowned with whatever he crushed last. Every thirty levels he comes to see why his trolls haven't come home.",
-               tip: "A long fight. Stack Frost on the road and mix Catapults with Mages for his armour." },
+               tip: "A long fight. Line the road with Frost Spires, and lean on Mage Towers: his armour blunts arrows and boulders." },
   bigdragon: { lore: "An ancient dragon who takes your little roost as a personal insult. She flies straight for the keep and burns anything that argues.",
-               tip: "She flies, so Catapults are no use. Bring every archer, mage and dragon you have." },
+               tip: "She flies, so Catapults are no use. Every other tower can reach her." },
   wyrm:      { lore: "A dragon's skeleton held together by old magic and older spite. Its bones shrug off arrows and boulders alike.",
-               tip: "Only magic really bites: Mages, Frost and dragon fire." },
+               tip: "Mage Towers and the Dragon Roost ignore its armour, and a Frost Spire keeps it in their range." },
 };
 // enemy health compounds 5% a level up to 60, then eases to 3.2% so the late game (80+) ramps instead of hitting a wall
 const hpScale = L => (1 + 0.12 * (L - 1)) * Math.pow(1.05, Math.min(L, 60) - 1) * Math.pow(1.032, Math.max(0, L - 60));
@@ -1295,29 +1295,165 @@ function enemyBody(c, e) {
       if (Math.sin(t * 2.5) > .7) { c.fillStyle = "rgba(220,220,220,.7)"; ell(c, r * 1.95, -9, 2, 2); ell(c, r * 2.15, -12, 1.4, 1.4); }
       webWing(c, 3, -4, -1, r * 2.1, Math.max(.25, flap * .85), "#3a8a73", "#7fc9ae");
       wear(c, e, { hx: r * 1.05, hy: -7, hr: 6 }); break; }
-    case "trollking":
-      c.fillStyle = e.col; ell(c, 0, 0, r, r * .95);
-      c.fillStyle = "#7d98a6"; ell(c, 3, 8, r * .6, r * .45);
-      eyes(c, 3, -6, 6, 3);
-      c.fillStyle = "#e9b949"; c.beginPath(); c.moveTo(-12, -r + 4); c.lineTo(-12, -r - 10); c.lineTo(-6, -r - 3); c.lineTo(0, -r - 12); c.lineTo(6, -r - 3); c.lineTo(12, -r - 10); c.lineTo(12, -r + 4); c.fill(); break;
+    case "trollking": {
+      // the oldest troll: a bigger, greyer troll with a lichen beard, a tattered ermine-trimmed cloak,
+      // a stone maul on his shoulder and a stolen crown, dented and a size too small. Drawn at troll scale, then grown.
+      const k = r / 15, step = Math.sin(t * 5), sw = Math.sin(t * 5) * .06;
+      c.save(); c.scale(k, k);
+      c.fillStyle = "#7a2a26"; c.beginPath(); c.moveTo(-3, -12); c.quadraticCurveTo(-17, -9, -20, 4);
+      c.lineTo(-17.5, 12 + step); c.lineTo(-14, 9.5); c.lineTo(-11, 13.5 - step); c.lineTo(-7, 10); c.lineTo(-3, 6); c.closePath(); c.fill();
+      c.fillStyle = "#9b3a33"; c.beginPath(); c.moveTo(-3, -12); c.quadraticCurveTo(-13, -8, -15, 3); c.lineTo(-9, 1); c.quadraticCurveTo(-8, -7, -3, -12); c.fill();
+      c.fillStyle = "#f1e6c8"; c.beginPath(); c.moveTo(-1, -14.5); c.quadraticCurveTo(-13, -12, -17, -4); c.lineTo(-12, -3); c.quadraticCurveTo(-9, -9, -1, -10); c.closePath(); c.fill();
+      c.fillStyle = "#1b1b1b"; ell(c, -13.4, -6.6, .5, .8); ell(c, -10, -10.2, .5, .8); ell(c, -5.6, -12, .5, .8);
+      c.save(); c.translate(-8, -1); c.rotate(-.75 + sw);
+      c.fillStyle = "#6b4a2b"; c.fillRect(-1.8, -20, 3.6, 22);
+      c.fillStyle = "#8d949b"; c.fillRect(-6.5, -27, 13, 8.5);
+      c.fillStyle = "#a9b2ba"; c.fillRect(-6.5, -27, 13, 2.4);
+      c.fillStyle = "#6b737b"; c.fillRect(-6.5, -20.4, 13, 1.9); c.fillRect(-.8, -26, 1.6, 6.5);
+      c.restore();
+      c.fillStyle = "#3f5563"; ell(c, -6 + step * 1.5, 13.5, 6, 3.4); ell(c, 6 - step * 1.5, 13.5, 6, 3.4);
+      c.fillStyle = e.col; ell(c, 0, 0, 15, 14.5);
+      c.fillStyle = "#6f8a99"; ell(c, 1, -8.5, 8.5, 3.2);
+      c.fillStyle = "#7d98a6"; ell(c, 1.5, 6.5, 9, 6);
+      c.strokeStyle = "#3f5563"; c.lineWidth = .9; c.beginPath(); c.moveTo(-9, -2); c.lineTo(-6, 1); c.moveTo(-10, 1.5); c.lineTo(-7.5, 4); c.stroke();
+      c.fillStyle = "#4a3020"; c.fillRect(-12.2, 8.6, 24.4, 3.4);
+      c.fillStyle = "#e9b949"; c.fillRect(-2.6, 7.9, 5.2, 4.8); c.fillStyle = "#56707f"; c.fillRect(-1.1, 9.4, 2.2, 1.8);
+      c.fillStyle = "#6f9a4a"; ell(c, -9, -6, 3, 1.9); ell(c, 9.5, -7.5, 2.6, 1.7);
+      c.fillStyle = "#3f5563"; ell(c, 3.8, -8.4, 8.6, 2.4);
+      eyes(c, 3.8, -5.8, 3.8, 2, "#ffcf6b");
+      c.strokeStyle = "#9db4c0"; c.lineWidth = .9; c.beginPath(); c.moveTo(-2, -9.5); c.lineTo(1.4, -2.6); c.stroke();
+      c.fillStyle = "#2e3d45"; ell(c, 4.2, 4, 6, 2.4);
+      c.fillStyle = "#a9bcae"; c.beginPath(); c.moveTo(-3, 4.2); c.quadraticCurveTo(4.5, 8.4, 12, 4.2);
+      c.lineTo(11, 10.5); c.lineTo(8.6, 9); c.lineTo(6.4, 15.2); c.lineTo(4, 10); c.lineTo(1.2, 13); c.lineTo(-.6, 9.4); c.lineTo(-2.6, 10.6); c.closePath(); c.fill();
+      c.fillStyle = "#86998c"; ell(c, 6.2, 9.6, 1.3, 3); ell(c, 1.6, 9, 1, 2);
+      c.fillStyle = "#f1e6c8"; tri(c, -.2, 5.4, 1.2, .2, 2.6, 5.4); tri(c, 6, 5.4, 7.6, .6, 9, 5.4);
+      c.fillStyle = "#4a6170"; ell(c, 11.6, -1.2, 4.6, 4);
+      c.strokeStyle = "#e9b949"; c.lineWidth = 1.2; c.beginPath(); c.arc(11.8, 3, 1.9, 0, Math.PI * 2); c.stroke();
+      c.fillStyle = e.col; ell(c, 13.2, 4, 4.2, 5.2);
+      c.save(); c.translate(1.5, -14.6); c.rotate(-.16);
+      c.fillStyle = "#e9b949"; c.beginPath(); c.moveTo(-7.5, 2.4); c.lineTo(-7.5, -5.5); c.lineTo(-4.5, -1.6); c.lineTo(-1.6, -7); c.lineTo(1, -1.8);
+      c.lineTo(5.6, -5.2); c.lineTo(5, -1); c.lineTo(7.5, -5.8); c.lineTo(7.5, 2.4); c.closePath(); c.fill();
+      c.fillStyle = "#b98a22"; c.fillRect(-7.5, .7, 15, 1.7); tri(c, 1, -1.8, 3.4, -1.2, 2.6, .7);
+      c.fillStyle = "#fff3b0"; ell(c, -5.4, -.6, .8, .5); ell(c, -1.6, -5.2, .5, .7);
+      c.fillStyle = "#c0453c"; ell(c, -1.6, -.4, 1.5, 1.5); c.fillStyle = "#3d6fb8"; ell(c, -5.2, .8, .9, .9); ell(c, 4.6, .8, .9, .9);
+      c.restore();
+      c.restore(); break; }
     case "bigdragon": {
-      wings(c, -4, -4, r * 2.2, flap, "#7e2a1e");
-      c.strokeStyle = e.col; c.lineWidth = 7; c.lineCap = "round"; c.beginPath(); c.moveTo(-r, 4); c.quadraticCurveTo(-r - 18, 10, -r - 22, -4); c.stroke();
-      c.fillStyle = e.col; ell(c, 0, 0, r, r * .62);
-      c.fillStyle = "#e7a35a"; ell(c, 3, 6, r * .6, r * .3);
-      c.fillStyle = e.col; ell(c, r * .95, -10, 11, 9); ell(c, r * 1.3, -7, 8, 5);
-      c.fillStyle = "#f1e6c8"; tri(c, r * .7, -16, r * .55, -28, r * .9, -17); tri(c, r * .95, -17, r * .9, -29, r * 1.1, -17);
-      c.fillStyle = "#ffde6b"; ell(c, r * 1.05, -12, 2.4, 2.4);
-      if (Math.sin(t * 3) > .6) { c.fillStyle = "rgba(255,170,60,.85)"; tri(c, r * 1.55, -7, r * 2.3, -14, r * 2.3, 0); }
-      break; }
-    case "wyrm":
-      c.strokeStyle = e.col; c.lineWidth = 6; c.lineCap = "round"; c.beginPath(); c.moveTo(-r, 2); c.quadraticCurveTo(-r - 16, 12, -r - 22, 0); c.stroke();
-      c.fillStyle = e.col; ell(c, 0, 0, r, r * .7);
-      c.strokeStyle = "#9c9482"; c.lineWidth = 2; for (let i = -2; i <= 2; i++) { c.beginPath(); c.moveTo(i * 6, -r * .55); c.lineTo(i * 6, r * .55); c.stroke(); }
-      c.fillStyle = e.col; ell(c, r * .95, -8, 10, 8);
-      c.fillStyle = "#2a2233"; ell(c, r * 1.05, -10, 3.5, 3);
-      c.fillStyle = "#c58bff"; ell(c, r * 1.05, -10, 1.5, 1.5);
-      c.fillStyle = "#f1e6c8"; tri(c, r * .7, -14, r * .6, -26, r * .9, -15); break;
+      // an ancient red dragon: slow heavy wingbeats, torn and patched wings, a spined back, belly plates, old scars,
+      // long swept-back horns, chin barbels and a temper that comes out as fire. Drawn at r = 26, then sized.
+      const k = r / 26, beat = .45 + (Math.sin(t * 6) + 1) * .45, sway = Math.sin(t * 3) * 3, roar = Math.sin(t * 3) > .6;
+      const col = e.col, dark = "#7e2a1e", deep = "#5e1d16", belly = "#e7a35a", horn = "#f1e6c8";
+      c.save(); c.scale(k, k);
+      webWing(c, -2, -9, -1, 58, Math.min(1.45, beat * 1.1), deep, "#c26a45");
+      c.fillStyle = "#141d19"; ell(c, -38, -9 - 46 * .12 * beat, 2.2, 1.6);
+      c.strokeStyle = col; c.lineCap = "round"; c.lineWidth = 9; c.beginPath(); c.moveTo(-18, 3); c.quadraticCurveTo(-36, 12 + sway, -48, 2 + sway); c.stroke();
+      c.lineWidth = 5; c.beginPath(); c.moveTo(-46, 3 + sway); c.quadraticCurveTo(-54, -2 + sway, -58, -6 + sway); c.stroke();
+      c.fillStyle = dark; tri(c, -64, -10 + sway, -55, -11 + sway, -57, -1 + sway); tri(c, -64, -10 + sway, -60, -2 + sway, -55, -4 + sway);
+      for (let i = 0; i < 4; i++) { const f = i / 3, x = -24 - f * 26, y = 4 + Math.sin(f * Math.PI) * 6 + sway * f - 5; tri(c, x - 3, y + 1, x + 3, y + 1, x - 1, y - 5 + f * 2); }
+      c.fillStyle = dark; ell(c, -10, 12, 6.5, 4.5); c.fillStyle = horn; tri(c, -14, 15, -12, 18.5, -10.5, 15); tri(c, -10, 15.5, -8, 19, -6.5, 15.5);
+      c.fillStyle = col; ell(c, 0, 0, 26, 15);
+      c.fillStyle = "#cf5a3c"; ell(c, -2, -7, 18, 5);
+      c.fillStyle = belly; ell(c, 3, 7, 18, 6.5);
+      c.strokeStyle = "#c9803f"; c.lineWidth = 1; c.beginPath(); for (let i = -3; i <= 3; i++) { c.moveTo(3 + i * 4.6, 2); c.lineTo(3 + i * 4.6, 12.5); } c.stroke();
+      c.fillStyle = dark; for (let i = 0; i < 6; i++) { const x = -18 + i * 6, y = -14 + Math.abs(i - 2.5) * .9; tri(c, x - 3, y + 1.5, x + 3, y + 1.5, x - 1, y - (i === 3 ? 2.5 : 6)); }
+      c.strokeStyle = "#e48a70"; c.lineWidth = 1; c.beginPath(); c.moveTo(-10, -5); c.lineTo(-4, 1); c.moveTo(-7, -6); c.lineTo(-2, -1.5); c.moveTo(8, -6); c.lineTo(11, -1); c.stroke();
+      c.fillStyle = col; ell(c, 14, 10, 4.5, 4); c.fillStyle = horn; tri(c, 12, 12.5, 13.5, 16.5, 15, 12.5); tri(c, 15.5, 12.5, 17.5, 16, 18.5, 12);
+      c.strokeStyle = col; c.lineWidth = 12; c.beginPath(); c.moveTo(14, -3); c.quadraticCurveTo(24, -6, 29, -16); c.stroke();
+      c.strokeStyle = belly; c.lineWidth = 4; c.beginPath(); c.moveTo(17, 2); c.quadraticCurveTo(28, -2, 33, -12); c.stroke();
+      c.save(); c.translate(34, -21);
+      c.fillStyle = deep; tri(c, -6, -2, -16, -9, -8, 3); tri(c, -5, -5, -14, -15, -3, -6);
+      c.fillStyle = "#c9bfa0"; c.beginPath(); c.moveTo(-4, -6); c.quadraticCurveTo(-14, -13, -24, -11); c.quadraticCurveTo(-14, -9, -2, -2.5); c.closePath(); c.fill();
+      c.fillStyle = horn; c.beginPath(); c.moveTo(-1, -7.5); c.quadraticCurveTo(-11, -18, -22, -19); c.quadraticCurveTo(-11, -14, 2, -4); c.closePath(); c.fill();
+      c.strokeStyle = "#c9bfa0"; c.lineWidth = .8; c.beginPath(); c.moveTo(-6, -11); c.lineTo(-5, -9); c.moveTo(-11, -14.5); c.lineTo(-10, -12.5); c.stroke();
+      c.fillStyle = col; ell(c, 0, 0, 10, 8.5);
+      c.beginPath(); c.moveTo(4, -6); c.quadraticCurveTo(13, -6, 19, -1.5); c.lineTo(19, 2.5); c.lineTo(5, 4); c.closePath(); c.fill();
+      c.fillStyle = dark; c.beginPath(); c.moveTo(1, 3); c.lineTo(18, 2.5); c.lineTo(16, roar ? 9 : 5.5); c.lineTo(2, 7); c.closePath(); c.fill();
+      if (roar) { c.fillStyle = "#5a1410"; c.beginPath(); c.moveTo(6, 3.2); c.lineTo(18, 2.6); c.lineTo(15.5, 7.4); c.closePath(); c.fill(); }
+      c.fillStyle = "#fff"; tri(c, 9, 2.6, 10.2, 2.6, 9.6, 4.6); tri(c, 13, 2.6, 14.2, 2.6, 13.6, 4.4);
+      c.fillStyle = dark; ell(c, 3, -5.6, 7, 2.2);
+      c.fillStyle = "#ffde6b"; ell(c, 4, -3, 2.6, 2.2); c.fillStyle = "#1b1b1b"; ell(c, 4.4, -3, .7, 1.8);
+      c.fillStyle = dark; ell(c, 17, -1.6, 1, .7);
+      c.strokeStyle = belly; c.lineWidth = 1.1; c.beginPath(); c.moveTo(4, 7); c.quadraticCurveTo(3, 12, 0 + sway * .3, 15); c.moveTo(8, 7); c.quadraticCurveTo(8, 11, 6 + sway * .3, 13.5); c.stroke();
+      if (roar) {
+        c.fillStyle = "rgba(255,140,50,.55)"; tri(c, 18, 1, 32, -7, 32, 10);
+        c.fillStyle = "#ffb347"; tri(c, 18, 1.5, 29, -3.5, 29, 7);
+        c.fillStyle = "#fff0a8"; tri(c, 18, 2, 25, -.5, 25, 4.5);
+      } else if (Math.sin(t * 2) > .3) { c.fillStyle = "rgba(220,220,220,.55)"; ell(c, 21, -4, 1.8, 1.6); ell(c, 24, -7, 1.3, 1.2); }
+      c.restore();
+      webWing(c, 4, -8, -1, 52, Math.max(.25, beat * .85), "#962f22", "#f0a060");
+      c.fillStyle = "#e48a70"; ell(c, -20, -8 - 52 * .45 * beat * .5, 1.3, 1.3);
+      c.restore(); break; }
+    case "wyrm": {
+      // a dragon's skeleton walking on: ribcage with a cold light inside, bony wings with rags of membrane,
+      // a chain of vertebrae for neck and tail, horned skull with a creaking jaw. Drawn at r = 24, then sized.
+      const k = r / 24, step = Math.sin(t * 7), creak = Math.sin(t * 2.4), jaw = Math.max(0, Math.sin(t * 3)) * .22;
+      const bone = e.col, shade = "#9c9482", glow = "#7ef0ff";
+      const strokeBone = (w, pts, curve) => {
+        for (const [col, lw] of [[shade, w + 1.6], [bone, w]]) {
+          c.strokeStyle = col; c.lineWidth = lw; c.lineCap = "round"; c.lineJoin = "round"; c.beginPath(); c.moveTo(pts[0], pts[1]);
+          if (curve) c.quadraticCurveTo(pts[2], pts[3], pts[4], pts[5]); else for (let i = 2; i < pts.length; i += 2) c.lineTo(pts[i], pts[i + 1]);
+          c.stroke();
+        }
+      };
+      c.save(); c.scale(k, k);
+      // far wing: finger bones with torn membrane between
+      const wing = (ox, oy, lift, tone) => {
+        const ex = ox - 10, ey = oy - 22 - lift * 4, tips = [[-30, -30 - lift * 5], [-34, -14 - lift * 3], [-28, -2]];
+        c.fillStyle = tone; c.beginPath(); c.moveTo(ox, oy); c.lineTo(ex, ey);
+        tips.forEach(([x, y], i) => { c.lineTo(x, y); if (i < 2) c.lineTo((x + tips[i + 1][0]) / 2 + 4, (y + tips[i + 1][1]) / 2 + 2); });
+        c.lineTo(ox - 8, oy + 2); c.closePath(); c.fill();
+        strokeBone(2.2, [ox, oy, ex, ey]); tips.forEach(([x, y]) => strokeBone(1.4, [ex, ey, x, y]));
+      };
+      wing(2, -10, creak * .6, "rgba(90,100,110,.28)");
+      // tail: shrinking vertebrae on a swaying curve
+      for (let i = 0; i < 9; i++) {
+        const f = i / 8, x = -20 - f * 28, y = 4 - f * 8 + Math.sin(t * 4 - i * .7) * f * 4;
+        c.fillStyle = shade; ell(c, x, y, 3.6 - f * 2 + .8, 2.8 - f * 1.4 + .8); c.fillStyle = bone; ell(c, x, y, 3.6 - f * 2, 2.8 - f * 1.4);
+      }
+      // far legs, then the body, then near legs, so it walks
+      const leg = (hx, ph, near) => {
+        const st = (near ? step : -step) * ph, kx = hx + 3 + st * 2.5, fx = hx + st * 4;
+        strokeBone(near ? 3 : 2.6, [hx, 4, kx, 12, fx, 19]);
+        c.fillStyle = near ? bone : shade; tri(c, fx, 18, fx + 5, 20.5, fx, 20.5); tri(c, fx, 18, fx - 3.5, 20.5, fx, 20.5);
+        c.fillStyle = shade; ell(c, kx, 12, 1.8, 1.8);
+      };
+      leg(-15, 1, false); leg(10, -1, false);
+      // the cold light that holds it together
+      c.fillStyle = "rgba(20,30,40,.55)"; ell(c, -1, 2, 15, 9);
+      const pulse = .25 + (Math.sin(t * 3.2) + 1) * .1;
+      c.fillStyle = `rgba(126,240,255,${pulse})`; ell(c, 0, 2, 8, 5.5);
+      c.fillStyle = `rgba(200,250,255,${pulse + .2})`; ell(c, 0, 2, 3, 2.2);
+      c.fillStyle = shade; ell(c, -18, 3, 6.6, 5); c.fillStyle = bone; ell(c, -18, 3, 5.6, 4); c.fillStyle = "rgba(20,30,40,.6)"; ell(c, -17.5, 3.4, 2, 1.6);
+      strokeBone(3.4, [-20, -3, -2, -12, 16, -8], true);
+      for (let i = 0; i < 6; i++) {
+        const x = -13 + i * 5.2, y = -6.4 - Math.sin((i + 1) / 7 * Math.PI) * 4.2;
+        strokeBone(2.2, [x, y, x + 6, y + 9, x + 1, y + 15.5 - Math.abs(i - 2.5) * 1.2], true);
+        c.fillStyle = bone; tri(c, x - 1.6, y, x + 1.6, y, x - .5, y - 3.6);
+      }
+      c.strokeStyle = shade; c.lineWidth = 1; c.beginPath(); c.moveTo(-6, 13); c.quadraticCurveTo(2, 15, 9, 11); c.stroke();
+      leg(-12, -1, true); leg(12, 1, true);
+      // near wing
+      wing(4, -9, creak, "rgba(120,130,140,.32)");
+      // neck vertebrae up to the skull
+      for (let i = 0; i < 5; i++) {
+        const f = i / 4, x = 15 + f * 13, y = -9 - f * 13 + Math.sin(f * Math.PI) * -2;
+        c.fillStyle = shade; ell(c, x, y, 3.6, 3); c.fillStyle = bone; ell(c, x, y, 2.8, 2.3);
+      }
+      // skull: swept-back horns, long snout, open eye socket with the same cold light, a creaking lower jaw
+      c.save(); c.translate(32, -25);
+      c.fillStyle = shade; tri(c, -4, -5, -18, -15, -1, -8.5); c.fillStyle = bone; tri(c, -3.4, -5.6, -16.5, -14, -1.4, -8);
+      c.fillStyle = shade; tri(c, 0, -6.5, -9, -18.5, 3, -9);
+      c.save(); c.rotate(jaw);
+      c.fillStyle = shade; c.beginPath(); c.moveTo(-4, 2); c.lineTo(14, 3.5); c.lineTo(13.5, 6); c.lineTo(-2, 6.5); c.closePath(); c.fill();
+      c.fillStyle = "#f8f4e8"; for (let i = 0; i < 4; i++) tri(c, 1 + i * 3.2, 3, 2.6 + i * 3.2, 3, 1.8 + i * 3.2, .6);
+      c.restore();
+      c.fillStyle = bone; c.beginPath(); c.moveTo(-7, -2); c.quadraticCurveTo(-5, -9, 3, -8); c.quadraticCurveTo(8, -6, 15.5, -1.5); c.lineTo(15, 2.5); c.lineTo(-4, 3); c.closePath(); c.fill();
+      c.fillStyle = "#f8f4e8"; for (let i = 0; i < 4; i++) tri(c, 2 + i * 3.2, 2.6, 3.6 + i * 3.2, 2.6, 2.8 + i * 3.2, 5.2);
+      c.fillStyle = "#2a2433"; ell(c, 1, -3.4, 3.6, 3); ell(c, 12.6, -1.4, 1, .7);
+      c.fillStyle = glow; ell(c, 1.4, -3.2, 1.4, 1.4); c.fillStyle = "rgba(126,240,255,.3)"; ell(c, 1.4, -3.2, 3, 2.6);
+      c.strokeStyle = shade; c.lineWidth = .7; c.beginPath(); c.moveTo(-3.5, -7); c.lineTo(-2, -5); c.lineTo(-3, -3.5); c.moveTo(6, -6.4); c.lineTo(7.2, -4.4); c.stroke();
+      c.restore();
+      c.restore(); break; }
   }
 }
 function drawEnemy(e) {
@@ -2227,7 +2363,7 @@ function openBestiary(pick) {
   let cur = pick && BEAST_KEYS.includes(pick) ? pick : BEAST_KEYS.find(beastMet) || "goblin";
   openModal(card => {
     const met = BEAST_KEYS.filter(beastMet).length;
-    card.append(el("h2", "", "Bestiary"), el("p", "fine", `${met} of ${BEAST_KEYS.length} monsters met. Tap one to read about it.`));
+    card.append(el("h2", "", "Bestiary"), el("p", "fine", `You've met ${met} of ${BEAST_KEYS.length} monsters. Tap one to read about it.`));
     const grid = el("div", "beasts"), page = el("div");
     const show = k => {
       cur = k; grid.querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.k === k));
@@ -2252,7 +2388,7 @@ function beastPage(k, atLevel) {
   box.append(enemyIcon(k, boss ? d : null, 264, !known));
   const bt = el("div", "bt"); box.append(bt);
   if (!known) {
-    bt.append(el("h3", "", "???"), el("p", "", boss ? `A boss nobody has lived to describe. It first comes at level ${first}.` : `Nothing has come down the road like it yet. It first marches at level ${first}.`));
+    bt.append(el("h3", "", "???"), el("p", "", boss ? `A boss nobody has lived to describe. It first appears at level ${first}.` : `Nothing like it has come for the keep yet. It first appears at level ${first}.`));
     return box;
   }
   const L = Math.max(atLevel || first, first), lore = LORE[k] || {};
@@ -2269,18 +2405,18 @@ function beastPage(k, atLevel) {
   const kv = el("dl", "kv");
   const row = (a, b) => kv.append(el("dt", "", a), el("dd", "", b));
   row(`Health (level ${L})`, hp.toLocaleString());
-  row("Speed", `${spd} (${pace})`);
-  row("Armour", d.armor ? `${Math.round(d.armor * 100)}% vs arrows and stones` : "none");
-  if (d.regen) row("Healing", `${Math.round(d.regen * 100)}% of its health a second`);
-  row("Hearts lost at the gate", String(d.dmg));
+  row("Speed", `${pace[0].toUpperCase() + pace.slice(1)} (${spd})`);
+  row("Armour", d.armor ? `${Math.round(d.armor * 100)}%, not vs magic` : "None");
+  if (d.regen) row("Healing", `${Math.round(d.regen * 100)}% a second`);
+  row("Castle hearts it takes", String(d.dmg));
   row(`Gold per kill (level ${L})`, String(Math.max(1, Math.round(d.gold * goldScale(L)))));
   row(boss ? "Comes at levels" : "First appears", boss ? `${first}, ${first + 30}, ${first + 60}…` : `level ${first}`);
-  row("You've defeated", (meta.slain[k] || 0).toLocaleString());
+  row("Defeated by you", (meta.slain[k] || 0).toLocaleString());
   box.append(kv);
   const tips = el("ul", "tips");
   if (lore.tip) tips.append(el("li", "", lore.tip));
-  else if (d.fly) tips.append(el("li", "", "Flies over everything, so Catapults can't hit it."));
-  if (!lore.tip && d.armor >= .3) tips.append(el("li", "", "Magic (Mage Tower, Frost Spire, Dragon Roost) ignores armour."));
+  else if (d.fly) tips.append(el("li", "", "It flies over everything, so Catapults can't hit it."));
+  if (!lore.tip && d.armor >= .3) tips.append(el("li", "", "Mage Towers, Frost Spires and the Dragon Roost ignore armour."));
   box.append(tips);
   return box;
 }
