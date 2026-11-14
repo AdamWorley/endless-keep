@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#1f2c26"/>
+  <circle cx="256" cy="262" r="168" fill="#2a3a32"/>
+  <ellipse cx="256" cy="372" rx="150" ry="22" fill="#5e9444"/>
+  <!-- side towers -->
+  <rect x="140" y="214" width="58" height="156" fill="#958d7c"/><rect x="140" y="214" width="42" height="156" fill="#c3bba8"/>
+  <polygon points="132,218 206,218 169,150" fill="#34508f"/>
+  <rect x="314" y="214" width="58" height="156" fill="#958d7c"/><rect x="314" y="214" width="42" height="156" fill="#c3bba8"/>
+  <polygon points="306,218 380,218 343,150" fill="#34508f"/>
+  <!-- keep -->
+  <rect x="198" y="176" width="116" height="194" fill="#958d7c"/><rect x="198" y="176" width="90" height="194" fill="#c3bba8"/>
+  <polygon points="188,180 324,180 256,98" fill="#3d5fa8"/>
+  <rect x="249" y="206" width="14" height="28" fill="#e9b949"/>
+  <!-- gate -->
+  <path d="M226 370 V320 a30 30 0 0 1 60 0 V370 Z" fill="#4a3320"/>
+  <!-- banner -->
+  <line x1="256" y1="98" x2="256" y2="62" stroke="#4b3a24" stroke-width="5"/>
+  <path d="M256 62 Q276 66 294 72 L256 82 Z" fill="#e9b949"/>
+</svg>
