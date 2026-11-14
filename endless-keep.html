@@ -2614,7 +2614,7 @@ async function fetchBoard() {
 }
 // Cloudflare Turnstile site key: when set, starting a run asks Turnstile (usually invisibly) that a person is playing.
 // The server enforces it once its TURNSTILE_SECRET is set. Leave empty to skip.
-const TS_SITEKEY = "";
+const TS_SITEKEY = "0x4AAAAAAGA-iMpdOV0JlGdO";
 let tsLoad = null;
 function humanCheck() {
   if (!TS_SITEKEY) return Promise.resolve(undefined);
