@@ -297,6 +297,7 @@ Quiet, solid and thumb-friendly; gold only when it's the move.
 - **Panels:** Deep Moss, 14px radius, 1px border, 14px padding, a display-font gold title, and hints in Faded Parchment.
 - **Overlay cards:** Deep Moss on a translucent night scrim over the board, up to 440px wide (780px in modals), 20–22px padding, Card float shadow, and scroll inside when tall.
 - **Events:** a Lichen Moss row with a coloured border that names its kind: ember (bad), leaf (good) or gold (a choice). The title is in the display font.
+- **Heirloom icons:** every heirloom has its own painted emblem, drawn on canvas like the rest of the art: a Deep Moss disc with a faint inner tint and a 2.5px ring in the rarity colour. 52px on choice cards, 34px in the collection list.
 - **Heirloom cards:** a 2px rarity border, a top-down rarity tint gradient (20% of the rarity colour into Lichen Moss) and a small uppercase rarity label. They rise 3px on hover over 0.15s. Legendary adds the gold glow.
 
 ### Inputs / Fields
