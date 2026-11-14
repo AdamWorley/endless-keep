@@ -218,6 +218,23 @@ html.lock, html.lock body { overflow: hidden; overscroll-behavior: none; height:
 .perklist span.d { grid-column: 1 / 3; font-size: .85rem; color: var(--parch-dim); }
 textarea.code { width: 100%; min-height: 96px; font: 12px/1.4 ui-monospace, Menlo, monospace; background: var(--night); color: var(--parch); border: 1px solid var(--line); border-radius: 10px; padding: 8px; word-break: break-all; resize: vertical; }
 button.glow { border-color: var(--gold); color: var(--gold); box-shadow: 0 0 12px rgba(233, 185, 73, .35); }
+/* two-player mode */
+button.versus { width: 100%; padding: 10px 14px; border-color: #7a4a9a; background: #2c2338; color: #e3d2ff; }
+button.versus:hover:not(:disabled) { border-color: #c58bff; }
+.vs #btnAuto, .dl #btnSpeed, .dl #btnPause, .vs #hallPanel, .vs #achPanel { display: none; }
+.dl .stat.gold b { color: #c58bff; }
+.roomcode { font: 800 2.4rem/1 ui-monospace, Menlo, monospace; letter-spacing: .18em; color: var(--gold); text-align: center; padding: 12px; border: 2px dashed var(--gold-deep); border-radius: 12px; user-select: all; }
+.codein { font: 800 1.6rem/1 ui-monospace, Menlo, monospace !important; letter-spacing: .2em; text-transform: uppercase; text-align: center; }
+.army { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.army li { display: grid; grid-template-columns: 30px 1fr auto auto; gap: 8px; align-items: center; font-size: .92rem; }
+.army canvas { width: 30px; height: 30px; }
+.army button { padding: 2px 10px; }
+.dlstat { display: flex; justify-content: space-between; gap: 8px; font-variant-numeric: tabular-nums; }
+.dlstat b { color: #c58bff; font-size: 1.15rem; }
+.spell { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; text-align: left; font-weight: 400; padding: 8px 10px; border-color: #7a4a9a; }
+.spell .nm { font-weight: 800; color: #e3d2ff; } .spell .cs { font-weight: 800; color: #c58bff; } .spell .ds { grid-column: 1 / 3; font-size: .82rem; color: var(--parch-dim); }
+.spell.on { background: #3a2a4a; }
+.tile.summon .tc { color: #c58bff; }
 .keys { font-size: .8rem; color: var(--parch-dim); margin: 0; }
 @media (max-width: 520px) {
   header.top h1 { font-size: 1.35rem; }
@@ -236,7 +253,7 @@ button.glow { border-color: var(--gold); color: var(--gold); box-shadow: 0 0 12p
     <h1>Endless Keep</h1>
     <div class="hud" aria-live="polite">
       <div class="stat"><span>Level</span><b id="hLevel">1</b></div>
-      <div class="stat gold"><span>Gold</span><b id="hGold">0</b></div>
+      <div class="stat gold"><span id="hGoldLbl">Gold</span><b id="hGold">0</b></div>
       <div class="stat hearts"><span>Castle</span><b id="hHearts">20/20</b></div>
     </div>
     <div class="controls">
@@ -271,6 +288,7 @@ button.glow { border-color: var(--gold); color: var(--gold); box-shadow: 0 0 12p
             <button id="btnHeirlooms">Heirlooms</button>
             <button id="btnTransfer">Export / import</button>
           </div>
+          <button id="btnVersus" class="versus">Two players online: Keeper vs Dark Lord</button>
           <p class="fine" id="saveNote">Your game saves after every level, so you can stop and come back.</p>
         </div>
       </div>
@@ -302,19 +320,19 @@ button.glow { border-color: var(--gold); color: var(--gold); box-shadow: 0 0 12p
 
     <aside class="side">
       <section class="panel" id="selPanel" aria-live="polite"></section>
-      <section class="panel">
+      <section class="panel" id="upPanel">
         <h3 id="upTitle">Up next</h3>
         <div class="upnext" id="upNext"></div>
         <h4>Later</h4>
         <div class="upnext later" id="upLater"></div>
         <p class="keys">Drag a defender from the bar under the map onto open grass, or tap a tree to chop it. Tap open grass to plant a sapling. Tap the castle to repair it, fortify it or grow your treasury. Keys: Space starts a level, P pauses, F toggles fullscreen.</p>
       </section>
-      <section class="panel">
+      <section class="panel" id="hallPanel">
         <h3>Hall of Heroes</h3>
         <ol class="board" id="boardList"></ol>
         <p class="boardnote" id="boardNote">Loading scores…</p>
       </section>
-      <section class="panel">
+      <section class="panel" id="achPanel">
         <details id="achBox">
           <summary><h3>Achievements</h3><span class="achcount" id="achCount"></span></summary>
           <ul class="achlist" id="achList"></ul>
@@ -399,7 +417,7 @@ function tStats(t) {
   const d = TOWERS[t.type], n = t.lvl - 1;
   return {
     dmg: d.dmg * Math.pow(1.5, n) * (1 + .06 * perk(TYPE_PERK[t.type]) + .1 * perk("crown") + .05 * dyn()) * (evOn("wizard") ? 1.3 : 1),
-    range: d.range * Math.min(1.6, 1 + 0.04 * n) * (1 + TREE_BONUS * lookoutTrees(t).length + .04 * perk("eagle")) * (evOn("fog") ? .8 : 1),
+    range: d.range * Math.min(1.6, 1 + 0.04 * n) * (1 + TREE_BONUS * lookoutTrees(t).length + .04 * perk("eagle")) * (evOn("fog") || vsOn("fog") ? .8 : 1),
     rate: d.rate * Math.min(1.5, 1 + 0.03 * n) * (1 + .08 * perk("volley")),
     slow: d.slow ? Math.min(0.8, d.slow + 0.02 * n + .03 * perk("chill")) : 0,
   };
@@ -1253,7 +1271,7 @@ function spawn(item) {
 }
 function hurt(e, amt, magic, src) {
   if (e.dead) return;
-  const dmg = Math.min(e.hp, amt * (magic ? 1 : 1 - e.armor));
+  const dmg = Math.min(e.hp, amt * (magic ? 1 : 1 - Math.min(.75, e.armor + (vsOn("armor") ? .25 : 0))));
   e.hp -= dmg;
   if (src) src.dmg = (src.dmg || 0) + dmg;
   if (e.hp <= 1e-9) { if (src) src.kills = (src.kills || 0) + 1; kill(e); }
@@ -1346,7 +1364,7 @@ const EVENTS = {
 };
 const runHeirlooms = () => Object.values(S.perks || {}).reduce((a, b) => a + b, 0);
 function rollEvent(L) {
-  if (L < 4 || L % 10 === 0) return null;
+  if (L < 4 || L % 10 === 0 || S.vs) return null;
   const nb = runHeirlooms() + 3 * dyn();
   if (Math.random() > Math.min(.6, .22 + .02 * nb)) return null;
   const w = { good: 3, choice: 3, bad: 2.5 + .35 * nb };
@@ -1375,8 +1393,14 @@ function chooseEvent(pay) {
 }
 function startWave() {
   if (!S || S.phase !== "build") return;
+  if (NET.role === "guest") return vsSend({ t: "ready" });
   audio();
-  S.queue = planFor().map(q => ({ ...q })); S.phase = "wave"; S.spawnT = .5; S.waveHp = S.hp; S.stormT = 2;
+  if (S.vs) {  // both sides must be ready; if the Dark Lord has left, the dark forces march on by themselves
+    S.vs.ready.k = true;
+    if (S.vs.dl && !S.vs.ready.d) { updateHud(); renderUpNext(); return; }
+  }
+  S.queue = S.vs && S.vs.dl ? vsArmyQueue() : planFor().map(q => ({ ...q }));
+  if (S.vs) { S.vs.ready = { k: false, d: false }; vsSend({ t: "toast", msg: `Your army marches on level ${S.level}!` }); } S.phase = "wave"; S.spawnT = .5; S.waveHp = S.hp; S.stormT = 2;
   const ev = curEv();
   if (ev && ev.id === "toll") {  // the goblins keep their word, one way or the other
     if (!ev.choice) ev.choice = "refuse";
@@ -1406,6 +1430,7 @@ function clearWave() {
   }
   if (grew) msg += ` · ${grew === 1 ? "A tree has" : grew + " trees have"} grown`;
   toast(msg);
+  if (S.vs) { vsLevelCleared(L); updateHud(); renderUpNext(); renderPanel(); return; }
   savePlayer(L);
   [10, 25, 50, 100].forEach(n => { if (L >= n) unlock("lv" + n); });
   if (L % 10 === 0 && S.hp >= S.waveHp) unlock("untouched");
@@ -1413,6 +1438,7 @@ function clearWave() {
   updateHud(); renderUpNext(); renderPanel();
 }
 function gameOver() {
+  if (S.vs) return vsEnd("dark");
   S.phase = "over";
   const held = S.level - 1;
   sfx("over");
@@ -1449,7 +1475,8 @@ function update(dt) {
   if (!S || S.phase === "over") return;
   for (const t of S.trees) { if (t.shake > 0) t.shake -= dt; if (t.fall) t.fall += dt * 1.6; }
   if (S.trees.some(t => t.fall > 1.5)) S.trees = S.trees.filter(t => !(t.fall > 1.5));
-  if (S.phase === "build" && auto) { S.nextT -= dt; if (S.nextT <= 0) startWave(); }
+  if (S.phase === "build" && auto && !S.vs) { S.nextT -= dt; if (S.nextT <= 0) startWave(); }
+  if (S.vs) for (const id in S.vs.spells) S.vs.spells[id] = Math.max(0, S.vs.spells[id] - dt);
   if (S.phase === "wave") {
     S.spawnT -= dt;
     while (S.queue.length && S.spawnT <= 0) { const it = S.queue.shift(); spawn(it); S.spawnT += it.gap; }
@@ -1462,11 +1489,12 @@ function update(dt) {
     if (e.regen) e.hp = Math.min(e.max, e.hp + e.max * e.regen * dt);
     const px = e.x;
     const moat = S.fort.moat && !e.fly && e.x > 770 ? 1 - .12 * S.fort.moat : 1;
-    e.d += e.spd * (1 - e.slowA) * moat * dt;
+    e.d += e.spd * (1 - e.slowA) * moat * (vsOn("swift") ? 1.2 : 1) * dt;
     [e.x, e.y] = posAt(e.path, e.d);
     if (Math.abs(e.x - px) > .01) e.face = e.x >= px ? 1 : -1;
     if (e.d >= e.path.len) {
       e.dead = true; S.hp -= e.dmg; S.shake = reduceMotion ? 0 : .3; sfx("leak");
+      if (S.vs) S.vs.dread += Math.round(e.gold * 1.5);  // the Dark Lord feeds on every blow to the castle
       S.texts.push({ x: CASTLE.x + 40, y: CASTLE.y + 40, txt: "-" + e.dmg, life: 1.2, col: "#ff9a86" });
       if (S.hp <= 0) {
         if (perk("wind") && !S.windUsed) { S.windUsed = true; S.hp = Math.ceil(S.maxHp / 2); toast("Second wind! The castle springs back to half its hearts."); sfx("clear"); }
@@ -1621,6 +1649,11 @@ function drawAmbient() {
 let last = performance.now();
 function frame(now) {
   let dt = Math.min(.05, (now - last) / 1000); last = now;
+  if (NET.role === "guest") {  // the Dark Lord's screen: draw the Keeper's game, moving things along between updates
+    if (S) guestTick(dt); else time += dt;
+    checkSeason(); if (fadeT > 0) fadeT -= dt; ambient(dt); musicTick(); render(); guestHud();
+    requestAnimationFrame(frame); return;
+  }
   const running = S && !paused && $("startCard").hidden;
   if (running) { for (let i = 0; i < speed; i++) update(dt); } else time += dt;
   checkSeason();
@@ -1643,7 +1676,7 @@ function towerAt(x, y) { let best = null, bd = 30; if (S) for (const t of S.towe
 function hitCastle(x, y) { return x > CASTLE.x - 6 && x < CASTLE.x + CASTLE.w + 6 && y > CASTLE.y - 30 && y < CASTLE.y + CASTLE.h + 20; }
 cv.addEventListener("pointerdown", ev => {
   audio();
-  if (!S || S.phase === "over") return;
+  if (!S || S.phase === "over" || NET.role === "guest") return;
   const [x, y] = toLogical(ev), t = towerAt(x, y);
   const tr = !t && treeAt(x, y);
   if (t) sel = { kind: "tower", t };
@@ -1659,6 +1692,7 @@ cv.addEventListener("pointerdown", ev => {
 });
 cv.addEventListener("pointermove", ev => {
   if (ev.pointerType !== "mouse") return;
+  if (NET.role === "guest" || (S && S.vsGuest)) return;
   const [x, y] = toLogical(ev); hoverPt = { x, y };
   cv.style.cursor = towerAt(x, y) || treeAt(x, y) || hitCastle(x, y) || !canBuild(x, y) ? "pointer" : "not-allowed";
 });
@@ -1837,9 +1871,24 @@ function chip(cls, icon, text) {
   const c = el("span", "chip " + cls); if (icon) c.append(icon); else c.classList.add("plain");
   c.append(document.createTextNode(text)); return c;
 }
+function renderVsUpNext() {
+  const V = S.vs, L = S.level, box = $("upNext"), later = $("upLater"); box.textContent = ""; later.textContent = "";
+  $("upTitle").textContent = S.phase === "wave" ? `Level ${L} (under way)` : `Coming in level ${L}`;
+  if (L % 10 === 0) { const b = bossFor(L); box.append(chip("boss", enemyIcon(b.key, b), "Boss: " + b.name)); }
+  if (S.phase === "wave" && V.revealed) Object.entries(V.revealed).sort((a, b) => b[1] - a[1]).forEach(([k, n]) => box.append(chip(ENEMIES[k].fly ? "fly" : "", enemyIcon(k), `${n} × ${ENEMIES[k].name}`)));
+  else {
+    const bx = el("div", "event bad"); bx.append(el("b", "", V.dl ? "The Dark Lord plots…" : "The Dark Lord has left"),
+      el("span", "", !V.dl ? "Ordinary armies will march from now on." : V.ready.d ? "Their army is ready and waiting. Start the level when you are." : "They are raising an army in secret. You'll see it when it marches."));
+    box.append(bx);
+  }
+  later.append(chip("plain", null, `Hold until level ${V.len} to win`));
+  later.hidden = later.previousElementSibling.hidden = false;
+}
 function renderUpNext() {
   const box = $("upNext"); box.textContent = "";
   if (!S) return;
+  if (NET.role === "guest") return;
+  if (S.vs) return renderVsUpNext();
   const L = S.level, plan = planFor();
   $("upTitle").textContent = S.phase === "wave" ? `Level ${L} (under way)` : `Coming in level ${L}`;
   const ev = curEv();
@@ -1928,9 +1977,10 @@ function renderPalette() {
   updatePalette();
 }
 function updatePalette() {
-  if (!S) return;
+  if (!S || NET.role === "guest") return;
   document.querySelectorAll("#palette .tile").forEach(b => {
-    const k = b.dataset.type, d = TOWERS[k], locked = k === "dragon" && !S.dragon;
+    const k = b.dataset.type, d = TOWERS[k]; if (!d) return;
+    const locked = k === "dragon" && !S.dragon;
     b.classList.toggle("locked", locked); b.classList.toggle("poor", !locked && S.gold < tCost(k));
     b.classList.toggle("active", !!sel && sel.kind === "info" && sel.type === k);
     const tc = b.querySelector(".tc"), txt = locked ? `Level ${dragonAt()}` : tCost(k) + " g"; if (tc.textContent !== txt) tc.textContent = txt;
@@ -1957,14 +2007,15 @@ function hudTick() {
   if (!S) return;
   const btn = $("btnWave");
   let label;
-  if (S.phase === "build") label = auto ? `Start level ${S.level} (${Math.max(0, Math.ceil(S.nextT))})` : `Start level ${S.level}`;
+  if (S.phase === "build") label = S.vs && S.vs.dl ? (S.vs.ready.k ? "Waiting for the Dark Lord…" : S.vs.ready.d ? `Start level ${S.level} (they're ready)` : `Ready for level ${S.level}`)
+    : auto ? `Start level ${S.level} (${Math.max(0, Math.ceil(S.nextT))})` : `Start level ${S.level}`;
   else if (S.phase === "wave") label = `Level ${S.level} under way`;
   else label = "Game over";
   const key = [S.level, Math.floor(S.gold), S.hp, S.maxHp, label].join("|");
   if (key === hudCache) return; hudCache = key;
   if (S.gold >= 5000 && S.phase !== "over") unlock("rich");
   $("hLevel").textContent = S.level; $("hGold").textContent = Math.floor(S.gold).toLocaleString(); $("hHearts").textContent = `${S.hp}/${S.maxHp}`;
-  btn.textContent = label; btn.disabled = S.phase !== "build";
+  btn.textContent = label; btn.disabled = S.phase !== "build" || !!(S.vs && S.vs.dl && S.vs.ready.k);
   refreshAfford();
 }
 let toastTimer = 0;
@@ -1981,7 +2032,7 @@ $("btnAuto").addEventListener("click", () => { auto = !auto; if (S) S.nextT = Ma
 $("btnMusic").addEventListener("click", () => { audio(); setMusic(!music); });
 $("btnSpeed").addEventListener("click", () => { speed = speed % 3 + 1; $("btnSpeed").textContent = `Speed ${speed}×`; });
 $("btnSound").addEventListener("click", () => { sound = !sound; audio(); $("btnSound").textContent = `Sound: ${sound ? "on" : "off"}`; $("btnSound").classList.toggle("on", sound); ls.set("ek_sound", sound); });
-function setPaused(v) { if (!S || S.phase === "over" || !$("startCard").hidden) return; paused = v; $("pauseCard").hidden = !v; $("btnPause").textContent = v ? "Resume" : "Pause"; }
+function setPaused(v) { if (!S || S.phase === "over" || !$("startCard").hidden || NET.role === "guest") return; paused = v; if (S.vs) vsSend({ t: "toast", msg: v ? "The Keeper has paused the game." : "The Keeper is back. The battle continues." }); $("pauseCard").hidden = !v; $("btnPause").textContent = v ? "Resume" : "Pause"; }
 $("btnPause").addEventListener("click", () => setPaused(!paused));
 $("btnResume").addEventListener("click", () => setPaused(false));
 $("btnQuit").addEventListener("click", () => { if (S && S.phase === "build") persist(); paused = false; $("pauseCard").hidden = true; $("btnPause").textContent = "Pause"; showStart(); });
@@ -1990,6 +2041,7 @@ document.addEventListener("keydown", ev => {
   if (!$("modal").hidden) { if (ev.key === "Escape") closeModal(); return; }
   if (ev.target.tagName === "INPUT" || ev.target.tagName === "TEXTAREA") return;
   if (ev.code === "Space") { ev.preventDefault(); if (S && S.phase === "build" && $("startCard").hidden && !paused) startWave(); }
+  if (NET.role === "guest") return;
   if (ev.key === "p" || ev.key === "P") setPaused(!paused);
   if (ev.key === "Escape") { sel = null; renderPanel(); }
   if (ev.key === "f" || ev.key === "F") setFull(!full);
@@ -2237,7 +2289,7 @@ function badgeImg(id) {
 }
 function myBadges() { const { cur } = myEntry(); const s2 = new Set((cur && cur.badges) || []); if (S) S.newBadges.forEach(b => s2.add(b)); return s2; }
 function unlock(id) {
-  if (!S || S.newBadges.includes(id)) return;
+  if (!S || S.vs || S.newBadges.includes(id)) return;
   const { cur } = myEntry(); if (cur && (cur.badges || []).includes(id)) return;
   S.newBadges.push(id);
   const a = ACH.find(x => x.id === id); if (!a) return;
@@ -2309,9 +2361,9 @@ async function initCloud() {
   }
 }
 let persistTimer = 0;
-function schedulePersist() { if (!S || S.phase !== "build") return; clearTimeout(persistTimer); persistTimer = setTimeout(persist, 1500); }
+function schedulePersist() { if (!S || S.vs || S.phase !== "build") return; clearTimeout(persistTimer); persistTimer = setTimeout(persist, 1500); }
 function persist() {
-  if (!S || S.phase === "over") return;
+  if (!S || S.vs || S.phase === "over") return;
   clearTimeout(persistTimer);
   const sv = makeSave(); savedGame = sv; ls.set("ek_save", sv);
   if (db && uid && cloudWritable) enqueue(() => db.doc("data/users/" + uid + "/save").set(sv));
@@ -2320,6 +2372,306 @@ function clearSave() {
   savedGame = null; ls.del("ek_save");
   if (db && uid && cloudWritable) enqueue(() => db.doc("data/users/" + uid + "/save").delete());
 }
+
+/* ---------- two players online: the Keeper hosts and runs the game; the Dark Lord joins from another device ----------
+   Devices find each other through PeerJS's free public matchmaking server, then talk directly (same Wi-Fi or over the internet).
+   The Keeper's device simulates everything and sends the Dark Lord a picture of the battlefield ten times a second;
+   the Dark Lord sends back only their choices (army, summons, spells, ready). */
+const NET = { role: null, peer: null, conn: null, timer: 0 };
+const PEER_PREFIX = "endless-keep-v1-";
+const VS_UNIT = k => ENEMIES[k].gold * 2;                       // dread cost of one monster
+const SPELLS = {
+  swift: { name: "Tailwind",     dur: 12, base: 30, desc: "Monsters move 20% faster for 12 seconds." },
+  armor: { name: "Scrap armour", dur: 12, base: 35, desc: "+25% armour for every monster for 12 seconds. Magic still pierces it." },
+  fog:   { name: "Fog",          dur: 12, base: 30, desc: "Every tower has 20% less range for 12 seconds." },
+  heal:  { name: "Dark mending", dur: 0,  base: 40, desc: "Heal every monster on the road by 30%." },
+};
+const spellCost = id => Math.round(SPELLS[id].base * (1 + S.level * .08));
+const vsOn = id => !!(S && S.vs && S.vs.spells && S.vs.spells[id] > 0);
+const vsAvail = () => Object.keys(ENEMIES).filter(k => ENEMIES[k].from <= S.level);
+// the Dark Lord's budget matches what a normal level's army would be worth, so the Keeper faces a familiar challenge
+function vsBudget(L) {
+  const avail = Object.keys(ENEMIES).filter(k => ENEMIES[k].from <= L), tw = avail.reduce((a, k) => a + ENEMIES[k].w, 0);
+  const avg = avail.reduce((a, k) => a + ENEMIES[k].w * VS_UNIT(k), 0) / tw;
+  return Math.round((Math.min(8 + Math.floor(L * .9), 45) - (L % 10 === 0 ? 4 : 0)) * avg);
+}
+function vsSend(m) { try { if (NET.conn && NET.conn.open) NET.conn.send(m); } catch {} }
+function loadPeer() {
+  if (window.Peer) return Promise.resolve();
+  return new Promise((ok, fail) => { const sc = document.createElement("script"); sc.src = "https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"; sc.onload = ok; sc.onerror = () => fail(new Error("load")); document.head.append(sc); });
+}
+function netClose() {
+  clearInterval(NET.timer); NET.timer = 0;
+  try { NET.conn && NET.conn.close(); } catch {} try { NET.peer && NET.peer.destroy(); } catch {}
+  NET.conn = NET.peer = null; NET.role = null;
+  document.documentElement.classList.remove("vs", "dl");
+  $("hGoldLbl").textContent = "Gold";
+}
+const netError = e => {
+  const t = e && e.type;
+  if (t === "peer-unavailable") return "No game with that code. Check it with the Keeper.";
+  if (t === "browser-incompatible") return "This browser can't do online play.";
+  return "Couldn't reach the matchmaking server." + (window.claude ? " Online play may be blocked on the Claude page: try the installed app at adamworley.github.io/endless-keep." : " Check your connection and try again.");
+};
+
+/* ----- lobby ----- */
+function openVersus() {
+  openModal(card => {
+    card.append(el("h2", "", "Keeper vs Dark Lord"),
+      el("p", "", "Two players, two devices. The Keeper builds and defends as usual. The Dark Lord spends dread to raise each level's army in secret, then summons reinforcements and casts spells while it marches."));
+    const r = el("div", "row"), host = el("button", "primary", "Host as the Keeper"), join = el("button", "versus", "Join as the Dark Lord");
+    host.addEventListener("click", hostSetup); join.addEventListener("click", joinSetup);
+    r.append(host, join);
+    const x = el("button", "", "Back"); x.addEventListener("click", closeModal);
+    card.append(r, el("p", "fine", "Matchmaking uses PeerJS's free public server; the game itself then runs directly between your two devices."), x);
+  });
+}
+function hostSetup() {
+  openModal(card => {
+    card.append(el("h2", "", "Host as the Keeper"), el("p", "", "How long should the match be? The Keeper wins by clearing the last level; the Dark Lord wins by bringing the castle down."));
+    const r = el("div", "row");
+    [10, 20, 30].forEach(n => { const b = el("button", n === 20 ? "primary" : "", `${n} levels`); b.addEventListener("click", () => hostWait(n)); r.append(b); });
+    const x = el("button", "", "Back"); x.addEventListener("click", openVersus);
+    card.append(r, x);
+  });
+}
+async function hostWait(len) {
+  let status, codeBox;
+  openModal(card => {
+    card.append(el("h2", "", "Waiting for the Dark Lord"));
+    codeBox = el("div", "roomcode", "·····"); status = el("p", "", "Connecting to the matchmaking server…");
+    const x = el("button", "", "Cancel"); x.addEventListener("click", () => { netClose(); openVersus(); });
+    card.append(el("p", "", "Give the Dark Lord this code. They choose “Join as the Dark Lord” on their own device."), codeBox, status, x);
+  }, () => { if (NET.role === "host" && !(S && S.vs)) netClose(); });
+  try { await loadPeer(); } catch { status.textContent = netError(); return; }
+  const AB = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+  const code = Array.from({ length: 5 }, () => AB[(Math.random() * AB.length) | 0]).join("");
+  netClose(); NET.role = "host";
+  const peer = NET.peer = new Peer(PEER_PREFIX + code.toLowerCase());
+  const giveUp = setTimeout(() => { if (!peer.open) status.textContent = netError(); }, 10000);
+  peer.on("open", () => { clearTimeout(giveUp); codeBox.textContent = code; status.textContent = `Match: ${len} levels. Waiting for the Dark Lord to join…`; });
+  peer.on("error", e => { clearTimeout(giveUp); if (e.type === "unavailable-id") return hostWait(len); if (!(S && S.vs)) status.textContent = netError(e); });
+  peer.on("connection", conn => {
+    if (NET.conn && NET.conn.open) { conn.on("open", () => { conn.send({ t: "full" }); setTimeout(() => conn.close(), 500); }); return; }
+    NET.conn = conn;
+    conn.on("open", () => { modalDone = null; closeModal(); vsBegin(len); });
+    conn.on("data", hostMsg);
+    conn.on("close", () => { if (S && S.vs && S.phase !== "over") { S.vs.dl = false; toast("The Dark Lord has left. The dark forces march on by themselves."); if (S.vs.ready.k && S.phase === "build") startWave(); renderUpNext(); } });
+  });
+}
+function joinSetup() {
+  openModal(card => {
+    card.append(el("h2", "", "Join as the Dark Lord"), el("p", "", "Type the code shown on the Keeper's screen."));
+    const inp = document.createElement("input"); inp.className = "codein"; inp.maxLength = 5; inp.autocomplete = "off"; inp.setAttribute("aria-label", "Room code"); inp.placeholder = "ABCDE";
+    inp.style.cssText = "width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--night);color:var(--parch)";
+    const status = el("p", "fine", ""), r = el("div", "row"), go = el("button", "primary", "Join"), x = el("button", "", "Back");
+    x.addEventListener("click", () => { netClose(); openVersus(); });
+    const doJoin = async () => {
+      const code = inp.value.trim().toUpperCase(); if (code.length !== 5) { status.textContent = "Codes are 5 letters long."; return; }
+      go.disabled = true; status.textContent = "Connecting…";
+      try { await loadPeer(); } catch { status.textContent = netError(); go.disabled = false; return; }
+      netClose(); NET.role = "guest";
+      const peer = NET.peer = new Peer();
+      const giveUp = setTimeout(() => { if (!(NET.conn && NET.conn.open)) { status.textContent = netError(); go.disabled = false; } }, 12000);
+      peer.on("error", e => { clearTimeout(giveUp); status.textContent = netError(e); go.disabled = false; });
+      peer.on("open", () => {
+        const conn = NET.conn = peer.connect(PEER_PREFIX + code.toLowerCase(), { reliable: true, serialization: "json" });
+        conn.on("open", () => { clearTimeout(giveUp); status.textContent = "Connected. Waiting for the battlefield…"; });
+        conn.on("data", guestMsg);
+        conn.on("close", () => { if (NET.role === "guest" && S && S.phase !== "over") vsShowOver("The connection to the Keeper was lost.", "The game ended early."); });
+      });
+    };
+    go.addEventListener("click", doJoin); inp.addEventListener("keydown", ev => { if (ev.key === "Enter") doJoin(); });
+    r.append(go, x); card.append(inp, status, r);
+  });
+}
+
+/* ----- Keeper (host) side ----- */
+function vsBegin(len) {
+  audio(); readName();
+  newRun(); S.perks = {}; S.dyn = 0;
+  S.vs = { len, dl: true, dread: vsBudget(1), army: {}, ready: { k: false, d: false }, spells: { swift: 0, armor: 0, fog: 0 }, revealed: null };
+  auto = false; $("btnAuto").textContent = "Auto: off"; $("btnAuto").classList.remove("on");
+  document.documentElement.classList.add("vs");
+  sel = null; paused = false;
+  $("startCard").hidden = true; $("overCard").hidden = true;
+  seasonI = seasonIdx(1); season = SEASONS[seasonI]; buildBg(); amb = []; fadeT = 0;
+  renderPanel(); renderUpNext(); updateHud();
+  toast(`The Dark Lord has arrived. Hold ${len} levels to win!`);
+  clearInterval(NET.timer); NET.timer = setInterval(() => { if (S && S.vs && S.vs.dl) vsSend(vsSnap()); }, 100);
+}
+function vsArmyQueue() {
+  const L = S.level, gap = Math.max(.38, 1 - L * .01), groups = [];
+  for (const k in S.vs.army) { const n = S.vs.army[k]; for (let i = 0; i < n; i += 4) groups.push(Array(Math.min(4, n - i)).fill(k)); }
+  groups.sort(() => Math.random() - .5);
+  const q = groups.flat().map(k => ({ k, gap: ENEMIES[k].fly ? gap * 1.2 : gap }));
+  if (L % 10 === 0) q.push({ k: "boss", gap: 2.5 });
+  S.vs.revealed = { ...S.vs.army }; S.vs.army = {};
+  return q;
+}
+function vsLevelCleared(L) {
+  if (L >= S.vs.len) return vsEnd("keeper");
+  const inc = vsBudget(L + 1); S.vs.dread += inc; S.vs.revealed = null;
+  vsSend({ t: "toast", msg: `The Keeper held level ${L}. +${inc} dread.` });
+}
+function hostMsg(m) {
+  if (!m || !S || !S.vs || S.phase === "over") return;
+  const V = S.vs, k = m.k;
+  if (m.t === "army" && S.phase === "build" && !V.ready.d && ENEMIES[k] && ENEMIES[k].from <= S.level) {
+    if (m.n > 0 && V.dread >= VS_UNIT(k)) { V.army[k] = (V.army[k] || 0) + 1; V.dread -= VS_UNIT(k); }
+    if (m.n < 0 && V.army[k] > 0) { V.army[k]--; V.dread += VS_UNIT(k); if (!V.army[k]) delete V.army[k]; }
+  }
+  if (m.t === "summon" && S.phase === "wave" && ENEMIES[k] && ENEMIES[k].from <= S.level) {
+    const c = Math.ceil(VS_UNIT(k) * 1.25); if (V.dread >= c) { V.dread -= c; spawn({ k }); }
+  }
+  if (m.t === "spell" && S.phase === "wave" && SPELLS[m.id]) {
+    const c = spellCost(m.id);
+    if (V.dread >= c && !(V.spells[m.id] > 0)) {
+      V.dread -= c;
+      if (m.id === "heal") S.enemies.forEach(e => { if (!e.dead) e.hp = Math.min(e.max, e.hp + e.max * .3); });
+      else V.spells[m.id] = SPELLS[m.id].dur;
+      toast(`The Dark Lord casts ${SPELLS[m.id].name}! ${SPELLS[m.id].desc}`); sfx("boss");
+    }
+  }
+  if (m.t === "ready" && S.phase === "build") { V.ready.d = true; if (V.ready.k) startWave(); else { toast("The Dark Lord's army is ready."); renderUpNext(); updateHud(); } }
+}
+function vsEnd(winner) {
+  S.phase = "over"; const L = S.level, len = S.vs.len;
+  vsSend({ t: "over", w: winner, L, len }); vsSend(vsSnap());
+  sfx(winner === "keeper" ? "clear" : "over");
+  vsShowOver(winner === "keeper" ? "The keep stands!" : "The keep has fallen", winner === "keeper"
+    ? `You held all ${len} levels against the Dark Lord. Victory is yours.` : `The Dark Lord brought the castle down on level ${L} of ${len}.`);
+  setTimeout(netClose, 1500);
+}
+function vsShowOver(head, note) {
+  $("overCard").querySelector("h2").textContent = head;
+  $("overScore").textContent = note; $("overHeirlooms").textContent = ""; $("overNote").textContent = "Two-player games don't affect your heirlooms or the Hall of Heroes.";
+  $("overStats").textContent = ""; $("overMvp").textContent = ""; $("overBadges").textContent = "";
+  $("btnAgain").textContent = "Back to the start";
+  if (S) S.phase = "over";
+  $("overCard").hidden = false;
+}
+const r1 = v => Math.round(v * 10) / 10;
+function vsSnap() {
+  return {
+    t: "snap", L: S.level, ph: S.phase, hp: S.hp, mh: S.maxHp, gold: Math.floor(S.gold), fort: S.fort, shake: S.shake > 0 ? 1 : 0,
+    vs: { dread: Math.floor(S.vs.dread), army: S.vs.army, ready: S.vs.ready, spells: S.vs.spells, len: S.vs.len },
+    tw: S.towers.map(t => [t.type, t.lvl, r1(t.x), r1(t.y), r1(t.ang || 0), r1(t.flash || 0), t.name || ""]),
+    tr: S.trees.map(t => [t.id, t.x, t.y, r1(t.s), t.tone, t.max, t.hp, r1(t.fall || 0), t.dir, t.planted == null ? null : t.planted]),
+    en: S.enemies.filter(e => !e.dead).map(e => [e.k, r1(e.d), e.fly ? e.path.pts : 0, Math.round(e.hp), Math.round(e.max), r1(e.spd), r1(e.slowA), r1(e.slowT), r1(e.burnT), e.face, r1(e.t), r1(e.v), r1(e.v2), r1(e.sz || 1), e.col, e.r, e.boss ? 1 : 0]),
+    sh: S.shots.map(q => [q.kind, r1(q.x), r1(q.y), r1(q.tx), r1(q.ty), q.spd, q.stage || 0, r1(q.trav), r1(q.d0)]),
+    fx: S.fx.filter(f => f.ring || f.bolt).concat(S.fx.filter(f => !f.ring && !f.bolt).slice(-40)).map(f => ({ ...f, x: r1(f.x), y: r1(f.y) })),
+    tx: S.texts.slice(-16).map(q => [q.txt, r1(q.x), r1(q.y), r1(q.life), q.col]),
+  };
+}
+
+/* ----- Dark Lord (guest) side ----- */
+const pathCache = new Map();
+const pathFor = pts => { const key = JSON.stringify(pts); if (!pathCache.has(key)) { if (pathCache.size > 300) pathCache.clear(); pathCache.set(key, mkPath(pts)); } return pathCache.get(key); };
+let dlKey = "", barKey = "";
+function guestMsg(m) {
+  if (!m) return;
+  if (m.t === "full") { toast("That game already has a Dark Lord."); netClose(); return; }
+  if (m.t === "toast") { toast(m.msg); return; }
+  if (m.t === "over") {
+    const won = m.w === "dark";
+    vsShowOver(won ? "The keep has fallen!" : "The keep stands", won ? `Your armies brought the castle down on level ${m.L} of ${m.len}. Darkness reigns.` : `The Keeper held all ${m.len} levels. Your armies are scattered.`);
+    sfx(won ? "clear" : "over"); setTimeout(netClose, 1500); return;
+  }
+  if (m.t !== "snap") return;
+  const first = !S || !S.vsGuest;
+  const keepFx = S && S.vsGuest ? S.fx.filter(f => f.local) : [];
+  S = {
+    vsGuest: true, level: m.L, phase: m.ph, hp: m.hp, maxHp: m.mh, gold: m.gold, fort: m.fort, vs: m.vs, perks: {}, dyn: 0, shake: m.shake ? .05 : 0,
+    towers: m.tw.map(a => ({ type: a[0], lvl: a[1], x: a[2], y: a[3], ang: a[4], flash: a[5], name: a[6] || undefined })),
+    trees: m.tr.map(a => ({ id: a[0], x: a[1], y: a[2], s: a[3], tone: a[4], max: a[5], hp: a[6], fall: a[7], dir: a[8], planted: a[9], shake: 0 })),
+    enemies: m.en.map(a => { const path = a[2] ? pathFor(a[2]) : ROAD, e = { k: a[0], d: a[1], path, hp: a[3], max: a[4], spd: a[5], slowA: a[6], slowT: a[7], burnT: a[8], face: a[9], t: a[10], v: a[11], v2: a[12], sz: a[13], col: a[14], r: a[15], boss: !!a[16], fly: !!a[2] }; [e.x, e.y] = posAt(path, e.d); return e; }),
+    shots: m.sh.map(a => { const dx = a[3] - a[1], dy = a[4] - a[2], dd = Math.hypot(dx, dy) || 1; return { kind: a[0], x: a[1], y: a[2], tx: a[3], ty: a[4], spd: a[5], stage: a[6], trav: a[7], d0: a[8], vx: dx / dd, vy: dy / dd }; }),
+    fx: m.fx.concat(keepFx), texts: m.tx.map(a => ({ txt: a[0], x: a[1], y: a[2], life: a[3], col: a[4] })),
+    trees0: null, stats: {}, newBadges: [],
+  };
+  if (first) {
+    document.documentElement.classList.add("vs", "dl"); $("hGoldLbl").textContent = "Dread";
+    modalDone = null; closeModal(); $("startCard").hidden = true; $("overCard").hidden = true;
+    seasonI = seasonIdx(S.level); season = SEASONS[seasonI]; buildBg(); amb = []; fadeT = 0;
+    toast(`You are the Dark Lord. Bring down the castle within ${m.vs.len} levels!`);
+    dlKey = barKey = "";
+  }
+  renderDL();
+}
+function guestTick(dt) {
+  time += dt;
+  for (const e of S.enemies) {
+    e.t += dt; const px = e.x;
+    e.d = Math.min(e.path.len, e.d + e.spd * (1 - (e.slowT > 0 ? e.slowA : 0)) * (vsOn("swift") ? 1.2 : 1) * dt);
+    [e.x, e.y] = posAt(e.path, e.d); if (Math.abs(e.x - px) > .01) e.face = e.x >= px ? 1 : -1;
+  }
+  for (const q of S.shots) { const dx = q.tx - q.x, dy = q.ty - q.y, d = Math.hypot(dx, dy), st = q.spd * dt; if (d > st) { q.x += dx / d * st; q.y += dy / d * st; q.trav += st; } }
+  for (const f of S.fx) { f.life -= dt; if (!f.ring && !f.bolt) { f.x += (f.vx || 0) * dt; f.y += (f.vy || 0) * dt; if (f.g) f.vy += f.g * dt; } }
+  S.fx = S.fx.filter(f => f.life > 0);
+  for (const q of S.texts) { q.life -= dt; q.y -= 22 * dt; }
+  S.texts = S.texts.filter(q => q.life > 0);
+}
+function guestHud() {
+  if (!S || !S.vs) return;
+  const V = S.vs, btn = $("btnWave");
+  $("hLevel").textContent = S.level; $("hGold").textContent = V.dread.toLocaleString(); $("hHearts").textContent = `${S.hp}/${S.maxHp}`;
+  const label = S.phase === "over" ? "Game over" : S.phase === "wave" ? `Level ${S.level} under way` : V.ready.d ? "Waiting for the Keeper…" : "Unleash the army";
+  if (btn.textContent !== label) btn.textContent = label;
+  btn.disabled = S.phase !== "build" || V.ready.d;
+}
+function renderDL() {
+  const V = S.vs, wave = S.phase === "wave";
+  // summon bar under the map
+  const bk = [S.level, S.phase, V.dread, V.ready.d].join("|");
+  if (bk !== barKey) {
+    barKey = bk; const pal = $("palette"); pal.textContent = "";
+    vsAvail().forEach(k => {
+      const c = wave ? Math.ceil(VS_UNIT(k) * 1.25) : VS_UNIT(k), b = el("button", "tile summon");
+      b.append(enemyIcon(k), el("span", "tn", ENEMIES[k].name), el("span", "tc", c + " dread"));
+      b.disabled = V.dread < c || (!wave && V.ready.d) || S.phase === "over";
+      b.setAttribute("aria-label", `${wave ? "Summon" : "Add"} ${ENEMIES[k].name} for ${c} dread`);
+      b.addEventListener("click", () => vsSend(wave ? { t: "summon", k } : { t: "army", k, n: 1 }));
+      pal.append(b);
+    });
+  }
+  // side panel: army or spells
+  const key = JSON.stringify([S.level, S.phase, V.dread, V.army, V.ready, Object.keys(V.spells).filter(id => V.spells[id] > 0)]);
+  if (key !== dlKey) {
+    dlKey = key; const p = $("selPanel"); p.textContent = "";
+    p.append(el("h3", "", wave ? "Your army marches" : `Your army for level ${S.level}`));
+    const st = el("div", "dlstat"); st.append(el("span", "", "Dread"), el("b", "", V.dread.toLocaleString())); p.append(st);
+    if (!wave) {
+      const ids = Object.keys(V.army);
+      if (!ids.length) p.append(el("p", "hint", "Tap monsters in the bar under the map to raise your army. Unspent dread carries over to later levels."));
+      else {
+        const ul = el("ul", "army"); let tot = 0;
+        ids.forEach(k => { const n = V.army[k]; tot += n; const li = el("li"), minus = el("button", "", "−"); minus.disabled = V.ready.d; minus.setAttribute("aria-label", `Remove one ${ENEMIES[k].name}`); minus.addEventListener("click", () => vsSend({ t: "army", k, n: -1 })); li.append(enemyIcon(k), el("span", "", ENEMIES[k].name), el("b", "", "× " + n), minus); ul.append(li); });
+        p.append(ul, el("p", "hint", `${tot} monster${tot === 1 ? "" : "s"}${S.level % 10 === 0 ? `, plus the ${bossFor(S.level).name} for free` : ""}. The Keeper can't see them until they march.`));
+      }
+      const go = el("button", "primary", V.ready.d ? "Waiting for the Keeper…" : "Unleash the army"); go.disabled = V.ready.d;
+      go.addEventListener("click", () => vsSend({ t: "ready" })); p.append(go);
+    } else {
+      p.append(el("p", "hint", "Tap monsters under the map to summon them straight onto the road (25% dearer than planning ahead). Monsters that reach the castle earn you dread."));
+      Object.keys(SPELLS).forEach(id => {
+        const sp = SPELLS[id], on = V.spells[id] > 0, c = spellCost(id), b = el("button", "spell" + (on ? " on" : ""));
+        b.append(el("span", "nm", sp.name + (on ? " (active)" : "")), el("span", "cs", c + " dread"), el("span", "ds", sp.desc));
+        b.disabled = on || V.dread < c; b.addEventListener("click", () => vsSend({ t: "spell", id })); p.append(b);
+      });
+    }
+    // what the Dark Lord can see of the Keeper
+    $("upTitle").textContent = "The Keeper";
+    const box = $("upNext"); box.textContent = "";
+    const counts = {}; S.towers.forEach(t => counts[t.type] = (counts[t.type] || 0) + 1);
+    Object.keys(counts).forEach(t => box.append(chip("", towerIcon(t), `${counts[t]} × ${SHORT[t]}`)));
+    if (!S.towers.length) box.append(chip("plain", null, "No towers yet"));
+    box.append(chip("plain", null, `${S.gold.toLocaleString()} gold`), chip("plain", null, `Castle ${S.hp}/${S.maxHp}`));
+    const later = $("upLater"); later.textContent = ""; later.append(chip("plain", null, `The Keeper wins by clearing level ${V.len}`));
+    later.hidden = later.previousElementSibling.hidden = false;
+  }
+}
+$("btnVersus").addEventListener("click", openVersus);
+$("btnAgain").addEventListener("click", () => { if (S && (S.vs || S.vsGuest)) { netClose(); $("overCard").querySelector("h2").textContent = "The keep has fallen"; newRun(); renderPalette(); } }, true);
 
 /* ---------- boot ---------- */
 buildBg(); resize();
