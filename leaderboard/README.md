@@ -48,6 +48,14 @@ npx wrangler deploy
 npm test                                                 # offline tests of the API
 ```
 
+Branch preview builds (Cloudflare Worker Previews) use the `previews` block in `wrangler.jsonc`, which points `DB` at a
+separate test database, `endless-keep-leaderboard-preview`, so previews never write to the real Hall of Heroes. When
+`schema.sql` changes, apply it there too:
+
+```sh
+npx wrangler d1 execute endless-keep-leaderboard-preview --remote --file schema.sql
+```
+
 ## Moving to another host
 - **Deno Deploy / Bun:** `export default { fetch: req => handle(req, { store, origins, salt, ip }) }` with a store built on
   `bun:sqlite`, Deno KV or libSQL (Turso). Copy `store-d1.js` and change the 5 queries' driver calls.
