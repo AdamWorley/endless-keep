@@ -143,6 +143,8 @@ ol.board .bd .more { font-size: .72rem; color: var(--parch-dim); }
 .namefield button { padding: 7px 10px; font-weight: 700; }
 .overbadges .nb { display: flex; align-items: center; gap: 8px; font-weight: 700; }
 .overbadges img { width: 30px; height: 30px; }
+.boardhead { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.boardhead select { font: inherit; font-size: .82rem; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--moss-2); color: var(--parch); }
 .boardnote { font-size: .82rem; color: var(--parch-dim); margin: 0; }
 .upnext { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { display: inline-flex; align-items: center; gap: 5px; font-size: .82rem; padding: 2px 10px 2px 4px; border-radius: 999px; background: var(--moss-2); border: 1px solid var(--line); }
@@ -290,6 +292,7 @@ button.versus:hover:not(:disabled) { border-color: #c58bff; }
           </div>
           <button id="btnVersus" class="versus">Two players online: Keeper vs Dark Lord</button>
           <p class="fine" id="saveNote">Your game saves after every level, so you can stop and come back.</p>
+          <p class="fine" id="verNote"></p>
         </div>
       </div>
 
@@ -328,7 +331,7 @@ button.versus:hover:not(:disabled) { border-color: #c58bff; }
         <p class="keys">Drag a defender from the bar under the map onto open grass, or tap a tree to chop it. Tap open grass to plant a sapling. Tap the castle to repair it, fortify it or grow your treasury. Keys: Space starts a level, P pauses, F toggles fullscreen.</p>
       </section>
       <section class="panel" id="hallPanel">
-        <h3>Hall of Heroes</h3>
+        <div class="boardhead"><h3>Hall of Heroes</h3><select id="boardVer" aria-label="Which rules version's scores to show" hidden></select></div>
         <ol class="board" id="boardList"></ol>
         <p class="boardnote" id="boardNote">Loading scores…</p>
       </section>
@@ -349,12 +352,62 @@ button.versus:hover:not(:disabled) { border-color: #c58bff; }
 <script>
 (() => {
 "use strict";
+// GAME_VERSION changes with any update. RULES_VERSION goes up ONLY when a balance change makes the game easier or
+// harder: each rules version gets its own leaderboard, so scores from different rules are never mixed.
+const GAME_VERSION = "1.0.0", RULES_VERSION = 1;
 const W = 960, H = 560;
 const $ = id => document.getElementById(id);
 const cv = $("board"), ctx = cv.getContext("2d");
 const reduceMotion = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /* ---------- storage helpers ---------- */
+// Player-name cleaning and a basic profanity filter.
+// keep in sync with leaderboard/src/names.js (the server is the authority; this copy double-checks names on screen)
+
+const MAX_LEN = 16;
+
+// Turns whatever was typed into a safe display name, or "" if nothing usable is left.
+function cleanName(input) {
+  if (typeof input !== "string") return "";
+  let s = input.normalize("NFKC")
+    // drop control, format (zero-width, bidi overrides), private-use, unassigned and surrogate code points
+    .replace(/[\p{Cc}\p{Cf}\p{Co}\p{Cn}\p{Cs}]/gu, "")
+    // at most two combining marks per letter, so "zalgo" text can't smear over the board
+    .replace(/(\p{M}{2})\p{M}+/gu, "$1")
+    // only letters, marks, numbers, spaces and a little punctuation
+    .replace(/[^\p{L}\p{M}\p{N} '._!-]/gu, "")
+    .replace(/\s+/g, " ").trim();
+  s = Array.from(s).slice(0, MAX_LEN).join("").trim();
+  return /[\p{L}\p{N}]/u.test(s) ? s : "";
+}
+
+// Common look-alike swaps people use to sneak words past filters.
+const LEET = { "0": "o", "1": "i", "!": "i", "3": "e", "4": "a", "@": "a", "5": "s", "$": "s", "7": "t", "8": "b", "9": "g", "|": "i", "+": "t" };
+const fold = s => s.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase().replace(/[0-9!@$|+]/g, c => LEET[c] || c);
+
+// Words blocked anywhere inside a name (rarely part of innocent words).
+const ANYWHERE = ["fuck", "fuk", "fck", "shit", "cunt", "nigg", "nigga", "faggot", "fagot", "whore", "slut", "wank", "twat", "bitch", "biatch",
+  "retard", "kike", "chink", "spic", "tranny", "dyke", "nazi", "hitler", "rapist", "pedo", "paedo", "porn", "penis", "vagina", "dildo",
+  "cock", "pussy", "asshole", "arsehole", "bollock", "bastard", "jizz", "cum shot", "cumshot", "blowjob", "handjob", "motherf", "heil"];
+// Words blocked only as a whole word (they hide inside innocent words like "class", "title" or "grape").
+const WHOLE = ["ass", "arse", "tit", "tits", "cum", "fag", "rape", "raped", "sex", "nig", "coon", "homo", "piss", "prick", "spunk", "gay", "kkk"];
+const SAFE = ["cocktail", "peacock", "hancock", "babcock", "cockatoo", "cockatiel", "cockney", "cockerel", "cockpit", "shuttlecock", "scunthorpe", "spicy", "spice"];
+
+function isProfane(name) {
+  const f = fold(name);
+  const words = f.split(/[^a-z]+/).filter(Boolean);
+  if (words.some(w => WHOLE.includes(w) || WHOLE.includes(w.replace(/(.)\1+/g, "$1")))) return true;
+  let joined = f.replace(/[^a-z]/g, "");
+  for (const ok of SAFE) joined = joined.split(ok).join("");
+  const squeezed = joined.replace(/(.)\1+/g, "$1");
+  if (WHOLE.includes(joined) || WHOLE.includes(squeezed)) return true;   // e.g. "a s s"
+  // the squeezed form ("fuuuck" -> "fuck") is only compared with words that have no doubled letters themselves,
+  // otherwise "nigg" would squeeze to "nig" and match "knight"
+  return ANYWHERE.some(b => { const w = b.replace(/ /g, ""); return joined.includes(w) || (!/(.)\1/.test(w) && squeezed.includes(w)); });
+}
+// a name safe to show: cleaned, and blanked if it fails the filter
+const safeName = v => { const n = cleanName(v); return n && !isProfane(n) ? n : ""; };
+
 const ls = {
   get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
@@ -406,7 +459,7 @@ function suggestDragonName() {
   const free = DRAGON_NAMES.filter(n => !used.has(n));
   return (free.length ? free : DRAGON_NAMES)[Math.floor(Math.random() * (free.length || DRAGON_NAMES.length))];
 }
-const cleanName = v => String(v || "").replace(/\s+/g, " ").trim().slice(0, 14);
+const cleanDragonName = v => Array.from(safeName(v)).slice(0, 14).join("").trim();  // dragons get the same name filter
 const dragonLabel = t => t.name || "Your dragon";
 const TORDER = ["archer", "mage", "frost", "catapult", "dragon"];
 const SHORT = { archer: "Archer", mage: "Mage", frost: "Frost", catapult: "Catapult", dragon: "Dragon" };
@@ -541,14 +594,14 @@ let S = null, sel = null, hoverPt = null, speed = 1, paused = false, sound = tru
 let playerName = (ls.get("ek_name") || "").toString().slice(0, 16);
 let time = 0;
 function newRun() {
-  S = { level: 1, gold: 180, hp: 20, maxHp: 20, walls: 0, treasury: 0, dragon: false, fort: { archers: 0, moat: 0, masons: 0 },
+  S = { rv: RULES_VERSION, level: 1, gold: 180, hp: 20, maxHp: 20, walls: 0, treasury: 0, dragon: false, fort: { archers: 0, moat: 0, masons: 0 },
         towers: [], trees: freshTrees(), enemies: [], shots: [], fx: [], texts: [],
         phase: "build", queue: [], spawnT: 0, nextT: 6, income: 0, shake: 0, waveHp: 20, newBadges: [],
         stats: { kills: 0, gold: 0, bosses: 0, chopped: 0, built: 0, slowed: 0 } };
 }
 function makeSave() {
   return { v: 1, level: S.level, gold: Math.floor(S.gold), hp: S.hp, maxHp: S.maxHp, walls: S.walls, treasury: S.treasury, fort: S.fort,
-           dragon: S.dragon, cleared: TREES.filter(t => !S.trees.some(x => x.id === t.id && !x.fall)).map(t => t.id), towers: S.towers.map(t => [t.type, t.lvl, t.spent, Math.round(t.x), Math.round(t.y), Math.round(t.dmg || 0), t.kills || 0, t.slowed || 0, t.name || ""]), planted: S.trees.filter(t => t.planted != null && !t.fall).map(t => [t.x, t.y, t.planted, t.tone, Math.max(0, t.max - t.hp)]), stats: S.stats, perks: S.perks, dyn: S.dyn || 0, windUsed: !!S.windUsed, plan: S.plan, planL: S.planL, ev: S.ev || null, name: playerName, savedAt: Date.now() };
+           dragon: S.dragon, cleared: TREES.filter(t => !S.trees.some(x => x.id === t.id && !x.fall)).map(t => t.id), towers: S.towers.map(t => [t.type, t.lvl, t.spent, Math.round(t.x), Math.round(t.y), Math.round(t.dmg || 0), t.kills || 0, t.slowed || 0, t.name || ""]), planted: S.trees.filter(t => t.planted != null && !t.fall).map(t => [t.x, t.y, t.planted, t.tone, Math.max(0, t.max - t.hp)]), stats: S.stats, rv: S.rv, perks: S.perks, dyn: S.dyn || 0, windUsed: !!S.windUsed, plan: S.plan, planL: S.planL, ev: S.ev || null, name: playerName, savedAt: Date.now() };
 }
 function restore(sv) {
   newRun();
@@ -557,9 +610,10 @@ function restore(sv) {
     if (!t || !TOWERS[t[0]]) return;
     const [x, y] = t.length >= 5 ? [t[3], t[4]] : (SPOTS[i] || [-1, -1]);  // older saves used fixed circles
     if (x < 0) return;
-    S.towers.push({ type: t[0], lvl: t[1], spent: t[2], cd: 0, ang: 0, flash: 0, x, y, dmg: t[5] || 0, kills: t[6] || 0, slowed: t[7] || 0, name: t[0] === "dragon" ? (cleanName(t[8]) || suggestDragonName()) : undefined });
+    S.towers.push({ type: t[0], lvl: t[1], spent: t[2], cd: 0, ang: 0, flash: 0, x, y, dmg: t[5] || 0, kills: t[6] || 0, slowed: t[7] || 0, name: t[0] === "dragon" ? (cleanDragonName(t[8]) || suggestDragonName()) : undefined });
   });
   S.stats = { ...S.stats, ...(sv.stats || {}) };
+  S.rv = Number.isInteger(sv.rv) && sv.rv >= 1 && sv.rv <= 999 ? sv.rv : RULES_VERSION;  // a game keeps the rules it started under
   S.perks = normMeta({ perks: sv.perks }).perks; S.dyn = Math.max(0, Math.min(99, Math.floor(+sv.dyn || 0))); S.windUsed = !!sv.windUsed;
   if (Array.isArray(sv.plan) && sv.planL === sv.level && sv.plan.every(q => q && (q.k === "boss" || ENEMIES[q.k]))) { S.plan = sv.plan; S.planL = sv.planL; S.ev = sv.ev && EVENTS[sv.ev.id] && sv.ev.L === sv.level ? { id: sv.ev.id, L: sv.ev.L, choice: sv.ev.choice || null } : null; }
   const gone = new Set(sv.cleared || []);
@@ -1823,8 +1877,8 @@ function renderPanel() {
     const nf = el("div", "namefield"), lab = el("label", "", "Dragon's name"), r2 = el("div", "row2");
     const inp = document.createElement("input"); inp.id = "dragonName"; inp.maxLength = 14; inp.value = t.name || ""; inp.placeholder = "Name your dragon"; inp.autocomplete = "off";
     lab.htmlFor = "dragonName";
-    const commit = () => { const v = cleanName(inp.value); if (v && v !== t.name) { t.name = v; schedulePersist(); toast(`Your dragon is now called ${v}.`); } inp.value = t.name || ""; const h = p.querySelector("h3"); if (h) h.textContent = `${dragonLabel(t)} · ${dragonStage(t.lvl).name} · level ${t.lvl}`; };
-    inp.addEventListener("input", () => { const v = cleanName(inp.value); if (v) t.name = v; });
+    const commit = () => { const v = cleanDragonName(inp.value); if (v && v !== t.name) { t.name = v; schedulePersist(); toast(`Your dragon is now called ${v}.`); } inp.value = t.name || ""; const h = p.querySelector("h3"); if (h) h.textContent = `${dragonLabel(t)} · ${dragonStage(t.lvl).name} · level ${t.lvl}`; };
+    inp.addEventListener("input", () => { const v = cleanDragonName(inp.value); if (v) t.name = v; });
     inp.addEventListener("change", commit);
     inp.addEventListener("keydown", ev => { if (ev.key === "Enter") { inp.blur(); } });
     const dice = el("button", "", "Suggest"); dice.type = "button"; dice.title = "Suggest a name";
@@ -2055,12 +2109,17 @@ document.addEventListener("keydown", ev => {
 
 /* ---------- start / continue ---------- */
 let savedGame = ls.get("ek_save");
-function readName() { playerName = $("pname").value.trim().replace(/\s+/g, " ").slice(0, 16); ls.set("ek_name", playerName); }
+function readName() {
+  const typed = $("pname").value, n = cleanName(typed);
+  if (typed.trim() && n && isProfane(n)) { toast("That name isn't allowed on the leaderboard. Please pick another."); $("pname").value = ""; playerName = ""; }
+  else { playerName = n; $("pname").value = n; }
+  ls.set("ek_name", playerName);
+}
 function showStart() {
   $("startCard").hidden = false; $("overCard").hidden = true;
   $("pname").value = playerName;
   const c = $("btnContinue");
-  if (savedGame && savedGame.level) { c.hidden = false; c.textContent = `Continue from level ${savedGame.level}`; $("btnNew").classList.remove("primary"); }
+  if (savedGame && savedGame.level) { c.hidden = false; c.textContent = `Continue from level ${savedGame.level}` + (Number.isInteger(savedGame.rv) && savedGame.rv !== RULES_VERSION ? ` (rules v${savedGame.rv})` : ""); $("btnNew").classList.remove("primary"); }
   else { c.hidden = true; $("btnNew").classList.add("primary"); }
   const bb = $("btnHeirlooms"); bb.textContent = meta.picks ? `Choose ${meta.picks} heirloom${meta.picks === 1 ? "" : "s"}` : `Your heirlooms (${heirloomCount()})` + (meta.dynasty ? ` · House ${ROMAN(meta.dynasty)}` : "");
   bb.classList.toggle("glow", !!meta.picks);
@@ -2242,17 +2301,33 @@ function myEntry() {
   const src = cloudOn() ? ((myScoreDoc && myScoreDoc.players) || {}) : readLocalScores();
   return { k, src, cur: src[k] || null };
 }
-function readMyBest() { const { cur } = myEntry(); return (cur && cur.best) || 0; }
+function readMyBest() { const { cur } = myEntry(), rv = (S && S.rv) || RULES_VERSION; return (cur && cur.scores && cur.scores[rv] && cur.scores[rv].best) || 0; }
+// one board row per rules version a player has a score for (v 0 = scores from before versions existed)
+function entryRows(p, mine) {
+  if (!p || typeof p !== "object") return [];
+  const name = safeName(p.name) || "A keeper", badges = Array.isArray(p.badges) ? p.badges.slice(0, 20) : [], out = [];
+  const ok = n => Number.isInteger(n) && n > 0 && n <= 5000;
+  if (ok(p.best)) out.push({ name, best: p.best, at: +p.at || 0, mine, badges, v: 0 });
+  if (p.scores && typeof p.scores === "object") for (const key in p.scores) {
+    const v = Number(key), x = p.scores[key];
+    if (Number.isInteger(v) && v >= 1 && v <= 999 && x && ok(x.best)) out.push({ name, best: x.best, at: +x.at || 0, mine, badges, v });
+  }
+  return out;
+}
+let viewV = RULES_VERSION, apiVersions = [];
 function savePlayer(level, badge) {
-  const name = playerName || "Player", { k, src, cur } = myEntry();
-  const oldBest = (cur && cur.best) || 0, best = Math.max(oldBest, level || 0);
+  const name = playerName || "Player", { k, src, cur } = myEntry(), rv = (S && S.rv) || RULES_VERSION;
+  const sc = cur && cur.scores && typeof cur.scores === "object" ? cur.scores : {};
+  const oldBest = (sc[rv] && sc[rv].best) || 0, best = Math.max(oldBest, level || 0);
   const had = (cur && Array.isArray(cur.badges)) ? cur.badges : [];
   const badges = badge && !had.includes(badge) ? [...had, badge] : had;
   if (cur && best === oldBest && badges.length === had.length) return;
-  const entry = { name, best, at: best > oldBest || !cur ? Date.now() : (cur.at || Date.now()), badges };
+  const scores = best > 0 ? { ...sc, [rv]: { best, at: best > oldBest || !sc[rv] ? Date.now() : sc[rv].at } } : sc;
+  const entry = { ...(cur || {}), name, badges, scores };
   const players = { ...src, [k]: entry };
   if (cloudOn()) { myScoreDoc = { players }; enqueue(() => db.doc("scores/" + uid).set({ players })); renderAch(); }
   else { ls.set("ek_scores", players); renderBoard(); }
+  if (LB_URL && best > 0) submitScore(best, badges, rv);
 }
 const ACH = [
   { id: "lv10",       name: "Seasoned Defender",   desc: "Reach level 10" },
@@ -2307,9 +2382,18 @@ function renderAch() {
 function renderBoard() {
   const list = $("boardList"); list.textContent = "";
   let rows = [];
-  if (boardMode === "cloud" || boardMode === "slow") rows = boardRows.slice();
-  if (boardMode === "local" || !cloudWritable) { const loc = readLocalScores(); for (const k in loc) rows.push({ name: loc[k].name, best: loc[k].best, at: loc[k].at, mine: true, badges: loc[k].badges }); }
-  rows = rows.filter(r => r.best > 0);
+  if (boardMode === "cloud" || boardMode === "api" || (boardMode === "slow" && !LB_URL)) rows = boardRows.slice();
+  if ((boardMode === "slow" && LB_URL) || boardMode === "local" || !cloudWritable) { const loc = readLocalScores(); for (const k in loc) rows.push(...entryRows(loc[k], true)); }
+  // version picker: only shown once more than one rules version has scores
+  const vers = new Set([RULES_VERSION, ...rows.map(r => r.v), ...apiVersions]);
+  const pick = $("boardVer"), opts = [...vers].sort((a, b) => b - a);
+  pick.hidden = opts.length < 2;
+  if (pick.dataset.k !== opts.join(",")) {
+    pick.dataset.k = opts.join(","); pick.textContent = "";
+    opts.forEach(v => { const o = document.createElement("option"); o.value = String(v); o.textContent = v === 0 ? "Before versions" : v === RULES_VERSION ? `Rules v${v} (current)` : `Rules v${v}`; pick.append(o); });
+  }
+  pick.value = String(viewV);
+  rows = rows.filter(r => r.best > 0 && r.v === viewV);
   rows.sort((a, b) => b.best - a.best || a.at - b.at);
   const myK = nameKey(playerName);
   rows.slice(0, 15).forEach((r, i) => {
@@ -2324,12 +2408,59 @@ function renderBoard() {
   if (boardMode === "loading") note.textContent = "Loading scores…";
   else if (boardMode === "slow") note.textContent = "Can't reach the shared leaderboard yet. Scores will appear when it connects.";
   else if (boardMode === "local") note.textContent = rows.length ? "Scores are kept on this device." : "No scores yet. Clear a level to get on the board. Scores are kept on this device.";
+  else if (boardMode === "api") note.textContent = lbNote || (rows.length ? "The shared Hall of Heroes. Your best level is saved each time you clear one." : "No heroes yet. Clear a level to claim the top spot.");
   else if (!cloudWritable) note.textContent = "You can see the shared board, but your own scores are kept on this device.";
   else note.textContent = rows.length ? "Your best level is saved each time you clear one." : "No heroes yet. Clear a level to claim the top spot.";
   renderAch();
 }
+/* ---------- shared Hall of Heroes for the installed app (a small server; see leaderboard/) ---------- */
+const LB_URL = window.claude ? "" : (location.hostname === "localhost" && ls.get("ek_lb_dev")) || "https://endless-keep-leaderboard.REPLACE.workers.dev";
+let lbNote = "";
+function lbToken() {
+  let t = ls.get("ek_lbtoken");
+  if (typeof t !== "string" || !/^[a-f0-9]{32}$/.test(t)) { t = [...crypto.getRandomValues(new Uint8Array(16))].map(b => b.toString(16).padStart(2, "0")).join(""); ls.set("ek_lbtoken", t); }
+  return t;
+}
+async function apiInit() {
+  boardMode = "loading"; renderBoard();
+  try {
+    const r = await fetch(LB_URL + "/versions", { mode: "cors", credentials: "omit", referrerPolicy: "no-referrer" });
+    const d = r.ok ? await r.json() : null;
+    if (d && Array.isArray(d.versions)) apiVersions = d.versions.map(x => x && x.v).filter(v => Number.isInteger(v) && v >= 1 && v <= 999).slice(0, 50);
+  } catch {}
+  const ok = await fetchBoard();
+  if (!ok) { boardMode = "slow"; renderBoard(); setTimeout(apiInit, 30000); }
+}
+async function fetchBoard() {
+  try {
+    const want = viewV >= 1 ? viewV : RULES_VERSION;
+    const r = await fetch(LB_URL + "/scores?v=" + want, { mode: "cors", credentials: "omit", cache: "no-store", referrerPolicy: "no-referrer" });
+    if (!r.ok) return false;
+    const data = await r.json();
+    if (!data || !Array.isArray(data.scores)) return false;
+    const me = nameKey(playerName);
+    // trust nothing that comes back: re-check every field before it goes near the page
+    boardRows = data.scores.slice(0, 50).map(x => {
+      const name = safeName(x && x.name), best = x && x.best, at = x && x.at;
+      if (!name || !Number.isInteger(best) || best < 1 || best > 5000) return null;
+      return { name, best, at: Number.isFinite(at) ? at : 0, v: want, mine: nameKey(name) === me, badges: Array.isArray(x.badges) ? x.badges.filter(b => ACH.some(a => a.id === b)) : [] };
+    }).filter(Boolean);
+    boardMode = "api"; renderBoard(); return true;
+  } catch { return false; }
+}
+async function submitScore(level, badges, v = RULES_VERSION, retry = true) {
+  const name = cleanName(playerName) || "A keeper";
+  if (isProfane(name)) { lbNote = "Your name can't go on the shared board. Pick another on the start screen."; renderBoard(); return; }
+  try {
+    const r = await fetch(LB_URL + "/scores", { method: "POST", mode: "cors", credentials: "omit", referrerPolicy: "no-referrer", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: lbToken(), name, level, v, badges: badges.filter(b => ACH.some(a => a.id === b)) }) });
+    if (r.status === 422) { lbNote = "Your name can't go on the shared board. Pick another on the start screen."; renderBoard(); return; }
+    if (r.status === 429 && retry) { setTimeout(() => submitScore(level, badges, v, false), 6500); return; }
+    if (r.ok) { lbNote = ""; fetchBoard(); }
+  } catch { /* offline: the score is still kept on this device */ }
+}
 async function initCloud() {
-  if (!window.claude || typeof window.claude.use !== "function") { boardMode = "local"; renderBoard(); return; }
+  if (!window.claude || typeof window.claude.use !== "function") { if (LB_URL) return apiInit(); boardMode = "local"; renderBoard(); return; }
   let user = null;
   try { [db, user] = await Promise.all([window.claude.use("db"), window.claude.use("user")]); } catch { db = null; }
   try { uid = user ? await user.id() : null; } catch { uid = null; }
@@ -2344,7 +2475,7 @@ async function initCloud() {
       const data = doc.data() || {}, mine = doc.id === uid;
       if (mine) myScoreDoc = data;
       const pl = data.players && typeof data.players === "object" ? data.players : {};
-      for (const k in pl) { const p = pl[k]; if (p && typeof p.best === "number") boardRows.push({ name: String(p.name || "").slice(0, 18), best: p.best, at: +p.at || 0, mine, badges: Array.isArray(p.badges) ? p.badges.slice(0, 20) : [] }); }
+      for (const k in pl) boardRows.push(...entryRows(pl[k], mine));
     });
     renderBoard();
   }, () => { clearTimeout(timer); boardMode = "local"; renderBoard(); });
@@ -2671,6 +2802,8 @@ function renderDL() {
   }
 }
 $("btnVersus").addEventListener("click", openVersus);
+$("boardVer").addEventListener("change", ev => { viewV = Number(ev.target.value) || 0; if (boardMode === "api" && viewV >= 1) fetchBoard(); else renderBoard(); });
+$("verNote").textContent = `Version ${GAME_VERSION} · rules v${RULES_VERSION}. Each rules version has its own Hall of Heroes.`;
 $("btnAgain").addEventListener("click", () => { if (S && (S.vs || S.vsGuest)) { netClose(); $("overCard").querySelector("h2").textContent = "The keep has fallen"; newRun(); renderPalette(); } }, true);
 
 /* ---------- boot ---------- */
