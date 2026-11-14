@@ -1,0 +1,15 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "endless-keep-leaderboard",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-11-01",
+  "workers_dev": true,
+  "vars": {
+    // only these pages may submit scores (anyone may read the board)
+    "ALLOWED_ORIGINS": "https://adamworley.github.io,http://localhost:8420"
+  },
+  "d1_databases": [
+    { "binding": "DB", "database_name": "endless-keep-leaderboard", "database_id": "REPLACE_AFTER_CREATE" }
+  ],
+  "observability": { "enabled": true }
+}
