@@ -195,19 +195,19 @@ html.lock, html.lock body { overflow: hidden; overscroll-behavior: none; height:
   .wrap.full .stage { width: 100%; }
   .wrap.full .side { flex: 1; }
 }
-/* boons and export/import dialogs sit above everything, so they work at phone sizes too */
+/* heirlooms and export/import dialogs sit above everything, so they work at phone sizes too */
 .modal { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; background: rgba(8, 12, 10, .72); padding: 16px; }
 .modal .card { width: min(780px, 100%); max-height: calc(100dvh - 32px); }
-.boons { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-@media (max-width: 640px) { .boons { grid-template-columns: minmax(0, 1fr); } }
-.boon { display: grid; align-content: start; gap: 6px; text-align: left; padding: 14px; border: 2px solid var(--rc); font-weight: 400;
+.heirlooms { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 640px) { .heirlooms { grid-template-columns: minmax(0, 1fr); } }
+.heirloom { display: grid; align-content: start; gap: 6px; text-align: left; padding: 14px; border: 2px solid var(--rc); font-weight: 400;
         background: linear-gradient(180deg, color-mix(in srgb, var(--rc) 20%, var(--moss-2)), var(--moss-2) 70%); transition: transform .15s; }
-.boon:hover:not(:disabled) { transform: translateY(-3px); border-color: var(--rc); }
-.boon .rr { font-size: .72rem; text-transform: uppercase; letter-spacing: .1em; color: var(--rc); font-weight: 800; }
-.boon .bn { font-family: var(--font-display); font-size: 1.2rem; color: var(--parch); line-height: 1.15; }
-.boon .bd { font-size: .92rem; color: var(--parch); }
-.boon .bo { font-size: .78rem; color: var(--parch-dim); }
-.boon.legendary { box-shadow: 0 0 18px rgba(233, 185, 73, .35); }
+.heirloom:hover:not(:disabled) { transform: translateY(-3px); border-color: var(--rc); }
+.heirloom .rr { font-size: .72rem; text-transform: uppercase; letter-spacing: .1em; color: var(--rc); font-weight: 800; }
+.heirloom .bn { font-family: var(--font-display); font-size: 1.2rem; color: var(--parch); line-height: 1.15; }
+.heirloom .bd { font-size: .92rem; color: var(--parch); }
+.heirloom .bo { font-size: .78rem; color: var(--parch-dim); }
+.heirloom.legendary { box-shadow: 0 0 18px rgba(233, 185, 73, .35); }
 .perklist { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .perklist li { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; padding: 8px 10px; border-radius: 10px; background: var(--moss-2); border-left: 4px solid var(--rc); }
 .perklist b { color: var(--parch); }
@@ -265,7 +265,7 @@ button.glow { border-color: var(--gold); color: var(--gold); box-shadow: 0 0 12p
             <button id="btnNew" class="primary">New game</button>
           </div>
           <div class="row">
-            <button id="btnBoons">Boons</button>
+            <button id="btnHeirlooms">Heirlooms</button>
             <button id="btnTransfer">Export / import</button>
           </div>
           <p class="fine" id="saveNote">Your game saves after every level, so you can stop and come back.</p>
@@ -284,7 +284,7 @@ button.glow { border-color: var(--gold); color: var(--gold); box-shadow: 0 0 12p
         <div class="card">
           <h2>The keep has fallen</h2>
           <p class="big" id="overScore">You held for 0 levels.</p>
-          <p id="overBoons"></p>
+          <p id="overHeirlooms"></p>
           <p id="overNote"></p>
           <dl class="kv" id="overStats"></dl>
           <p id="overMvp"></p>
@@ -405,7 +405,7 @@ const upCost = t => Math.round(TOWERS[t.type].cost * 0.75 * Math.pow(1.55, t.lvl
 const tCost = k => Math.round(TOWERS[k].cost * (1 - .05 * perk("quarter")));
 const dragonAt = () => perk("egg") ? 5 : 10;
 
-/* ---------- boons: permanent upgrades chosen between games (meta progression) ---------- */
+/* ---------- heirlooms: permanent upgrades chosen between games (meta progression) ---------- */
 const RARITY = {
   common:    { name: "Common",    col: "#c9bf9f", w: 60 },
   rare:      { name: "Rare",      col: "#6fb6e0", w: 28 },
@@ -436,7 +436,7 @@ const PERKS = {
   wind:     { r: "legendary", name: "Second wind",  max: 1,  desc: () => "Once a game, when the castle would fall, it springs back to half its hearts." },
 };
 const TYPE_PERK = { archer: "arrows", mage: "arcane", catapult: "boulders", dragon: "embers" };
-// boons active in the current game (copied from your collection when a new game starts, and kept in its save)
+// heirlooms active in the current game (copied from your collection when a new game starts, and kept in its save)
 const perk = id => (id && S && S.perks && S.perks[id]) || 0;
 function normMeta(m) {
   m = m && typeof m === "object" ? m : {};
@@ -447,7 +447,7 @@ function normMeta(m) {
            runs: Math.max(0, Math.floor(+m.runs || 0)), offer, savedAt: +m.savedAt || 0 };
 }
 let meta = normMeta(ls.get("ek_meta"));
-const boonCount = () => Object.values(meta.perks).reduce((a, b) => a + b, 0);
+const heirloomCount = () => Object.values(meta.perks).reduce((a, b) => a + b, 0);
 
 const ENEMIES = {
   goblin: { name: "Goblins",          hp: 1,    spd: 52, armor: 0,   gold: 4,  from: 1,  r: 9,  col: "#7fb04a", dmg: 1, w: 5 },
@@ -1314,7 +1314,7 @@ function planFor() {
 }
 
 /* ---------- random events: some levels come with a twist, shown in "Up next" before they start ----------
-   They get more frequent, and more often bad, the more boons you bring into a game, to balance the upgrades. */
+   They get more frequent, and more often bad, the more heirlooms you bring into a game, to balance the upgrades. */
 const EVENTS = {
   fog:      { kind: "bad",    name: "Fog",              desc: () => "Thick fog: every tower has 20% less range this level." },
   swift:    { kind: "bad",    name: "Tailwind",         desc: () => "Monsters move 20% faster this level." },
@@ -1330,10 +1330,10 @@ const EVENTS = {
               desc: L => `A wizard offers to bless your towers for ${Math.round(35 * goldScale(L))} gold: +30% damage this level.`,
               pay: "Pay the wizard", refuse: "No thanks" },
 };
-const runBoons = () => Object.values(S.perks || {}).reduce((a, b) => a + b, 0);
+const runHeirlooms = () => Object.values(S.perks || {}).reduce((a, b) => a + b, 0);
 function rollEvent(L) {
   if (L < 4 || L % 10 === 0) return null;
-  const nb = runBoons();
+  const nb = runHeirlooms();
   if (Math.random() > Math.min(.6, .22 + .02 * nb)) return null;
   const w = { good: 3, choice: 3, bad: 2.5 + .35 * nb };
   const ids = Object.keys(EVENTS).filter(id => (EVENTS[id].from || 0) <= L);
@@ -1423,8 +1423,8 @@ function gameOver() {
   const earned = held >= 5 ? 1 + Math.floor(held / 10) : 0;
   if (earned) { meta.picks += earned; meta.luck = held; }
   meta.runs++; saveMeta();
-  $("overBoons").textContent = earned ? `You earned ${earned} boon${earned === 1 ? "" : "s"} to keep for future games.` : "Hold out to level 5 to earn a boon for future games.";
-  $("btnAgain").textContent = meta.picks ? `Choose your boon${meta.picks === 1 ? "" : "s"}` : "Play again";
+  $("overHeirlooms").textContent = earned ? `You earned ${earned} heirloom${earned === 1 ? "" : "s"} to keep for future games.` : "Hold out to level 5 to earn an heirloom for future games.";
+  $("btnAgain").textContent = meta.picks ? `Choose your heirloom${meta.picks === 1 ? "" : "s"}` : "Play again";
   $("overCard").hidden = false;
   clearSave();
   renderPanel(); updateHud();
@@ -1671,7 +1671,7 @@ function renderPanel() {
     const built = S.towers.length;
     p.append(el("p", "hint", built ? `${built} defender${built === 1 ? "" : "s"} on guard.` : "No defenders yet."));
     const act = Object.entries(S.perks || {});
-    if (act.length) p.append(el("p", "hint", "Boons this game: " + act.map(([id, n]) => PERKS[id].name + (n > 1 ? ` ×${n}` : "")).join(", ") + "."));
+    if (act.length) p.append(el("p", "hint", "Heirlooms this game: " + act.map(([id, n]) => PERKS[id].name + (n > 1 ? ` ×${n}` : "")).join(", ") + "."));
     return;
   }
   if (sel.kind === "castle") {
@@ -1995,7 +1995,7 @@ function showStart() {
   const c = $("btnContinue");
   if (savedGame && savedGame.level) { c.hidden = false; c.textContent = `Continue from level ${savedGame.level}`; $("btnNew").classList.remove("primary"); }
   else { c.hidden = true; $("btnNew").classList.add("primary"); }
-  const bb = $("btnBoons"); bb.textContent = meta.picks ? `Choose ${meta.picks} boon${meta.picks === 1 ? "" : "s"}` : `Your boons (${boonCount()})`;
+  const bb = $("btnHeirlooms"); bb.textContent = meta.picks ? `Choose ${meta.picks} heirloom${meta.picks === 1 ? "" : "s"}` : `Your heirlooms (${heirloomCount()})`;
   bb.classList.toggle("glow", !!meta.picks);
   renderPanel();
 }
@@ -2011,7 +2011,7 @@ function closeModal() {
   if (!$("startCard").hidden) showStart();
 }
 $("modal").addEventListener("click", ev => { if (ev.target === $("modal")) closeModal(); });
-// three different boons, weighted by rarity; deeper runs tilt the odds toward the rarer ones
+// three different heirlooms, weighted by rarity; deeper runs tilt the odds toward the rarer ones
 function rollOffer() {
   const L = meta.luck, w = { common: 60, rare: 28 + L * .15, epic: 10 + L * .12, legendary: 2 + L * .05 };
   let pool = Object.keys(PERKS).filter(id => (meta.perks[id] || 0) < PERKS[id].max);
@@ -2023,7 +2023,7 @@ function rollOffer() {
   }
   return out;
 }
-function boonCard(id, n, cls = "boon") {
+function heirloomCard(id, n, cls = "heirloom") {
   const P = PERKS[id], R = RARITY[P.r], b = el("button", `${cls} ${P.r}`); b.style.setProperty("--rc", R.col);
   b.append(el("span", "rr", R.name), el("span", "bn", P.name), el("span", "bd", P.desc(n + 1)), el("span", "bo", n ? `You have ${n} of ${P.max}` : P.max > 1 ? `Stacks up to ${P.max} times` : "One of a kind"));
   return b;
@@ -2033,10 +2033,10 @@ function openPicker() {
   if (!meta.offer) { meta.offer = rollOffer(); saveMeta(); }  // kept until chosen, so closing the dialog can't reroll it
   if (!meta.offer.length) { meta.picks = 0; meta.offer = null; saveMeta(); return openCollection(); }
   openModal(card => {
-    card.append(el("h2", "", "Choose a boon"), el("p", "", `It stays with you for every game from now on.${meta.picks > 1 ? ` ${meta.picks} choices left.` : ""}`));
-    const g = el("div", "boons");
+    card.append(el("h2", "", "Choose an heirloom"), el("p", "", `Handed down to every keeper who holds the castle after you.${meta.picks > 1 ? ` ${meta.picks} choices left.` : ""}`));
+    const g = el("div", "heirlooms");
     meta.offer.forEach(id => {
-      const b = boonCard(id, meta.perks[id] || 0);
+      const b = heirloomCard(id, meta.perks[id] || 0);
       b.addEventListener("click", () => {
         meta.perks[id] = Math.min(PERKS[id].max, (meta.perks[id] || 0) + 1); meta.picks--; meta.offer = null; saveMeta(); sfx("up");
         toast(`${PERKS[id].name} is yours.`);
@@ -2052,11 +2052,11 @@ function openPicker() {
 }
 function openCollection() {
   openModal(card => {
-    card.append(el("h2", "", "Your boons"));
+    card.append(el("h2", "", "Your heirlooms"));
     const ids = Object.keys(PERKS).filter(id => meta.perks[id]);
-    if (!ids.length) card.append(el("p", "", "No boons yet. Reach level 5 to earn your first, plus one more for every 10 levels you hold. Each one makes every future game a little easier."));
+    if (!ids.length) card.append(el("p", "", "No heirlooms yet. Reach level 5 to earn your first, plus one more for every 10 levels you hold. Each one makes every future game a little easier."));
     else {
-      card.append(el("p", "", "These apply to every new game you start."));
+      card.append(el("p", "", "Treasures handed down through the keep. They help in every new game you start."));
       const ul = el("ul", "perklist");
       const order = Object.keys(RARITY);
       ids.sort((a, b) => order.indexOf(PERKS[b].r) - order.indexOf(PERKS[a].r)).forEach(id => {
@@ -2070,7 +2070,7 @@ function openCollection() {
   });
 }
 
-/* ---------- export / import: move boons and your saved game between devices or between the app and the Claude page ---------- */
+/* ---------- export / import: move heirlooms and your saved game between devices or between the app and the Claude page ---------- */
 const b64e = str => btoa(String.fromCharCode(...new TextEncoder().encode(str)));
 const b64d = str => new TextDecoder().decode(Uint8Array.from(atob(str), c => c.charCodeAt(0)));
 function exportCode() {
@@ -2088,7 +2088,7 @@ function parseImport(text) {
 function openTransfer() {
   openModal(card => {
     card.append(el("h2", "", "Export / import"));
-    card.append(el("p", "", "Copy this code (or save it as a file) to carry your boons and saved game to another device, or between the installed app and the Claude page."));
+    card.append(el("p", "", "Copy this code (or save it as a file) to carry your heirlooms and saved game to another device, or between the installed app and the Claude page."));
     const out = document.createElement("textarea"); out.className = "code"; out.readOnly = true; out.value = exportCode(); out.setAttribute("aria-label", "Your export code");
     const r1 = el("div", "row"), copy = el("button", "primary", "Copy code"), dl = el("button", "", "Save as file");
     copy.addEventListener("click", async () => {
@@ -2104,7 +2104,7 @@ function openTransfer() {
     card.append(out, r1, el("h3", "", "Import"));
     const inp = document.createElement("textarea"); inp.className = "code"; inp.placeholder = "Paste a code that starts with EK1."; inp.setAttribute("aria-label", "Code to import");
     const file = document.createElement("input"); file.type = "file"; file.accept = ".ekeep,.txt,.json,text/plain"; file.hidden = true;
-    const note = el("p", "fine", "Importing replaces the boons and saved game on this device.");
+    const note = el("p", "fine", "Importing replaces the heirlooms and saved game on this device.");
     const r2 = el("div", "row"), pick = el("button", "", "Open a file"), go = el("button", "primary", "Import");
     pick.addEventListener("click", () => file.click());
     file.addEventListener("change", async () => { const f = file.files && file.files[0]; if (f) inp.value = (await f.text()).slice(0, 200000); });
@@ -2113,7 +2113,7 @@ function openTransfer() {
       if (!d) { note.textContent = "That code doesn't look right. Check it was copied in full."; return; }
       if (go.dataset.sure !== "1") {
         go.dataset.sure = "1"; go.textContent = "Yes, replace";
-        note.textContent = `This code has ${Object.values(d.meta.perks).reduce((a, b) => a + b, 0)} boon(s)${d.meta.picks ? ` and ${d.meta.picks} to choose` : ""}${d.save ? `, plus a game saved at level ${d.save.level}` : ""}. It will replace what's on this device.`;
+        note.textContent = `This code has ${Object.values(d.meta.perks).reduce((a, b) => a + b, 0)} heirloom(s)${d.meta.picks ? ` and ${d.meta.picks} to choose` : ""}${d.save ? `, plus a game saved at level ${d.save.level}` : ""}. It will replace what's on this device.`;
         return;
       }
       meta = d.meta; saveMeta();
@@ -2126,7 +2126,7 @@ function openTransfer() {
     const r3 = el("div", "row"), x = el("button", "", "Close"); x.addEventListener("click", closeModal); r3.append(x); card.append(r3);
   });
 }
-$("btnBoons").addEventListener("click", () => meta.picks ? openPicker() : openCollection());
+$("btnHeirlooms").addEventListener("click", () => meta.picks ? openPicker() : openCollection());
 $("btnTransfer").addEventListener("click", openTransfer);
 function saveMeta() {
   meta.savedAt = Date.now(); ls.set("ek_meta", meta);
@@ -2135,7 +2135,7 @@ function saveMeta() {
 function begin(sv) {
   audio(); readName();
   if (sv) restore(sv);
-  else {  // a fresh game: bring in every boon you own
+  else {  // a fresh game: bring in every heirloom you own
     newRun(); S.perks = { ...meta.perks };
     S.gold += 25 * perk("purse"); S.maxHp += 2 * perk("stones"); S.hp = S.maxHp;
     S.treasury = perk("mint"); S.fort.archers = perk("sentries"); S.fort.moat = perk("moat");
