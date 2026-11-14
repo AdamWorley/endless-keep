@@ -354,7 +354,7 @@ button.versus:hover:not(:disabled) { border-color: #c58bff; }
 "use strict";
 // GAME_VERSION changes with any update. RULES_VERSION goes up ONLY when a balance change makes the game easier or
 // harder: each rules version gets its own leaderboard, so scores from different rules are never mixed.
-const GAME_VERSION = "1.0.0", RULES_VERSION = 1;
+const GAME_VERSION = "1.1.0", RULES_VERSION = 2;   // v2: special dragon names give bonuses
 const W = 960, H = 560;
 const $ = id => document.getElementById(id);
 const cv = $("board"), ctx = cv.getContext("2d");
@@ -453,7 +453,27 @@ const DRAGON_STAGES = [
   { upto: 1e9, name: "Great wyrm",   s: 1.32, body: "#d4a017", wing: "#a8790c", belly: "#f6df8f", fire: ["rgba(255,230,120,.5)", "#ffe27a", "#ffffff"] },
 ];
 const dragonStage = lvl => DRAGON_STAGES.find(d => lvl <= d.upto);
-const DRAGON_NAMES = ["Ember", "Pip", "Saffron", "Cinder", "Bramble", "Marigold", "Puff", "Sparky", "Juniper", "Toast", "Wisp", "Clementine", "Smudge", "Biscuit", "Nutmeg", "Pebble", "Fennel", "Comet"];
+const DRAGON_NAMES = ["Ember", "Pip", "Saffron", "Bramble", "Marigold", "Puff", "Sparky", "Juniper", "Toast", "Wisp", "Clementine", "Smudge", "Biscuit", "Nutmeg", "Pebble", "Fennel", "Comet"];
+// some names are special: the dragon gets a little bonus (and sometimes a new look) to go with it
+const SECRET_DRAGONS = {
+  cinder:    { name: "Cinder",     msg: "Cinder's flames cling twice as long.",                          burn: 2 },
+  freya:     { name: "Freya",      msg: "Freya fights like a warrior queen: +10% damage.",               dmg: 1.1 },
+  sasha:     { name: "Sasha",      msg: "Sasha is lightning quick: breathes fire 15% faster.",           rate: 1.15 },
+  bean:      { name: "Bean",       msg: "Bean stays teeny forever, but anything Bean defeats drops 25% more gold.", gold: 1.25, tiny: true },
+  ninib:     { name: "Ninib",      msg: "Ninib has the sharpest eyes in the valley: +15% range.",        range: 1.15 },
+  nightfury: { name: "Night Fury", msg: "Scales as dark as midnight and purple fire: +10% damage, +25% at night.", dark: true },
+  baby:      { name: "Baby",       msg: "Baby will always be a baby. While Baby is on guard, the castle mends a heart after every level.", tiny: true, mend: 1 },
+};
+const secretKey = n => String(n || "").toLowerCase().replace(/[^a-z]/g, "");
+const dragonSecret = t => (t && t.type === "dragon" && SECRET_DRAGONS[secretKey(t.name)]) || null;
+function onDragonNamed(t) {
+  const sp = dragonSecret(t); if (!sp) return;
+  toast(`${sp.msg}`); sfx("up");
+  unlock("namesake");
+  const k = secretKey(t.name);
+  if (!meta.names.includes(k)) { meta.names.push(k); saveMeta(); }
+  if (Object.keys(SECRET_DRAGONS).every(id => meta.names.includes(id))) unlock("whisperer");
+}
 function suggestDragonName() {
   const used = new Set((S ? S.towers : []).map(t => t.name).filter(Boolean));
   const free = DRAGON_NAMES.filter(n => !used.has(n));
@@ -467,11 +487,12 @@ const SHORT = { archer: "Archer", mage: "Mage", frost: "Frost", catapult: "Catap
 const TREE_REACH = 75, TREE_BONUS = .05, TREE_MAX = 3;
 const lookoutTrees = t => (S && t.x != null) ? S.trees.filter(tr => !tr.fall && tr.max && Math.hypot(tr.x - t.x, tr.y - t.y) < TREE_REACH).slice(0, TREE_MAX) : [];
 function tStats(t) {
-  const d = TOWERS[t.type], n = t.lvl - 1;
+  const d = TOWERS[t.type], n = t.lvl - 1, sp = dragonSecret(t) || {};
+  const spDmg = (sp.dmg || 1) * (sp.dark ? (season && season.night ? 1.25 : 1.1) : 1);
   return {
-    dmg: d.dmg * Math.pow(1.5, n) * (1 + .06 * perk(TYPE_PERK[t.type]) + .1 * perk("crown") + .05 * dyn()) * (evOn("wizard") ? 1.3 : 1),
-    range: d.range * Math.min(1.6, 1 + 0.04 * n) * (1 + TREE_BONUS * lookoutTrees(t).length + .04 * perk("eagle")) * (evOn("fog") || vsOn("fog") ? .8 : 1),
-    rate: d.rate * Math.min(1.5, 1 + 0.03 * n) * (1 + .08 * perk("volley")),
+    dmg: d.dmg * Math.pow(1.5, n) * (1 + .06 * perk(TYPE_PERK[t.type]) + .1 * perk("crown") + .05 * dyn()) * (evOn("wizard") ? 1.3 : 1) * spDmg,
+    range: d.range * Math.min(1.6, 1 + 0.04 * n) * (1 + TREE_BONUS * lookoutTrees(t).length + .04 * perk("eagle")) * (evOn("fog") || vsOn("fog") ? .8 : 1) * (sp.range || 1),
+    rate: d.rate * Math.min(1.5, 1 + 0.03 * n) * (1 + .08 * perk("volley")) * (sp.rate || 1),
     slow: d.slow ? Math.min(0.8, d.slow + 0.02 * n + .03 * perk("chill")) : 0,
   };
 }
@@ -518,7 +539,7 @@ function normMeta(m) {
   for (const id in PERKS) { const n = Math.floor(+src[id] || 0); if (n > 0) perks[id] = Math.min(PERKS[id].max, n); }
   const offer = Array.isArray(m.offer) && m.offer.length && m.offer.every(id => PERKS[id]) ? m.offer.slice(0, 3) : null;
   return { v: 1, perks, picks: Math.max(0, Math.min(50, Math.floor(+m.picks || 0))), luck: Math.max(0, Math.floor(+m.luck || 0)),
-           runs: Math.max(0, Math.floor(+m.runs || 0)), offer, dynasty: Math.max(0, Math.min(99, Math.floor(+m.dynasty || 0))), savedAt: +m.savedAt || 0 };
+           runs: Math.max(0, Math.floor(+m.runs || 0)), offer, names: Array.isArray(m.names) ? [...new Set(m.names.filter(n => typeof n === "string" && SECRET_DRAGONS[n]))] : [], dynasty: Math.max(0, Math.min(99, Math.floor(+m.dynasty || 0))), savedAt: +m.savedAt || 0 };
 }
 let meta = normMeta(ls.get("ek_meta"));
 const heirloomCount = () => Object.values(meta.perks).reduce((a, b) => a + b, 0);
@@ -873,7 +894,8 @@ function canBuild(x, y) {
   return "";
 }
 
-function drawTowerShape(c, type, x, y, ang, flash, lvl) {
+const DARK_DRAGON = { body: "#24222e", wing: "#15141c", belly: "#3d3a4d", fire: ["rgba(150,90,255,.45)", "#9b6bff", "#e6d9ff"] };
+function drawTowerShape(c, type, x, y, ang, flash, lvl, name) {
   c.fillStyle = "rgba(0,0,0,.22)"; ell(c, x, y + 8, 24, 9);
   c.fillStyle = "#8d877a"; ell(c, x, y + 4, 22, 10);
   c.fillStyle = "#aaa395"; ell(c, x, y + 1, 19, 8);
@@ -922,8 +944,9 @@ function drawTowerShape(c, type, x, y, ang, flash, lvl) {
     case "dragon": {
       c.fillStyle = "#6d5134"; ell(c, x, y - 2, 20, 8);
       c.strokeStyle = "#8a6a44"; c.lineWidth = 1.5; for (let i = -2; i <= 2; i++) { c.beginPath(); c.moveTo(x - 18, y - 2 + i * 2); c.lineTo(x + 18, y - 4 - i * 2); c.stroke(); }
-      const ds = dragonStage(lvl);
-      c.save(); c.translate(x, y - 10); c.scale(face * ds.s, ds.s);
+      const sp = SECRET_DRAGONS[secretKey(name)] || {};
+      const ds = sp.dark ? { ...dragonStage(lvl), ...DARK_DRAGON } : dragonStage(lvl), sc = sp.tiny ? .7 : ds.s;
+      c.save(); c.translate(x, y - 10); c.scale(face * sc, sc);
       const flap = Math.sin(time * 5) * 6;
       c.fillStyle = ds.wing; tri(c, -2, -4, -16, -26 - flap, 8, -6);
       c.fillStyle = ds.body; ell(c, 0, 0, 13, 8);
@@ -1294,7 +1317,7 @@ function drawShot(s) {
       c.fillStyle = "#7d7a74"; ell(c, x, y, 5.5, 5.5);
       c.fillStyle = "#a19d95"; ell(c, x - 1.5, y - 1.5, 2.5, 2.5); break;
     case "fire": {
-      const fc = DRAGON_STAGES[s.stage || 0].fire;
+      const fc = s.dark ? DARK_DRAGON.fire : DRAGON_STAGES[s.stage || 0].fire;
       c.fillStyle = fc[0]; ell(c, x, y, 10, 10);
       c.fillStyle = fc[1]; ell(c, x, y, 6, 6);
       c.fillStyle = fc[2]; ell(c, x, y, 3, 3); break; }
@@ -1328,12 +1351,12 @@ function hurt(e, amt, magic, src) {
   const dmg = Math.min(e.hp, amt * (magic ? 1 : 1 - Math.min(.75, e.armor + (vsOn("armor") ? .25 : 0))));
   e.hp -= dmg;
   if (src) src.dmg = (src.dmg || 0) + dmg;
-  if (e.hp <= 1e-9) { if (src) src.kills = (src.kills || 0) + 1; kill(e); }
+  if (e.hp <= 1e-9) { if (src) src.kills = (src.kills || 0) + 1; kill(e, src); }
 }
 function earn(g) { S.gold += g; S.stats.gold += g; }
-function kill(e) {
+function kill(e, src) {
   e.dead = true;
-  const g = Math.max(1, Math.round(e.gold * goldScale(S.level) * (1 + .04 * perk("bounty") + .1 * perk("chest") + .05 * dyn()) * (evOn("goldrush") ? 2 : 1)));
+  const g = Math.max(1, Math.round(e.gold * goldScale(S.level) * (1 + .04 * perk("bounty") + .1 * perk("chest") + .05 * dyn()) * (evOn("goldrush") ? 2 : 1) * ((dragonSecret(src) || {}).gold || 1)));
   earn(g); S.stats.kills++;
   S.texts.push({ x: e.x, y: e.y - (e.fly ? 30 : 12), txt: "+" + g, life: 1, col: "#ffe08a" });
   for (let i = 0; i < (e.boss ? 30 : 8); i++) { const a = Math.random() * 6.28, sp = 30 + Math.random() * (e.boss ? 120 : 60); S.fx.push({ x: e.x, y: e.y - (e.fly ? 22 : 0), vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 20, life: .6, max: .6, col: e.boss ? "#ffd25e" : "rgba(240,235,220,.9)", r: e.boss ? 3.5 : 2.5, g: 60 }); }
@@ -1358,7 +1381,7 @@ function fire(t, e, st) {
   const oy = { archer: -36, mage: -66, frost: -40, catapult: -30, dragon: -24 }[t.type];
   const s = { kind, x, y: y + oy, tgt: e, tx: e.x, ty: e.fly ? e.y - 22 : e.y, spd: { arrow: 520, magic: 300, frost: 320, rock: 240, fire: 330 }[kind],
               dmg: st.dmg, magic: D.magic, splash: D.splash ? D.splash * (1 + (t.lvl - 1) * .02) : 0, air: D.air, slow: st.slow, burn: !!D.burn, vx: 0, vy: 0, trav: 0, d0: 1,
-              src: t, stage: t.type === "dragon" ? DRAGON_STAGES.indexOf(dragonStage(t.lvl)) : 0 };
+              src: t, stage: t.type === "dragon" ? DRAGON_STAGES.indexOf(dragonStage(t.lvl)) : 0, dark: !!(dragonSecret(t) || {}).dark, burnLen: 3 * ((dragonSecret(t) || {}).burn || 1) };
   if (kind === "rock") { s.y = y - 14; s.tgt = null; }
   s.d0 = Math.max(1, Math.hypot(s.tx - s.x, s.ty - s.y));
   if (kind === "rock") { // lead the target a little since rocks don't home
@@ -1386,7 +1409,7 @@ function affect(e, s) {
     if (e.slowT <= 0) { S.stats.slowed++; if (s.src) s.src.slowed = (s.src.slowed || 0) + 1; if (S.stats.slowed >= 1000) unlock("frosty"); }
     e.slowT = 1.6; e.slowA = Math.max(e.boss ? s.slow * .5 : s.slow, e.slowA);
   }
-  if (s.burn) { e.burnT = 3; e.burnDps = Math.max(e.burnDps, s.dmg * .35); e.burnSrc = s.src; }
+  if (s.burn) { e.burnT = s.burnLen || 3; e.burnDps = Math.max(e.burnDps, s.dmg * .35); e.burnSrc = s.src; }
   hurt(e, s.dmg, s.magic, s.src);
 }
 
@@ -1473,7 +1496,7 @@ function clearWave() {
   sfx("clear");
   const tpay = S.treasury ? treasPay(S.treasury, L) : 0;
   if (tpay) earn(tpay);
-  const mend = Math.min(S.maxHp - S.hp, S.fort.masons * 2 + perk("crown"));
+  const mend = Math.min(S.maxHp - S.hp, S.fort.masons * 2 + perk("crown") + S.towers.reduce((a, t) => a + ((dragonSecret(t) || {}).mend || 0), 0));
   if (mend > 0) { S.hp += mend; S.texts.push({ x: CASTLE.x + 50, y: CASTLE.y + 30, txt: "+" + mend + " ♥", life: 1.4, col: "#9fe08a" }); }
   let msg = `Level ${L} cleared! +${bonus + tpay} gold${tpay ? ` (${tpay} from the treasury)` : ""}`;
   if (L >= dragonAt() && !S.dragon) { S.dragon = true; msg = "A dragon egg has hatched! Dragon Roosts are now unlocked."; }
@@ -1618,7 +1641,7 @@ function render() {
   const items = [];
   if (S) {
     S.towers.forEach(t => items.push({ y: t.y, f: () => {
-      drawTowerShape(ctx, t.type, t.x, t.y, t.ang, t.flash, t.lvl);
+      drawTowerShape(ctx, t.type, t.x, t.y, t.ang, t.flash, t.lvl, t.name);
       if (t.type === "dragon" && t.name) {
         ctx.font = "700 11px 'Alegreya Sans', sans-serif"; ctx.textAlign = "center";
         ctx.lineWidth = 3; ctx.strokeStyle = "rgba(20,29,25,.75)"; ctx.strokeText(t.name, t.x, t.y + 24);
@@ -1871,13 +1894,15 @@ function renderPanel() {
   const d = TOWERS[t.type], st = tStats(t), nx = tStats({ type: t.type, lvl: t.lvl + 1, x: t.x, y: t.y });
   p.append(el("h3", "", t.type === "dragon" ? `${dragonLabel(t)} · ${dragonStage(t.lvl).name} · level ${t.lvl}` : `${d.name} · level ${t.lvl}`));
   { const bw = el("p", "best"); bw.append(el("b", "", "Best against: "), document.createTextNode(d.best)); p.append(bw); }
+  { const sp = dragonSecret(t); if (sp) { const sw = el("p", "best"); sw.append(el("b", "", "A special name! "), document.createTextNode(sp.msg)); p.append(sw); } }
   { const n = lookoutTrees(t).length;
     p.append(el("p", "hint", n ? `Tree lookout: +${n * 5}% range from ${n} nearby tree${n === 1 ? "" : "s"}${n < TREE_MAX ? ` (up to +${TREE_MAX * 5}%)` : " (the most it can get)"}.` : `No trees nearby. Each grown tree close to a tower gives it +5% range, up to +${TREE_MAX * 5}%.`)); }
   if (t.type === "dragon") {
     const nf = el("div", "namefield"), lab = el("label", "", "Dragon's name"), r2 = el("div", "row2");
     const inp = document.createElement("input"); inp.id = "dragonName"; inp.maxLength = 14; inp.value = t.name || ""; inp.placeholder = "Name your dragon"; inp.autocomplete = "off";
     lab.htmlFor = "dragonName";
-    const commit = () => { const v = cleanDragonName(inp.value); if (v && v !== t.name) { t.name = v; schedulePersist(); toast(`Your dragon is now called ${v}.`); } inp.value = t.name || ""; const h = p.querySelector("h3"); if (h) h.textContent = `${dragonLabel(t)} · ${dragonStage(t.lvl).name} · level ${t.lvl}`; };
+    const commit = () => { const v = cleanDragonName(inp.value); if (v && v !== t.name) { t.name = v; schedulePersist(); toast(`Your dragon is now called ${v}.`); }
+      if (dragonSecret(t) && t.spSeen !== secretKey(t.name)) { t.spSeen = secretKey(t.name); onDragonNamed(t); setTimeout(renderPanel, 0); } inp.value = t.name || ""; const h = p.querySelector("h3"); if (h) h.textContent = `${dragonLabel(t)} · ${dragonStage(t.lvl).name} · level ${t.lvl}`; };
     inp.addEventListener("input", () => { const v = cleanDragonName(inp.value); if (v) t.name = v; });
     inp.addEventListener("change", commit);
     inp.addEventListener("keydown", ev => { if (ev.key === "Enter") { inp.blur(); } });
@@ -2343,6 +2368,8 @@ const ACH = [
   { id: "rich",       name: "Dragon's Hoard",      desc: "Hold 5,000 gold at once" },
   { id: "architect",  name: "Master Builder",      desc: "Have 25 defenders at once" },
   { id: "frosty",     name: "Winter's Grip",       desc: "Slow 1,000 monsters in one game" },
+  { id: "namesake",   name: "What's in a Name",    desc: "Give a dragon a very special name" },
+  { id: "whisperer",  name: "Dragon Whisperer",    desc: "Find all seven special dragon names" },
 ];
 const badgeCache = {};
 function medal(g, text, col = "#2a1d05") {
@@ -2357,6 +2384,11 @@ function badgeImg(id) {
   if (id.startsWith("lv")) medal(g, id.slice(2));
   else if (boss) { g.fillStyle = "#3a2a3a"; ell(g, 26, 26, 25, 25); g.drawImage(enemyIcon(boss.key, boss), 0, 0); }
   else if (id === "untouched") medal(g, "\u2665", "#b8322a");
+  else if (id === "namesake" || id === "whisperer") {
+    g.fillStyle = id === "whisperer" ? "#3a2a4a" : "#2a3a32"; ell(g, 26, 26, 25, 25);
+    g.save(); g.translate(-6, 6); drawTowerShape(g, "dragon", 32, 40, 0, 0, id === "whisperer" ? 7 : 1, id === "whisperer" ? "Night Fury" : "Baby"); g.restore();
+    if (id === "whisperer") { g.fillStyle = "#e9b949"; for (let i = 0; i < 7; i++) { const a = -Math.PI / 2 + i * Math.PI * 2 / 7; ell(g, 26 + Math.cos(a) * 21, 26 + Math.sin(a) * 21, 2, 2); } }
+  }
   else if (id === "rich") { for (const [x, y] of [[18, 36], [34, 36], [26, 28], [26, 18]]) { g.fillStyle = "#a8790c"; ell(g, x, y + 2, 10, 5); g.fillStyle = "#f2c94c"; ell(g, x, y, 10, 5); } }
   else if (id === "lumberjack") { const keep = season; season = SEASONS[1]; drawTree(g, 26, 46, 1.3, 0); season = keep; g.strokeStyle = "#8a8f96"; g.lineWidth = 3; g.beginPath(); g.moveTo(36, 48); g.lineTo(46, 30); g.stroke(); g.fillStyle = "#c9ced4"; tri(g, 42, 28, 50, 31, 45, 37); }
   else { const type = { greatwyrm: "dragon", architect: "archer", frosty: "frost" }[id] || "archer"; g.drawImage(towerIcon(type, id === "greatwyrm" ? 10 : 1), -8, -12, 68, 68); }
