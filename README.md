@@ -1,8 +1,8 @@
 # Endless Keep
 
 A tower defence game where you hold a castle against endless waves of goblins, trolls and dragons. Build and upgrade
-towers, plant trees, fortify the keep, and see how far you get. Heirlooms carry over between games, and two players can
-face off online as the Keeper and the Dark Lord.
+towers, plant trees, fortify the keep, and see how far you get. Heirlooms carry over between games, a Bestiary
+records every monster you've met, and two players can face off online as the Keeper and the Dark Lord.
 
 **Play:** <https://adamworley.github.io/endless-keep/>. It installs to a phone or desktop home screen and works offline.
 

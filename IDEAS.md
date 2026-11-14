@@ -4,7 +4,7 @@ Ticked items are in the game. Rough order within each section is by value for ef
 
 ## Planning and information
 - [x] **Show exactly what's coming** — "Up next" lists the next level's real monsters with counts, plus the next boss and next new monster under "Later".
-- [ ] **Enemy cards** — tap a monster (or its chip in "Up next") to see health, armour, speed and what beats it ("Weak to: Mage").
+- [x] **Bestiary** — every monster and boss with health, speed, armour, gold, hearts lost, how many you've defeated, flavour and how to beat it. Unmet monsters are shadows. Open it from the start card, the Up next panel, or by tapping a monster's chip.
 - [ ] **End-of-level summary** — gold earned, castle hits, top tower, trees that grew.
 - [ ] **First-game coach** — 3–4 one-time tips at the right moment ("Bats incoming: catapults can't hit them").
 

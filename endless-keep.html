@@ -190,6 +190,29 @@ html.lock, html.lock body { overflow: hidden; overscroll-behavior: none; height:
 .heirloom .bn { font-family: var(--font-display); font-size: 1.2rem; color: var(--parch); line-height: 1.15; }
 .heirloom .bd { font-size: .92rem; color: var(--parch); }
 .heirloom .bo { font-size: .78rem; color: var(--parch-dim); }
+/* bestiary */
+.beasts { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 6px; }
+.beasts button { display: grid; justify-items: center; gap: 2px; padding: 6px 4px; font-weight: 700; font-size: .78rem; line-height: 1.15; }
+.beasts button canvas { width: 44px; height: 44px; }
+.beasts button.on { border-color: var(--gold); background: color-mix(in srgb, var(--gold) 14%, var(--moss-2)); }
+.beasts button.boss { color: #ffc1a8; }
+.beasts button.unknown { color: var(--parch-dim); }
+.beast { display: grid; grid-template-columns: 132px minmax(0, 1fr); gap: 4px 16px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--moss-2); }
+.beast > canvas { width: 132px; height: 132px; border-radius: 12px; background: radial-gradient(circle at 50% 60%, #33493c, var(--night) 72%); }
+.beast .bt { display: grid; gap: 6px; align-content: start; min-width: 0; }
+.beast h3 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 1.4rem; color: var(--parch); }
+.beast .tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.beast .tags span { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; font-weight: 800; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--parch-dim); }
+.beast .tags .boss { border-color: var(--ember); color: #ffb39c; } .beast .tags .fly { border-color: #6c8fb0; color: #b9d4ec; }
+.beast blockquote { margin: 0; font-style: italic; color: var(--parch); }
+.beast .kv { grid-column: 1 / -1; margin: 6px 0 0; }
+.beast .kv { grid-template-columns: minmax(8.5em, 1fr) minmax(0, max-content); }
+.beast .kv dd { margin: 0; text-align: right; }
+.beast .tips { grid-column: 1 / -1; margin: 4px 0 0; padding-left: 18px; display: grid; gap: 3px; font-size: .92rem; }
+@media (max-width: 520px) { .beast { grid-template-columns: 88px minmax(0, 1fr); } .beast > canvas { width: 88px; height: 88px; } }
+.chip.link { cursor: pointer; } .chip.link:hover, .chip.link:focus-visible { border-color: var(--gold); outline: none; }
+.panelhead { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.panelhead button { padding: 3px 10px; font-size: .8rem; }
 .heirloom.legendary { box-shadow: 0 0 18px rgba(233, 185, 73, .35); }
 .perklist { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .perklist li { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; padding: 8px 10px; border-radius: 10px; background: var(--moss-2); border-left: 4px solid var(--rc); }
@@ -270,6 +293,7 @@ button.versus:hover:not(:disabled) { border-color: #c58bff; }
           <div class="row">
             <button id="btnHeirlooms">Heirlooms</button>
             <button id="btnTransfer">Export / import</button>
+            <button id="btnBestiary">Bestiary</button>
           </div>
           <button id="btnVersus" class="versus">Two players online: Keeper vs Dark Lord</button>
           <p class="fine" id="saveNote">Your game saves after every level, so you can stop and come back.</p>
@@ -305,7 +329,7 @@ button.versus:hover:not(:disabled) { border-color: #c58bff; }
     <aside class="side">
       <section class="panel" id="selPanel" aria-live="polite"></section>
       <section class="panel" id="upPanel">
-        <h3 id="upTitle">Up next</h3>
+        <div class="panelhead"><h3 id="upTitle">Up next</h3><button id="btnBeasts" title="Every monster you've met">Bestiary</button></div>
         <div class="upnext" id="upNext"></div>
         <h4>Later</h4>
         <div class="upnext later" id="upLater"></div>
@@ -335,7 +359,7 @@ button.versus:hover:not(:disabled) { border-color: #c58bff; }
 "use strict";
 // GAME_VERSION changes with any update. RULES_VERSION goes up ONLY when a balance change makes the game easier or
 // harder: each rules version gets its own leaderboard, so scores from different rules are never mixed.
-const GAME_VERSION = "1.1.2", RULES_VERSION = 2;   // v2: special dragon names give bonuses
+const GAME_VERSION = "1.2.0", RULES_VERSION = 2;   // v2: special dragon names give bonuses
 const W = 960, H = 560;
 const $ = id => document.getElementById(id);
 const cv = $("board"), ctx = cv.getContext("2d");
@@ -514,13 +538,16 @@ const PERKS = {
 const TYPE_PERK = { archer: "arrows", mage: "arcane", catapult: "boulders", dragon: "embers" };
 // heirlooms active in the current game (copied from your collection when a new game starts, and kept in its save)
 const perk = id => (id && S && S.perks && S.perks[id]) || 0;
+// every monster and boss, for the bestiary's "met" and "defeated" records
+const BEAST_KEYS = ["goblin", "wolf", "orc", "bat", "wolfrider", "knight", "troll", "wyvern", "orcrider", "trollking", "bigdragon", "wyrm"];
+const beastRecord = (src, max) => { const o = {}; if (src && typeof src === "object") for (const k of BEAST_KEYS) { const n = Math.floor(+src[k] || 0); if (n > 0) o[k] = Math.min(max, n); } return o; };
 function normMeta(m) {
   m = m && typeof m === "object" ? m : {};
   const perks = {}, src = m.perks && typeof m.perks === "object" ? m.perks : {};
   for (const id in PERKS) { const n = Math.floor(+src[id] || 0); if (n > 0) perks[id] = Math.min(PERKS[id].max, n); }
   const offer = Array.isArray(m.offer) && m.offer.length && m.offer.every(id => PERKS[id]) ? m.offer.slice(0, 3) : null;
   return { v: 1, perks, picks: Math.max(0, Math.min(50, Math.floor(+m.picks || 0))), luck: Math.max(0, Math.floor(+m.luck || 0)),
-           runs: Math.max(0, Math.floor(+m.runs || 0)), offer, names: Array.isArray(m.names) ? [...new Set(m.names.filter(n => typeof n === "string" && SECRET_DRAGONS[n]))] : [], dynasty: Math.max(0, Math.min(99, Math.floor(+m.dynasty || 0))), savedAt: +m.savedAt || 0 };
+           runs: Math.max(0, Math.floor(+m.runs || 0)), offer, names: Array.isArray(m.names) ? [...new Set(m.names.filter(n => typeof n === "string" && SECRET_DRAGONS[n]))] : [], dynasty: Math.max(0, Math.min(99, Math.floor(+m.dynasty || 0))), seen: beastRecord(m.seen, 1), slain: beastRecord(m.slain, 1e9), savedAt: +m.savedAt || 0 };
 }
 let meta = normMeta(ls.get("ek_meta"));
 const heirloomCount = () => Object.values(meta.perks).reduce((a, b) => a + b, 0);
@@ -553,6 +580,33 @@ const BOSSES = [
   { key: "wyrm",      name: "Bone Wyrm",    hp: 32, spd: 20, armor: .45, gold: 250, r: 24, col: "#e6dfcc", dmg: 6 },
 ];
 const bossFor = L => BOSSES[(L / 10 - 1) % BOSSES.length];
+// the bestiary's words for each monster: a line of flavour and how to beat it
+const LORE = {
+  goblin:    { lore: "Small, green and endlessly confident. Goblins come in noisy mobs and fear nothing, mostly because they haven't noticed it yet.",
+               tip: "Anything kills them. Catapults clear a whole pack in one shot." },
+  wolf:      { lore: "Lean grey wolves that run the road faster than anything else on four legs. They don't bite hard, but they don't stop either.",
+               tip: "Archers fire fast enough to catch them. Frost slows them to a trot." },
+  orc:       { lore: "Broad, slow and wrapped in boiled hide. An orc walks up the road as if it already owns the castle and is only coming to collect.",
+               tip: "Catapult splash softens a column of them; Mages get through the hide." },
+  bat:       { lore: "Cave bats pour out of the hills in squeaking clouds and fly straight over the road, the walls and the catapult crews' heads.",
+               tip: "Archer Towers are the cheap answer. Keep a couple near the castle." },
+  wolfrider: { lore: "A goblin who has discovered wolves. Twice the speed, all of the attitude, and the wolf doesn't seem to mind.",
+               tip: "Slow them with Frost first, then let archers do the rest." },
+  knight:    { lore: "Soldiers from a war nobody remembers, still marching. Their rusted plate turns arrows and stones, but spells pass straight through.",
+               tip: "Bring magic. Mage Towers and Dragon Roosts ignore their armour entirely." },
+  troll:     { lore: "Huge, patient and very hard to hurt for long: a troll's cuts close up while you watch, and it hits the gate like a falling tree.",
+               tip: "Hit it hard and keep hitting. Frost holds it in range; dragon fire stops the healing from keeping up." },
+  wyvern:    { lore: "Lesser cousins of the dragons, scaled like armour and far too proud to walk. They glide in high and low, never by the road.",
+               tip: "Catapults can't touch them. Archers, Mages and your own dragon can." },
+  orcrider:  { lore: "Orc raiders ride hard and hit harder, charging past the outer towers before the archers have finished taking aim.",
+               tip: "Frost at the start of the road buys the time to deal with them." },
+  trollking: { lore: "The oldest troll under the mountain, crowned with whatever he crushed last. Every thirty levels he comes to see why his trolls haven't come home.",
+               tip: "A long fight. Stack Frost on the road and mix Catapults with Mages for his armour." },
+  bigdragon: { lore: "An ancient dragon who takes your little roost as a personal insult. She flies straight for the keep and burns anything that argues.",
+               tip: "She flies, so Catapults are no use. Bring every archer, mage and dragon you have." },
+  wyrm:      { lore: "A dragon's skeleton held together by old magic and older spite. Its bones shrug off arrows and boulders alike.",
+               tip: "Only magic really bites: Mages, Frost and dragon fire." },
+};
 // enemy health compounds 5% a level up to 60, then eases to 3.2% so the late game (80+) ramps instead of hitting a wall
 const hpScale = L => (1 + 0.12 * (L - 1)) * Math.pow(1.05, Math.min(L, 60) - 1) * Math.pow(1.032, Math.max(0, L - 60));
 const goldScale = L => 1 + 0.06 * (L - 1);
@@ -1320,6 +1374,7 @@ function spawn(item) {
   let d;
   if (item.k === "boss") { const b = bossFor(S.level); d = { ...b, boss: true }; d.k = b.key; }
   else { d = { ...ENEMIES[item.k], k: item.k }; }
+  if (!S.vsGuest && !meta.seen[d.k]) { meta.seen[d.k] = 1; beastDirty = true; }
   const L = S.level, base = 18;
   let path = ROAD;
   if (d.fly) { const sy = 60 + Math.random() * 440; path = mkPath([[-40, sy], [CASTLE.x + 20, 380 + (Math.random() - .5) * 60]]); }
@@ -1344,6 +1399,7 @@ function kill(e, src) {
   e.dead = true;
   const g = Math.max(1, Math.round(e.gold * goldScale(S.level) * (1 + .04 * perk("bounty") + .1 * perk("chest") + .05 * dyn()) * (evOn("goldrush") ? 2 : 1) * ((dragonSecret(src) || {}).gold || 1)));
   earn(g); S.stats.kills++;
+  if (BEAST_KEYS.includes(e.k)) { meta.slain[e.k] = (meta.slain[e.k] || 0) + 1; beastDirty = true; }
   S.texts.push({ x: e.x, y: e.y - (e.fly ? 30 : 12), txt: "+" + g, life: 1, col: "#ffe08a" });
   for (let i = 0; i < (e.boss ? 30 : 8); i++) { const a = Math.random() * 6.28, sp = 30 + Math.random() * (e.boss ? 120 : 60); S.fx.push({ x: e.x, y: e.y - (e.fly ? 22 : 0), vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 20, life: .6, max: .6, col: e.boss ? "#ffd25e" : "rgba(240,235,220,.9)", r: e.boss ? 3.5 : 2.5, g: 60 }); }
   sfx("coin");
@@ -1502,6 +1558,7 @@ function clearWave() {
   updateHud(); renderUpNext(); renderPanel();
 }
 function gameOver() {
+  saveBeasts();
   if (S.vs) return vsEnd("dark");
   S.phase = "over";
   const held = S.level - 1;
@@ -1925,12 +1982,21 @@ function refreshAfford() {
   updatePalette();
   document.querySelectorAll("#selPanel [data-cost], #upNext [data-cost]").forEach(b => { if (!b.dataset.full) b.disabled = S.gold < +b.dataset.cost; });
 }
-function enemyIcon(k, boss) {
+function enemyIcon(k, boss, px = 52, hidden = false) {
   const def = boss || ENEMIES[k], r = def.r;
-  const c = document.createElement("canvas"); c.width = 52; c.height = 52;
-  const g = c.getContext("2d"), ext = def.fly ? r * 2.5 : boss ? r * 2 : def.rider ? r * 1.7 : r * 1.55;
-  g.translate(26, 29); g.scale(24 / ext, 24 / ext);
+  const c = document.createElement("canvas"); c.width = px; c.height = px;
+  const g = c.getContext("2d"), ext = def.fly ? r * 2.5 : boss ? r * 2 : def.rider ? r * 1.7 : r * 1.55, u = px / 52;
+  g.translate(26 * u, 29 * u); g.scale(24 * u / ext, 24 * u / ext);
   enemyBody(g, { k: boss ? boss.key : k, r, col: def.col, t: .35, e: 1 });
+  if (hidden) { g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = "source-atop"; g.fillStyle = "#0b120f"; g.fillRect(0, 0, px, px); }
+  return c;
+}
+// Up next chips open the monster's bestiary page
+function beastChip(cls, k, boss, text) {
+  const c = chip(cls + " link", enemyIcon(k, boss), text);
+  c.tabIndex = 0; c.setAttribute("role", "button"); c.title = "Open in the bestiary";
+  c.addEventListener("click", () => openBestiary(k));
+  c.addEventListener("keydown", ev => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); openBestiary(k); } });
   return c;
 }
 function chip(cls, icon, text) {
@@ -1972,9 +2038,9 @@ function renderUpNext() {
     }
     box.append(bx);
   }
-  if (L % 10 === 0) { const b = bossFor(L); box.append(chip("boss", enemyIcon(b.key, b), "Boss: " + b.name + (b.fly ? " (flying)" : ""))); }
+  if (L % 10 === 0) { const b = bossFor(L); box.append(beastChip("boss", b.key, b, "Boss: " + b.name + (b.fly ? " (flying)" : ""))); }
   const counts = new Map(); plan.forEach(q => { if (q.k !== "boss") counts.set(q.k, (counts.get(q.k) || 0) + 1); });
-  [...counts].sort((a, b) => b[1] - a[1]).forEach(([k, n]) => box.append(chip(ENEMIES[k].fly ? "fly" : "", enemyIcon(k), `${n} × ${ENEMIES[k].name}` + (ENEMIES[k].fly ? " (flying)" : ""))));
+  [...counts].sort((a, b) => b[1] - a[1]).forEach(([k, n]) => box.append(beastChip(ENEMIES[k].fly ? "fly" : "", k, null, `${n} × ${ENEMIES[k].name}` + (ENEMIES[k].fly ? " (flying)" : ""))));
   const later = $("upLater"); later.textContent = "";
   const fresh = Object.keys(ENEMIES).find(k => ENEMIES[k].from > L);
   if (L % 10 !== 0) { const nb = Math.ceil(L / 10) * 10, b = bossFor(nb); later.append(chip("boss", enemyIcon(b.key, b), `${b.name} at level ${nb}`)); }
@@ -2149,6 +2215,78 @@ function closeModal() {
   if (!$("startCard").hidden) showStart();
 }
 $("modal").addEventListener("click", ev => { if (ev.target === $("modal")) closeModal(); });
+/* ---------- bestiary: every monster, with its numbers and how to beat it ----------
+   Monsters you haven't met yet are shadows until they turn up (or until you've held the keep past their first level). */
+const beastDef = k => ENEMIES[k] || BOSSES.find(b => b.key === k);
+const beastFirst = k => ENEMIES[k] ? ENEMIES[k].from : 10 * (BOSSES.findIndex(b => b.key === k) + 1);
+const beastMet = k => !!meta.seen[k] || meta.luck >= beastFirst(k) || (meta.slain[k] || 0) > 0;
+function openBestiary(pick) {
+  const inRun = S && $("startCard").hidden && S.phase !== "over";
+  // a solo game holds still while you read; a two-player game can't
+  const wasPaused = paused; if (inRun && !S.vs && !S.vsGuest) paused = true;
+  let cur = pick && BEAST_KEYS.includes(pick) ? pick : BEAST_KEYS.find(beastMet) || "goblin";
+  openModal(card => {
+    const met = BEAST_KEYS.filter(beastMet).length;
+    card.append(el("h2", "", "Bestiary"), el("p", "fine", `${met} of ${BEAST_KEYS.length} monsters met. Tap one to read about it.`));
+    const grid = el("div", "beasts"), page = el("div");
+    const show = k => {
+      cur = k; grid.querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.k === k));
+      page.textContent = ""; page.append(beastPage(k, inRun ? S.level : null));
+    };
+    BEAST_KEYS.forEach(k => {
+      const d = beastDef(k), boss = !ENEMIES[k], known = beastMet(k);
+      const b = el("button", (boss ? "boss" : "") + (known ? "" : " unknown"));
+      b.dataset.k = k; b.setAttribute("aria-label", known ? d.name : "Unknown monster");
+      b.append(enemyIcon(k, boss ? d : null, 88, !known), document.createTextNode(known ? d.name : "???"));
+      b.addEventListener("click", () => show(k));
+      grid.append(b);
+    });
+    const close = el("button", "primary", inRun && !S.vs && !S.vsGuest ? "Back to the keep" : "Close");
+    close.addEventListener("click", closeModal);
+    card.append(grid, page, el("div", "row")); card.lastChild.append(close);
+    show(cur);
+  }, () => { if (inRun) paused = wasPaused; });
+}
+function beastPage(k, atLevel) {
+  const d = beastDef(k), boss = !ENEMIES[k], first = beastFirst(k), known = beastMet(k), box = el("div", "beast");
+  box.append(enemyIcon(k, boss ? d : null, 264, !known));
+  const bt = el("div", "bt"); box.append(bt);
+  if (!known) {
+    bt.append(el("h3", "", "???"), el("p", "", boss ? `A boss nobody has lived to describe. It first comes at level ${first}.` : `Nothing has come down the road like it yet. It first marches at level ${first}.`));
+    return box;
+  }
+  const L = Math.max(atLevel || first, first), lore = LORE[k] || {};
+  const tags = el("div", "tags");
+  if (boss) tags.append(el("span", "boss", "Boss"));
+  tags.append(el("span", d.fly ? "fly" : "", d.fly ? "Flying" : "On foot"));
+  if (d.rider) tags.append(el("span", "", "Mounted"));
+  if (d.armor >= .3) tags.append(el("span", "", "Heavy armour"));
+  if (d.regen) tags.append(el("span", "", "Heals"));
+  bt.append(el("h3", "", d.name), tags, el("blockquote", "", lore.lore || ""));
+  // the same numbers spawn() uses (before random events, heirlooms and the little per-monster variation)
+  const hp = Math.round(18 * d.hp * hpScale(L)), spd = Math.round(d.spd * (1 + Math.min(.35, L * .004)));
+  const pace = spd >= 80 ? "very fast" : spd >= 60 ? "fast" : spd >= 42 ? "steady" : spd >= 30 ? "slow" : "very slow";
+  const kv = el("dl", "kv");
+  const row = (a, b) => kv.append(el("dt", "", a), el("dd", "", b));
+  row(`Health (level ${L})`, hp.toLocaleString());
+  row("Speed", `${spd} (${pace})`);
+  row("Armour", d.armor ? `${Math.round(d.armor * 100)}% vs arrows and stones` : "none");
+  if (d.regen) row("Healing", `${Math.round(d.regen * 100)}% of its health a second`);
+  row("Hearts lost at the gate", String(d.dmg));
+  row(`Gold per kill (level ${L})`, String(Math.max(1, Math.round(d.gold * goldScale(L)))));
+  row(boss ? "Comes at levels" : "First appears", boss ? `${first}, ${first + 30}, ${first + 60}…` : `level ${first}`);
+  row("You've defeated", (meta.slain[k] || 0).toLocaleString());
+  box.append(kv);
+  const tips = el("ul", "tips");
+  if (lore.tip) tips.append(el("li", "", lore.tip));
+  else if (d.fly) tips.append(el("li", "", "Flies over everything, so Catapults can't hit it."));
+  if (!lore.tip && d.armor >= .3) tips.append(el("li", "", "Magic (Mage Tower, Frost Spire, Dragon Roost) ignores armour."));
+  box.append(tips);
+  return box;
+}
+$("btnBestiary").addEventListener("click", () => openBestiary());
+$("btnBeasts").addEventListener("click", () => openBestiary());
+
 // three different heirlooms, weighted by rarity; deeper runs tilt the odds toward the rarer ones
 function rollOffer() {
   const L = meta.luck + 10 * meta.dynasty, w = { common: 60, rare: 28 + L * .15, epic: 10 + L * .12, legendary: 2 + L * .05 };
@@ -2563,7 +2701,10 @@ async function initCloud() {
 }
 let persistTimer = 0;
 function schedulePersist() { if (!S || S.vs || S.phase !== "build") return; clearTimeout(persistTimer); persistTimer = setTimeout(persist, 1500); }
+let beastDirty = false;
+const saveBeasts = () => { if (beastDirty) { beastDirty = false; saveMeta(); } };
 function persist() {
+  saveBeasts();
   if (!S || S.vs || S.phase === "over") return;
   clearTimeout(persistTimer);
   const sv = makeSave(); savedGame = sv; ls.set("ek_save", sv);
