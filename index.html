@@ -212,6 +212,9 @@ html.lock, html.lock body { overflow: hidden; overscroll-behavior: none; height:
 .perklist li { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; padding: 8px 10px; border-radius: 10px; background: var(--moss-2); border-left: 4px solid var(--rc); }
 .perklist b { color: var(--parch); }
 .perklist .n { color: var(--rc); font-weight: 800; justify-self: end; grid-column: 2; grid-row: 1; }
+.dynasty { display: grid; gap: 8px; padding: 12px; border-radius: 12px; border: 1px solid var(--gold-deep); background: rgba(233, 185, 73, .07); }
+.dynasty h3 { margin: 0; font-family: var(--font-display); font-weight: 400; color: var(--gold); }
+.dynasty p { font-size: .9rem; }
 .perklist span.d { grid-column: 1 / 3; font-size: .85rem; color: var(--parch-dim); }
 textarea.code { width: 100%; min-height: 96px; font: 12px/1.4 ui-monospace, Menlo, monospace; background: var(--night); color: var(--parch); border: 1px solid var(--line); border-radius: 10px; padding: 8px; word-break: break-all; resize: vertical; }
 button.glow { border-color: var(--gold); color: var(--gold); box-shadow: 0 0 12px rgba(233, 185, 73, .35); }
@@ -395,7 +398,7 @@ const lookoutTrees = t => (S && t.x != null) ? S.trees.filter(tr => !tr.fall && 
 function tStats(t) {
   const d = TOWERS[t.type], n = t.lvl - 1;
   return {
-    dmg: d.dmg * Math.pow(1.5, n) * (1 + .06 * perk(TYPE_PERK[t.type]) + .1 * perk("crown")) * (evOn("wizard") ? 1.3 : 1),
+    dmg: d.dmg * Math.pow(1.5, n) * (1 + .06 * perk(TYPE_PERK[t.type]) + .1 * perk("crown") + .05 * dyn()) * (evOn("wizard") ? 1.3 : 1),
     range: d.range * Math.min(1.6, 1 + 0.04 * n) * (1 + TREE_BONUS * lookoutTrees(t).length + .04 * perk("eagle")) * (evOn("fog") ? .8 : 1),
     rate: d.rate * Math.min(1.5, 1 + 0.03 * n) * (1 + .08 * perk("volley")),
     slow: d.slow ? Math.min(0.8, d.slow + 0.02 * n + .03 * perk("chill")) : 0,
@@ -444,10 +447,21 @@ function normMeta(m) {
   for (const id in PERKS) { const n = Math.floor(+src[id] || 0); if (n > 0) perks[id] = Math.min(PERKS[id].max, n); }
   const offer = Array.isArray(m.offer) && m.offer.length && m.offer.every(id => PERKS[id]) ? m.offer.slice(0, 3) : null;
   return { v: 1, perks, picks: Math.max(0, Math.min(50, Math.floor(+m.picks || 0))), luck: Math.max(0, Math.floor(+m.luck || 0)),
-           runs: Math.max(0, Math.floor(+m.runs || 0)), offer, savedAt: +m.savedAt || 0 };
+           runs: Math.max(0, Math.floor(+m.runs || 0)), offer, dynasty: Math.max(0, Math.min(99, Math.floor(+m.dynasty || 0))), savedAt: +m.savedAt || 0 };
 }
 let meta = normMeta(ls.get("ek_meta"));
 const heirloomCount = () => Object.values(meta.perks).reduce((a, b) => a + b, 0);
+/* ---------- prestige: found a new dynasty ----------
+   Give up every heirloom to raise your house's rank for good: +5% tower damage and gold per rank, and rarer heirlooms
+   turn up more often. Each rank needs more heirlooms than the last, and brings a few more random events. */
+const ROMAN = n => { let out = ""; for (const [v, r] of [[50, "L"], [40, "XL"], [10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]]) while (n >= v) { out += r; n -= v; } return out; };
+const dynastyNeed = (rank = meta.dynasty) => 15 + 5 * rank;
+const dyn = () => (S && S.dyn) || 0;
+function foundDynasty() {
+  if (heirloomCount() < dynastyNeed()) return;
+  meta.dynasty++; meta.perks = {}; meta.offer = null; saveMeta(); sfx("clear");
+  toast(`The House rises to rank ${ROMAN(meta.dynasty)}.`);
+}
 
 const ENEMIES = {
   goblin: { name: "Goblins",          hp: 1,    spd: 52, armor: 0,   gold: 4,  from: 1,  r: 9,  col: "#7fb04a", dmg: 1, w: 5 },
@@ -516,7 +530,7 @@ function newRun() {
 }
 function makeSave() {
   return { v: 1, level: S.level, gold: Math.floor(S.gold), hp: S.hp, maxHp: S.maxHp, walls: S.walls, treasury: S.treasury, fort: S.fort,
-           dragon: S.dragon, cleared: TREES.filter(t => !S.trees.some(x => x.id === t.id && !x.fall)).map(t => t.id), towers: S.towers.map(t => [t.type, t.lvl, t.spent, Math.round(t.x), Math.round(t.y), Math.round(t.dmg || 0), t.kills || 0, t.slowed || 0, t.name || ""]), planted: S.trees.filter(t => t.planted != null && !t.fall).map(t => [t.x, t.y, t.planted, t.tone, Math.max(0, t.max - t.hp)]), stats: S.stats, perks: S.perks, windUsed: !!S.windUsed, plan: S.plan, planL: S.planL, ev: S.ev || null, name: playerName, savedAt: Date.now() };
+           dragon: S.dragon, cleared: TREES.filter(t => !S.trees.some(x => x.id === t.id && !x.fall)).map(t => t.id), towers: S.towers.map(t => [t.type, t.lvl, t.spent, Math.round(t.x), Math.round(t.y), Math.round(t.dmg || 0), t.kills || 0, t.slowed || 0, t.name || ""]), planted: S.trees.filter(t => t.planted != null && !t.fall).map(t => [t.x, t.y, t.planted, t.tone, Math.max(0, t.max - t.hp)]), stats: S.stats, perks: S.perks, dyn: S.dyn || 0, windUsed: !!S.windUsed, plan: S.plan, planL: S.planL, ev: S.ev || null, name: playerName, savedAt: Date.now() };
 }
 function restore(sv) {
   newRun();
@@ -528,7 +542,7 @@ function restore(sv) {
     S.towers.push({ type: t[0], lvl: t[1], spent: t[2], cd: 0, ang: 0, flash: 0, x, y, dmg: t[5] || 0, kills: t[6] || 0, slowed: t[7] || 0, name: t[0] === "dragon" ? (cleanName(t[8]) || suggestDragonName()) : undefined });
   });
   S.stats = { ...S.stats, ...(sv.stats || {}) };
-  S.perks = normMeta({ perks: sv.perks }).perks; S.windUsed = !!sv.windUsed;
+  S.perks = normMeta({ perks: sv.perks }).perks; S.dyn = Math.max(0, Math.min(99, Math.floor(+sv.dyn || 0))); S.windUsed = !!sv.windUsed;
   if (Array.isArray(sv.plan) && sv.planL === sv.level && sv.plan.every(q => q && (q.k === "boss" || ENEMIES[q.k]))) { S.plan = sv.plan; S.planL = sv.planL; S.ev = sv.ev && EVENTS[sv.ev.id] && sv.ev.L === sv.level ? { id: sv.ev.id, L: sv.ev.L, choice: sv.ev.choice || null } : null; }
   const gone = new Set(sv.cleared || []);
   S.trees = S.trees.filter(tr => !gone.has(tr.id) && !S.towers.some(t => Math.hypot(t.x - tr.x, t.y - tr.y) < 34));
@@ -1247,7 +1261,7 @@ function hurt(e, amt, magic, src) {
 function earn(g) { S.gold += g; S.stats.gold += g; }
 function kill(e) {
   e.dead = true;
-  const g = Math.max(1, Math.round(e.gold * goldScale(S.level) * (1 + .04 * perk("bounty") + .1 * perk("chest")) * (evOn("goldrush") ? 2 : 1)));
+  const g = Math.max(1, Math.round(e.gold * goldScale(S.level) * (1 + .04 * perk("bounty") + .1 * perk("chest") + .05 * dyn()) * (evOn("goldrush") ? 2 : 1)));
   earn(g); S.stats.kills++;
   S.texts.push({ x: e.x, y: e.y - (e.fly ? 30 : 12), txt: "+" + g, life: 1, col: "#ffe08a" });
   for (let i = 0; i < (e.boss ? 30 : 8); i++) { const a = Math.random() * 6.28, sp = 30 + Math.random() * (e.boss ? 120 : 60); S.fx.push({ x: e.x, y: e.y - (e.fly ? 22 : 0), vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 20, life: .6, max: .6, col: e.boss ? "#ffd25e" : "rgba(240,235,220,.9)", r: e.boss ? 3.5 : 2.5, g: 60 }); }
@@ -1333,7 +1347,7 @@ const EVENTS = {
 const runHeirlooms = () => Object.values(S.perks || {}).reduce((a, b) => a + b, 0);
 function rollEvent(L) {
   if (L < 4 || L % 10 === 0) return null;
-  const nb = runHeirlooms();
+  const nb = runHeirlooms() + 3 * dyn();
   if (Math.random() > Math.min(.6, .22 + .02 * nb)) return null;
   const w = { good: 3, choice: 3, bad: 2.5 + .35 * nb };
   const ids = Object.keys(EVENTS).filter(id => (EVENTS[id].from || 0) <= L);
@@ -1376,7 +1390,7 @@ function startWave() {
   updateHud(); renderUpNext();
 }
 function clearWave() {
-  const L = S.level, bonus = Math.round((15 + 4 * L) * (1 + .1 * perk("chest")));
+  const L = S.level, bonus = Math.round((15 + 4 * L) * (1 + .1 * perk("chest") + .05 * dyn()));
   earn(bonus); S.phase = "build"; S.level++; S.nextT = 5;
   sfx("clear");
   const tpay = S.treasury ? treasPay(S.treasury, L) : 0;
@@ -1671,6 +1685,7 @@ function renderPanel() {
     const built = S.towers.length;
     p.append(el("p", "hint", built ? `${built} defender${built === 1 ? "" : "s"} on guard.` : "No defenders yet."));
     const act = Object.entries(S.perks || {});
+    if (dyn()) p.append(el("p", "hint", `House rank ${ROMAN(dyn())}: +${5 * dyn()}% tower damage and gold.`));
     if (act.length) p.append(el("p", "hint", "Heirlooms this game: " + act.map(([id, n]) => PERKS[id].name + (n > 1 ? ` ×${n}` : "")).join(", ") + "."));
     return;
   }
@@ -1995,7 +2010,7 @@ function showStart() {
   const c = $("btnContinue");
   if (savedGame && savedGame.level) { c.hidden = false; c.textContent = `Continue from level ${savedGame.level}`; $("btnNew").classList.remove("primary"); }
   else { c.hidden = true; $("btnNew").classList.add("primary"); }
-  const bb = $("btnHeirlooms"); bb.textContent = meta.picks ? `Choose ${meta.picks} heirloom${meta.picks === 1 ? "" : "s"}` : `Your heirlooms (${heirloomCount()})`;
+  const bb = $("btnHeirlooms"); bb.textContent = meta.picks ? `Choose ${meta.picks} heirloom${meta.picks === 1 ? "" : "s"}` : `Your heirlooms (${heirloomCount()})` + (meta.dynasty ? ` · House ${ROMAN(meta.dynasty)}` : "");
   bb.classList.toggle("glow", !!meta.picks);
   renderPanel();
 }
@@ -2013,7 +2028,7 @@ function closeModal() {
 $("modal").addEventListener("click", ev => { if (ev.target === $("modal")) closeModal(); });
 // three different heirlooms, weighted by rarity; deeper runs tilt the odds toward the rarer ones
 function rollOffer() {
-  const L = meta.luck, w = { common: 60, rare: 28 + L * .15, epic: 10 + L * .12, legendary: 2 + L * .05 };
+  const L = meta.luck + 10 * meta.dynasty, w = { common: 60, rare: 28 + L * .15, epic: 10 + L * .12, legendary: 2 + L * .05 };
   let pool = Object.keys(PERKS).filter(id => (meta.perks[id] || 0) < PERKS[id].max);
   const out = [];
   while (out.length < 3 && pool.length) {
@@ -2066,6 +2081,17 @@ function openCollection() {
       });
       card.append(ul);
     }
+    const dy = el("div", "dynasty"), have = heirloomCount(), need = dynastyNeed(), rank = meta.dynasty;
+    dy.append(el("h3", "", rank ? `House rank ${ROMAN(rank)}` : "Found a dynasty"),
+      el("p", "", (rank ? `Your house gives +${5 * rank}% tower damage and gold, and rarer heirlooms turn up more often. ` : "") +
+        `Hand the keep to a new house: you give up all your heirlooms, and your house rises to rank ${ROMAN(rank + 1)} for good (+${5 * (rank + 1)}% tower damage and gold, rarer heirlooms, but a few more random events).`));
+    const go = el("button", have >= need ? "primary" : "", have >= need ? `Found the House, rank ${ROMAN(rank + 1)}` : `Needs ${need} heirlooms (you have ${have})`);
+    go.disabled = have < need;
+    go.addEventListener("click", () => {
+      if (go.dataset.sure !== "1") { go.dataset.sure = "1"; go.textContent = `Yes, give up ${have} heirlooms`; return; }
+      foundDynasty(); openCollection();
+    });
+    dy.append(go); card.append(dy);
     const r = el("div", "row"), x = el("button", "primary", "Close"); x.addEventListener("click", closeModal); r.append(x); card.append(r);
   });
 }
@@ -2113,7 +2139,7 @@ function openTransfer() {
       if (!d) { note.textContent = "That code doesn't look right. Check it was copied in full."; return; }
       if (go.dataset.sure !== "1") {
         go.dataset.sure = "1"; go.textContent = "Yes, replace";
-        note.textContent = `This code has ${Object.values(d.meta.perks).reduce((a, b) => a + b, 0)} heirloom(s)${d.meta.picks ? ` and ${d.meta.picks} to choose` : ""}${d.save ? `, plus a game saved at level ${d.save.level}` : ""}. It will replace what's on this device.`;
+        note.textContent = `This code has ${Object.values(d.meta.perks).reduce((a, b) => a + b, 0)} heirloom(s)${d.meta.dynasty ? `, House rank ${ROMAN(d.meta.dynasty)}` : ""}${d.meta.picks ? ` and ${d.meta.picks} to choose` : ""}${d.save ? `, plus a game saved at level ${d.save.level}` : ""}. It will replace what's on this device.`;
         return;
       }
       meta = d.meta; saveMeta();
@@ -2136,7 +2162,7 @@ function begin(sv) {
   audio(); readName();
   if (sv) restore(sv);
   else {  // a fresh game: bring in every heirloom you own
-    newRun(); S.perks = { ...meta.perks };
+    newRun(); S.perks = { ...meta.perks }; S.dyn = meta.dynasty;
     S.gold += 25 * perk("purse"); S.maxHp += 2 * perk("stones"); S.hp = S.maxHp;
     S.treasury = perk("mint"); S.fort.archers = perk("sentries"); S.fort.moat = perk("moat");
   }
