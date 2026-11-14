@@ -22,7 +22,7 @@ Ticked items are in the game. Rough order within each section is by value for ef
 - [x] **Export / import** — a code or file with your heirlooms and saved game, to move between devices or between the app and the Claude page.
 - [x] **Tower roles (rules v3)** — archers fire fast but armour blunts arrows; mages pierce armour one target at a time; catapults are slow and heavy with a wide splash and a blind spot up close; monsters get tougher faster after level 50.
 - [x] **Jasmine the Witch (boss, level 40)** — flies on a broomstick and hexes the towers that hurt her (silenced for 2 seconds). Spreading damage across many towers beats her.
-- [x] **Castle archers match Archer Towers** — level n shoots like a level n + 2 Archer Tower (same heirlooms, same armour weakness) with 200 range, for 40% more gold.
+- [x] **Castle archers match Archer Towers** — level n shoots like a level n + 3 Archer Tower (same heirlooms, same armour weakness) with 300 range from the battlements, for the price of a level n + 2 one, since they only see what gets past your towers; Jasmine can't hex them.
 - [x] **Fairer trees** — a woodcutter clears a tree at once and pays you the firewood minus a fee (50%, less with Lumber rights); a Chop button and bigger touch targets make chopping by hand easy on phones.
 - [x] **Selling asks first** — Sell shows "Yes, sell" and "Keep it".
 - [x] **Random events** — some levels bring Fog, Tailwind, Scrap armour, Horde, Stampede, Thunderstorm, Gold rush, or a choice (Goblin toll, Wandering wizard). More heirlooms = more frequent and more often bad.

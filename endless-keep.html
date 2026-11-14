@@ -625,8 +625,8 @@ const BOSSES = [
   { key: "trollking", name: "Troll King",   hp: 26, spd: 22, armor: .25, gold: 150, r: 24, col: "#56707f", dmg: 6 },
   { key: "bigdragon", name: "Elder Dragon", hp: 21, spd: 26, armor: .2,  gold: 200, r: 26, col: "#b8402c", dmg: 6, fly: true },
   { key: "wyrm",      name: "Bone Wyrm",    hp: 32, spd: 20, armor: .45, gold: 250, r: 24, col: "#e6dfcc", dmg: 6 },
-  // flies on a broomstick and hexes whichever tower hurts her (it stops firing for 2 seconds), one tower every 1.2 seconds
-  { key: "jasmine",   name: "Jasmine the Witch", hp: 22, spd: 24, armor: .1, gold: 300, r: 24, col: "#4a3a63", dmg: 6, fly: true, hex: 1.2, named: true },
+  // flies on a broomstick and hexes whichever tower hurts her (it stops firing for 2 seconds), one tower every 1.5 seconds
+  { key: "jasmine",   name: "Jasmine the Witch", hp: 18, spd: 24, armor: .1, gold: 300, r: 24, col: "#4a3a63", dmg: 6, fly: true, hex: 1.5, named: true },
 ];
 const bossFor = L => BOSSES[(L / 10 - 1) % BOSSES.length];
 // the bestiary's words for each monster: a line of flavour and how to beat it
@@ -650,7 +650,7 @@ const LORE = {
   orcrider:  { lore: "Orc raiders ride hard and hit harder, charging past the outer towers before the archers have finished taking aim.",
                tip: "A Frost Spire at the start of the road buys time for your other towers." },
   jasmine:   { lore: "Queen of the witches of the Gloaming Wood. Jasmine burns the mill, curses the bridge and turns the miller into a newt, then flies off to tell everyone how cruelly the village treated her. In every version of the story she tells, she is the one who was wronged.",
-               tip: "She rides a broomstick, so Catapults can't touch her, and she hexes the towers that hurt her, silencing each for two seconds. Spread the damage across many Archer and Mage Towers so there's always another one left to blame." },
+               tip: "She rides a broomstick, so Catapults can't touch her, and she hexes the towers that hurt her, silencing each for two seconds. Spread the damage across many Archer and Mage Towers so there's always another one left to blame. Castle archers are beneath her notice: she never hexes them." },
   trollking: { lore: "The oldest troll under the mountain, crowned with whatever he crushed last. Every forty levels he comes to see why his trolls haven't come home.",
                tip: "A long fight. Line the road with Frost Spires, and lean on Mage Towers: his armour blunts arrows and boulders." },
   bigdragon: { lore: "An ancient dragon who takes your little roost as a personal insult. She flies straight for the keep and burns anything that argues.",
@@ -669,17 +669,18 @@ const treasCost = () => Math.round(100 * Math.pow(1.6, S.treasury));
 const treasPay = (n = S.treasury, L = S.level) => Math.round(n * 18 * goldScale(L));
 // fortifications bought at the castle
 const FORT = {
-  // castle archers level n shoot exactly like a level n + 2 Archer Tower (same heirloom bonuses, same armour weakness)
-  // with a longer 200 range and no build spot, and always cost 40% more than that tower would have
-  archers: { name: "Castle archers", max: 99, cost: n => Math.round(n ? 52.5 * Math.pow(1.55, n + 1) : 205),
-             desc: n => n ? `Level ${n}: shoot like a level ${n + 2} Archer Tower with longer range. ${Math.round(keepStats(n).dmg)} damage, ${keepStats(n).rate.toFixed(1)} shots/sec. Next: ${Math.round(keepStats(n + 1).dmg)} damage.`
-                          : "Archers on the battlements shoot anything near the castle, flying or not. They fire like a level 3 Archer Tower with longer range, and need no build spot." },
+  // castle archers level n shoot like a level n + 3 Archer Tower (same heirloom bonuses, same armour weakness) with a
+  // long 300 range from the battlements, but cost the same as a level n + 2 one: they only see monsters that got past
+  // every tower (plus every flier, which heads straight for the castle), so they need the extra punch. Jasmine can't hex them.
+  archers: { name: "Castle archers", max: 99, cost: n => Math.round(n ? 37.5 * Math.pow(1.55, n + 1) : 145),
+             desc: n => n ? `Level ${n}: shoot like a level ${n + 3} Archer Tower with long range. ${Math.round(keepStats(n).dmg)} damage, ${keepStats(n).rate.toFixed(1)} shots/sec. Next: ${Math.round(keepStats(n + 1).dmg)} damage.`
+                          : "Archers on the battlements shoot anything near the castle, flying or not. They fire like a level 4 Archer Tower with long range, need no build spot, and can't be hexed." },
   moat:    { name: "Moat",           max: 3,  cost: n => Math.round(150 * Math.pow(2, n)),
              desc: n => `Ground monsters wade through the water by the gate, slowed by ${n * 12}%${n < 3 ? ` (next: ${(n + 1) * 12}%)` : ""}.` },
   masons:  { name: "Masons",         max: 5,  cost: n => Math.round(120 * Math.pow(1.8, n)),
              desc: n => `Patch up ${n * 2} heart${n === 1 ? "" : "s"} for free after every level you clear${n < 5 ? ` (next: ${(n + 1) * 2})` : ""}.` },
 };
-const keepStats = n => ({ ...tStats({ type: "archer", lvl: n + 2 }), range: 200 * (evOn("fog") || vsOn("fog") ? .8 : 1) });
+const keepStats = n => ({ ...tStats({ type: "archer", lvl: n + 3 }), range: 300 * (evOn("fog") || vsOn("fog") ? .8 : 1) });
 const KEEP = { type: "archer", x: CASTLE.x + 62, y: CASTLE.y + 50, cd: 0, ang: 0, flash: 0, keep: true };
 
 function makeWave(L) {
