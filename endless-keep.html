@@ -2850,12 +2850,40 @@ function refreshAfford() {
   updatePalette();
   document.querySelectorAll("#selPanel [data-cost], #upNext [data-cost]").forEach(b => { if (!b.dataset.full) b.disabled = S.gold < +b.dataset.cost; });
 }
-function enemyIcon(k, boss, px = 52, hidden = false) {
-  const def = boss || ENEMIES[k], r = def.r;
+// how much room a monster's drawing really takes (clubs, wings, tails and seasonal hats included), measured once
+// per monster and season by drawing it large and finding the painted pixels
+const beastBox = {};
+function beastBounds(key, def) {
+  const id = key + "|" + seasonI;
+  if (beastBox[id] !== undefined) return beastBox[id];
+  let box = null;
+  try {
+    const n = 360, sc = n / (def.r * 10), c = document.createElement("canvas"); c.width = c.height = n;
+    const g = c.getContext("2d", { willReadFrequently: true }); g.translate(n / 2, n / 2); g.scale(sc, sc);
+    enemyBody(g, { k: key, r: def.r, col: def.col, t: .35, e: 1 });
+    const d = g.getImageData(0, 0, n, n).data; let x0 = n, y0 = n, x1 = -1, y1 = -1;
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (d[(y * n + x) * 4 + 3] > 16) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    if (x1 >= x0) {
+      // and how far it reaches from its middle, for round frames
+      const cx = (x0 + x1 + 1) / 2, cy = (y0 + y1 + 1) / 2; let r2 = 0;
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (d[(y * n + x) * 4 + 3] > 16) r2 = Math.max(r2, (x + .5 - cx) ** 2 + (y + .5 - cy) ** 2);
+      box = { x0: (x0 - n / 2) / sc, y0: (y0 - n / 2) / sc, x1: (x1 + 1 - n / 2) / sc, y1: (y1 + 1 - n / 2) / sc, rad: (Math.sqrt(r2) + 1) / sc };
+    }
+  } catch {}
+  return (beastBox[id] = box);
+}
+function enemyIcon(k, boss, px = 52, hidden = false, round = false) {
+  const def = boss || ENEMIES[k], r = def.r, key = boss ? boss.key : k;
   const c = document.createElement("canvas"); c.width = px; c.height = px;
-  const g = c.getContext("2d"), ext = def.fly ? r * 2.5 : boss ? r * 2 : def.rider ? r * 1.7 : r * 1.55, u = px / 52;
-  g.translate(26 * u, 29 * u); g.scale(24 * u / ext, 24 * u / ext);
-  enemyBody(g, { k: boss ? boss.key : k, r, col: def.col, t: .35, e: 1 });
+  const g = c.getContext("2d"), b = beastBounds(key, def);
+  if (b) {  // fit the whole drawing in the square (or the circle, for a round frame), with a small margin, centred
+    const s = round ? px * .43 / b.rad : px * .9 / Math.max(b.x1 - b.x0, b.y1 - b.y0);
+    g.translate(px / 2 - (b.x0 + b.x1) / 2 * s, px / 2 - (b.y0 + b.y1) / 2 * s); g.scale(s, s);
+  } else {
+    const ext = def.fly ? r * 2.5 : boss ? r * 2 : def.rider ? r * 1.7 : r * 1.55, u = px / 52;
+    g.translate(26 * u, 29 * u); g.scale(24 * u / ext, 24 * u / ext);
+  }
+  enemyBody(g, { k: key, r, col: def.col, t: .35, e: 1 });
   if (hidden) { g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = "source-atop"; g.fillStyle = "#0b120f"; g.fillRect(0, 0, px, px); }
   return c;
 }
@@ -3158,7 +3186,7 @@ function openBestiary(pick) {
 }
 function beastPage(k, atLevel) {
   const d = beastDef(k), boss = !ENEMIES[k], first = beastFirst(k), known = beastMet(k), box = el("div", "beast");
-  box.append(enemyIcon(k, boss ? d : null, 264, !known));
+  box.append(enemyIcon(k, boss ? d : null, 264, !known, true));
   const bt = el("div", "bt"); box.append(bt);
   if (!known) {
     bt.append(el("h3", "", "???"), el("p", "", boss ? `A boss nobody has lived to describe. It first appears at level ${first}.` : `Nothing like it has come for the keep yet. It first appears at level ${first}.`));
