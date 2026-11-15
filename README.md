@@ -4,7 +4,7 @@ A tower defence game where you hold a castle against endless waves of goblins, t
 towers, plant trees, fortify the keep, and see how far you get. Heirlooms carry over between games, a Bestiary
 records every monster you've met, and two players can face off online as the Keeper and the Dark Lord.
 
-**Play:** <https://endless-keep.pages.dev/>. It installs to a phone or desktop home screen and works offline.
+**Play:** <https://keep.watchtogether.uk/>. It installs to a phone or desktop home screen and works offline.
 
 ## What's in this repo
 
@@ -51,13 +51,13 @@ Pushing to `main` deploys everything:
    - Framework preset None, build command `npm run build`, build output directory `dist`.
    - Settings → Builds → Build watch paths: include `endless-keep.html`, `pwa/*`, `wrangler.jsonc`, `package*.json`
      so leaderboard-only changes don't redeploy the game (and set the leaderboard Worker's watch paths to `leaderboard/*`).
-2. **Turnstile → the Endless Keep widget → Hostnames**: add `endless-keep.pages.dev` (and the custom domain later),
+2. **Turnstile → the Endless Keep widget → Hostnames**: add `keep.watchtogether.uk` and `endless-keep.pages.dev`,
    or new runs can't get a leaderboard ticket.
 
 If Cloudflare gives the project a different `*.pages.dev` address (names are global), update it here, in
 `ALLOWED_ORIGINS` in `leaderboard/wrangler.jsonc` and in `endless-keep.html`.
 
-**Custom domain:** Pages project → Custom domains → add the hostname (a subdomain of a zone in this account gets its
+**Custom domain:** the game is on `keep.watchtogether.uk`. To add another: Pages project → Custom domains → add the hostname (a subdomain of a zone in this account gets its
 DNS record automatically). Then add that origin to `ALLOWED_ORIGINS` in `leaderboard/wrangler.jsonc` (both blocks) and
 to the Turnstile widget's hostnames. Players' saves are per-address, so they move with Export / import.
 

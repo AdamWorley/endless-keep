@@ -3383,7 +3383,7 @@ const netError = e => {
   const t = e && e.type;
   if (t === "peer-unavailable") return "No game with that code. Check it with the Keeper.";
   if (t === "browser-incompatible") return "This browser can't do online play.";
-  return "Couldn't reach the matchmaking server." + (window.claude ? " Online play may be blocked on the Claude page: try the installed app at endless-keep.pages.dev." : " Check your connection and try again.");
+  return "Couldn't reach the matchmaking server." + (window.claude ? " Online play may be blocked on the Claude page: try the installed app at keep.watchtogether.uk." : " Check your connection and try again.");
 };
 
 /* ----- lobby ----- */
