@@ -2230,7 +2230,13 @@ function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.
 function costBtn(label, cost, onClick, cls) {
   const b = el("button", cls || "", label); b.dataset.cost = cost; b.addEventListener("click", onClick); b.disabled = S.gold < cost; return b;
 }
+// while you're typing a dragon's name, game events (a level ending, a tree falling...) don't rebuild the panel
+// under your fingers: the rebuild waits until you leave the name box
+let panelStale = false, namingDragon = null;
 function renderPanel() {
+  const ae = document.activeElement;
+  if (ae && ae.id === "dragonName" && ae.isConnected && S && S.phase !== "over" && sel && sel.kind === "tower" && sel.t === namingDragon && S.towers.includes(namingDragon)) { panelStale = true; return; }
+  panelStale = false;
   const p = $("selPanel"); p.textContent = "";
   updatePalette();
   if (!S || S.phase === "over") { p.append(el("h3", "", "Your defences"), el("p", "hint", "Start a game to begin building.")); return; }
@@ -2352,7 +2358,8 @@ function renderPanel() {
       else t.name = saved;
       saved = t.name;
       if (dragonSecret(t) && t.spSeen !== secretKey(t.name)) { t.spSeen = secretKey(t.name); onDragonNamed(t); setTimeout(renderPanel, 0); } inp.value = t.name || ""; const h = p.querySelector("h3"); if (h) h.textContent = `${dragonLabel(t)} · ${dragonStage(t.lvl).name} · level ${t.lvl}`; };
-    let saved = t.name;
+    let saved = t.name; namingDragon = t;
+    inp.addEventListener("blur", () => setTimeout(() => { if (panelStale) renderPanel(); }, 0));
     inp.addEventListener("input", () => { const v = cleanDragonName(inp.value); if (v && !dragonNameTaken(v, t)) t.name = v; });
     inp.addEventListener("change", commit);
     inp.addEventListener("keydown", ev => { if (ev.key === "Enter") { inp.blur(); } });
