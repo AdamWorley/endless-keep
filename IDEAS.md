@@ -11,15 +11,20 @@ Ticked items are in the game. Rough order within each section is by value for ef
 ## Gameplay
 - [x] **Trees as lookouts** — each grown tree near a tower gives it +5% range, up to +15%. Saplings count once they grow.
 - [ ] **Late-game variety** — elite monsters (gold outline + one trait: shielded, regenerating, swift, splits on death) and a level modifier every 5 levels ("Fog: −20% range", "Stampede: riders only", "Bounty: double gold").
-- [ ] **More bosses** — only three exist, so they repeat every 30 levels.
+- [ ] **More bosses** — four exist (Jasmine the Witch joined at level 40), so they repeat every 40 levels.
 - [ ] **Tower specialisations at level 5** — pick one of two branches (Archer: Longbow or Volley; Catapult: Boulder stun or Fire pot burn).
 - [ ] **Riders dismount** — when the wolf dies the goblin/orc carries on, slower, on foot.
 - [ ] **Early start bonus** — a little gold for starting the next level before the countdown ends.
 - [ ] **Targeting modes** — First / Strongest / Closest / Flying first per tower.
 - [ ] **Daily challenge** — same seed for everyone each day, with its own Hall of Heroes.
 
-- [x] **Heirlooms (meta progression)** — earn picks by reaching level 5 and every 10 levels; choose 1 of 3 permanent heirlooms (Common / Rare / Epic / Legendary) that apply to every future game.
+- [x] **Heirlooms (meta progression)** — earn picks at levels 5, 15, 30, 50, 75… in one game (each gap 5 levels longer than the last; rules v3); choose 1 of 3 permanent heirlooms (Common / Rare / Epic / Legendary) that apply to every future game.
 - [x] **Export / import** — a code or file with your heirlooms and saved game, to move between devices or between the app and the Claude page.
+- [x] **Tower roles (rules v3)** — archers fire fast but armour blunts arrows; mages pierce armour one target at a time; catapults are slow and heavy with a wide splash and a blind spot up close; monsters get tougher faster after level 50.
+- [x] **Jasmine the Witch (boss, level 40)** — flies on a broomstick and hexes the towers that hurt her (silenced for 2 seconds). Spreading damage across many towers beats her.
+- [x] **Castle archers match Archer Towers** — level n shoots like a level n + 3 Archer Tower (same heirlooms, same armour weakness) with 300 range from the battlements, for the price of a level n + 2 one, since they only see what gets past your towers; Jasmine can't hex them.
+- [x] **Fairer trees** — a woodcutter clears a tree at once and pays you the firewood minus a fee (50%, less with Lumber rights); a Chop button and bigger touch targets make chopping by hand easy on phones.
+- [x] **Selling asks first** — Sell shows "Yes, sell" and "Keep it".
 - [x] **Random events** — some levels bring Fog, Tailwind, Scrap armour, Horde, Stampede, Thunderstorm, Gold rush, or a choice (Goblin toll, Wandering wizard). More heirlooms = more frequent and more often bad.
 - [x] **Dynasties (prestige)** — give up all heirlooms (15 + 5 per rank needed) to raise House rank for good: +5% tower damage and gold per rank, rarer heirloom offers, a few more events.
 - [ ] **Heirloom ideas to add later** — rerolls, a "banish" option, heirlooms that change rules (e.g. towers on the road edge, a second castle path).
@@ -35,7 +40,7 @@ Ticked items are in the game. Rough order within each section is by value for ef
 - [ ] **Separate boards for heirloom-free runs** — heirlooms and dynasty ranks make runs easier; a "pure" board could keep those apart.
 
 ## Feel and UI
-- [ ] **Clearer castle hits** — red flash at the gate and a short vibration on phones; easy to miss at 3× speed.
+- [x] **Clearer castle hits** — the gate flashes, the Castle counter jolts and turns to "Low!" below a third, heavy blows redden the board's edges, phones buzz (Buzz toggle), and the Dark Lord sees "Your army got through!". Hits close together build into one cue.
 - [ ] **Undo during build** — full refund for a tower placed this build phase.
 - [ ] **Install button in the PWA build** — catch the browser's install prompt and offer it on the start card.
 

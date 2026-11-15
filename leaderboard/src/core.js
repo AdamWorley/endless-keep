@@ -14,7 +14,8 @@
 // ticket is signed with a key derived from HASH_SALT, so it can't be forged, and it's tied to one player and version.
 import { cleanName, isProfane } from "./names.js";
 
-const BADGES = new Set(["lv10", "lv25", "lv50", "lv100", "trollking", "bigdragon", "wyrm", "untouched", "greatwyrm", "lumberjack", "rich", "architect", "frosty", "namesake", "whisperer"]);
+const BADGES = new Set(["lv10", "lv25", "lv50", "lv100", "trollking", "bigdragon", "wyrm", "jasmine", "untouched", "greatwyrm", "lumberjack", "rich", "architect", "frosty", "namesake", "whisperer",
+  "laststand", "allfive", "toplevel", "fortress", "greenthumb", "eventful", "scholar", "slayer"]);
 const MAX_LEVEL = 5000;
 const MAX_VERSION = 999;
 const isVer = v => Number.isInteger(v) && v >= 1 && v <= MAX_VERSION;

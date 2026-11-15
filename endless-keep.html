@@ -16,6 +16,18 @@
   --ember: #e2683e;
   --frost: #94d6ea;
   --leaf: #8cc06a;
+  --gold-bright: #f3c95e;
+  --gold-ink: #2a1d05;
+  --ember-glow: #ffc1a8;
+  --rose: #f08a7a;
+  --leaf-on: #3c5444;
+  --leaf-on-ink: #e4f5d6;
+  --meadow: #5e9444;
+  --wing: #6c8fb0;
+  --violet: #c58bff;
+  --violet-edge: #7a4a9a;
+  --violet-night: #2c2338;
+  --violet-ink: #e3d2ff;
   --font-display: "Uncial Antiqua", "Palatino Linotype", Georgia, serif;
   --font-body: "Alegreya Sans", "Trebuchet MS", system-ui, sans-serif;
   color-scheme: dark;
@@ -34,6 +46,11 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 * { box-sizing: border-box; }
+[hidden]:not([hidden=until-found i]) { display: none !important; }
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+::placeholder { color: color-mix(in srgb, var(--parch-dim) 80%, var(--night)); opacity: 1; }
+p, .ds, .bo, .bd { text-wrap: pretty; }
+::selection { background: color-mix(in srgb, var(--gold) 40%, transparent); color: var(--parch); }
 .wrap { max-width: 1320px; margin: 0 auto; display: grid; gap: 12px; }
 header.top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
 header.top h1 { font-family: var(--font-display); font-weight: 400; font-size: 1.7rem; margin: 0; color: var(--gold); letter-spacing: .02em; line-height: 1; }
@@ -43,36 +60,59 @@ header.top h1 { font-family: var(--font-display); font-weight: 400; font-size: 1
 #hLevel { min-width: 2ch; } #hGold { min-width: 5.5ch; } #hHearts { min-width: 4.5ch; }
 .stat span { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--parch-dim); }
 .stat.gold b { color: var(--gold); }
-.stat.hearts b { color: #f08a7a; }
+.stat.hearts b { color: var(--rose); }
+/* castle hits: the counter jolts on every hit and stays on alert while the walls are low */
+.stat.hearts { transition: background-color .6s cubic-bezier(.16, 1, .3, 1), border-color .6s cubic-bezier(.16, 1, .3, 1); }
+.stat.hearts .lbl { display: grid; } .stat.hearts .lbl > span { grid-area: 1 / 1; }
+.stat.hearts .lbl .lo { visibility: hidden; color: #ffd0c4; font-weight: 800; }
+.stat.hearts.low { background: #4a2620; border-color: var(--ember); }
+.stat.hearts.low .lbl .ok { visibility: hidden; } .stat.hearts.low .lbl .lo { visibility: visible; }
+.stat.hearts.low b { color: #ffd0c4; }
+.stat.hearts.hit { animation: heartsHit .5s cubic-bezier(.16, 1, .3, 1); }
+.stat.hearts.hit.heavy { animation: heartsHeavy .8s cubic-bezier(.16, 1, .3, 1); }
+@keyframes heartsHit { from { transform: scale(1.1); background-color: #7a2c20; border-color: #ff9a86; box-shadow: 0 3px 12px rgba(226, 104, 62, .5); } }
+@keyframes heartsHeavy { from { transform: scale(1.18) rotate(-2deg); background-color: #9a2a1c; border-color: #ffc2b4; box-shadow: 0 4px 18px rgba(226, 80, 50, .65); } 30% { transform: scale(1.06) rotate(1.5deg); } }
+@media (prefers-reduced-motion: reduce) {
+  @keyframes heartsHit { from { background-color: #7a2c20; border-color: #ff9a86; } }
+  @keyframes heartsHeavy { from { background-color: #9a2a1c; border-color: #ffc2b4; } }
+}
 /* fixed-size button grid: labels change ("Sound: off", "Level 12 under way") but no button ever moves or resizes */
 .controls { display: grid; width: 100%; grid-template-columns: minmax(0, 1.8fr) repeat(6, minmax(0, 1fr)); gap: 6px; }
 .controls button { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; padding-inline: 6px; }
-.hud { flex: 1 0 auto; }
+.hud { flex: 1 1 auto; }
 @media (max-width: 820px) {
   .controls { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   #btnWave { grid-column: span 2; }
 }
+/* phones that can vibrate get an eighth button; these grids keep the bar at the same number of rows */
+#btnBuzz { display: none; } .controls.buzz #btnBuzz { display: block; } .dl #btnBuzz { display: none !important; }
+.controls.buzz { grid-template-columns: minmax(0, 1.8fr) repeat(7, minmax(0, 1fr)); }
+@media (max-width: 820px) {
+  .controls.buzz { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .controls.buzz #btnWave { grid-column: span 3; }
+}
 button { font: inherit; cursor: pointer; border-radius: 10px; border: 1px solid var(--line); background: var(--moss-2); color: var(--parch); padding: 7px 12px; font-weight: 700; touch-action: manipulation; }
 button:hover:not(:disabled) { border-color: var(--parch-dim); }
-button:focus-visible, input:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 button:disabled { opacity: .45; cursor: not-allowed; }
-button.primary { background: var(--gold); color: #2a1d05; border-color: var(--gold-deep); }
-button.primary:hover:not(:disabled) { background: #f3c95e; border-color: var(--gold-deep); }
-button.on { background: #3c5444; border-color: var(--leaf); color: #e4f5d6; }
+button.primary { background: var(--gold); color: var(--gold-ink); border-color: var(--gold-deep); }
+button.primary:hover:not(:disabled) { background: var(--gold-bright); border-color: var(--gold-deep); }
+button.on { background: var(--leaf-on); border-color: var(--leaf); color: var(--leaf-on-ink); }
 .layout { display: grid; grid-template-columns: minmax(0, 1fr) 310px; gap: 12px; align-items: start; }
 @media (max-width: 900px) { .layout { grid-template-columns: minmax(0, 1fr); } }
-.stage { position: relative; width: 100%; aspect-ratio: 960 / 560; max-width: 100%; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: #5e9444; box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+.stage { position: relative; width: 100%; aspect-ratio: 960 / 560; max-width: 100%; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: var(--meadow); box-shadow: 0 10px 30px rgba(0,0,0,.35); }
 canvas#board { display: block; width: 100%; height: 100%; touch-action: manipulation; }
+canvas#board:focus-visible { outline-offset: -3px; }
 .overlay { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(12, 18, 15, .55); padding: 12px; }
 .card { background: var(--moss); border: 1px solid var(--line); border-radius: 14px; padding: 20px 22px; width: min(440px, 100%); display: grid; gap: 12px; box-shadow: 0 12px 40px rgba(0,0,0,.45); max-height: 100%; overflow: auto; }
 .card h2 { font-family: var(--font-display); font-weight: 400; color: var(--gold); margin: 0; font-size: 1.9rem; line-height: 1.1; text-wrap: balance; }
 .card p { margin: 0; color: var(--parch-dim); }
 .card .big { font-size: 1.25rem; color: var(--parch); }
-.card label { font-size: .78rem; text-transform: uppercase; letter-spacing: .08em; color: var(--parch-dim); }
+.card label { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--parch-dim); }
 .card input { font: inherit; font-size: 1.05rem; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--night); color: var(--parch); width: 100%; }
 .row { display: flex; flex-wrap: wrap; gap: 8px; }
 .row button { flex: 1 1 140px; padding: 10px 14px; }
-.fine { font-size: .85rem; }
+.fine { font-size: .82rem; }
 .toast { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); background: rgba(20, 29, 25, .92); border: 1px solid var(--gold-deep); color: var(--parch); padding: 8px 16px; border-radius: 999px; font-weight: 700; font-size: .95rem; white-space: nowrap; max-width: calc(100% - 24px); overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
 .side { display: grid; gap: 12px; min-width: 0; }
 @media (max-width: 900px) and (min-width: 620px) { .side { grid-template-columns: 1fr 1fr; } }
@@ -85,9 +125,11 @@ canvas#board { display: block; width: 100%; height: 100%; touch-action: manipula
 .opt .ds { font-size: .82rem; color: var(--parch-dim); grid-column: 2 / 4; }
 .opt.noico { grid-template-columns: 1fr auto; }
 .opt.noico .ds { grid-column: 1 / 3; }
-.panel h4 { margin: 2px 0 -4px; font-size: .74rem; text-transform: uppercase; letter-spacing: .08em; color: var(--parch-dim); font-weight: 700; }
+.panel h4 { margin: 2px 0 -4px; font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--parch-dim); font-weight: 700; }
 .opt .cs { font-weight: 800; color: var(--gold); font-variant-numeric: tabular-nums; }
 .opts { display: grid; gap: 6px; }
+.confirm { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.confirm p { grid-column: 1 / -1; margin: 0; }
 .kv { display: grid; grid-template-columns: 1fr auto; gap: 3px 10px; font-variant-numeric: tabular-nums; font-size: .95rem; }
 .kv dt { color: var(--parch-dim); }
 .kv dd { margin: 0; font-weight: 700; text-align: right; }
@@ -106,37 +148,37 @@ ol.board .bd img { width: 18px; height: 18px; display: block; }
 ol.board .bd .more { font-size: .72rem; color: var(--parch-dim); }
 #achBox summary { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; cursor: pointer; list-style: none; }
 #achBox summary::-webkit-details-marker { display: none; }
-#achBox summary::after { content: "Show"; font-size: .8rem; color: var(--parch-dim); }
+#achBox summary::after { content: "Show"; font-size: .82rem; color: var(--parch-dim); }
 #achBox[open] summary::after { content: "Hide"; }
-.achcount { font-size: .85rem; color: var(--gold); font-variant-numeric: tabular-nums; margin-left: auto; }
+.achcount { font-size: .82rem; color: var(--gold); font-variant-numeric: tabular-nums; margin-left: auto; }
 .achlist { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
 .achlist li { display: grid; grid-template-columns: 34px 1fr; gap: 0 10px; align-items: center; }
 .achlist img { width: 34px; height: 34px; grid-row: span 2; display: block; }
-.achlist b { font-size: .92rem; }
-.achlist span { font-size: .8rem; color: var(--parch-dim); }
+.achlist b { font-size: .95rem; }
+.achlist span { font-size: .82rem; color: var(--parch-dim); }
 .achlist li.locked img { filter: grayscale(1) brightness(.6); opacity: .55; }
 .achlist li.locked b { color: var(--parch-dim); }
 .overbadges { display: grid; gap: 6px; }
 .namefield { display: grid; gap: 4px; }
-.namefield label { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: var(--parch-dim); }
+.namefield label { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--parch-dim); }
 .namefield .row2 { display: flex; gap: 6px; }
 .namefield input { flex: 1; min-width: 0; font: inherit; padding: 7px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--night); color: var(--parch); }
 .namefield button { padding: 7px 10px; font-weight: 700; }
 .overbadges .nb { display: flex; align-items: center; gap: 8px; font-weight: 700; }
 .overbadges img { width: 30px; height: 30px; }
 .boardhead { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
-.boardhead select { font: inherit; font-size: .82rem; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--moss-2); color: var(--parch); }
+.boardhead select { font: inherit; font-size: .82rem; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--moss-2); color: var(--parch); }
 .boardnote { font-size: .82rem; color: var(--parch-dim); margin: 0; }
 .upnext { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { display: inline-flex; align-items: center; gap: 5px; font-size: .82rem; padding: 2px 10px 2px 4px; border-radius: 999px; background: var(--moss-2); border: 1px solid var(--line); }
-.chip.boss { border-color: var(--ember); color: #ffc1a8; }
-.chip.fly { border-color: #6c8fb0; }
+.chip.boss { border-color: var(--ember); color: var(--ember-glow); }
+.chip.fly { border-color: var(--wing); }
 .chip.plain { padding-left: 10px; }
-.upnext.later .chip { opacity: .8; font-size: .78rem; }
-.event { flex: 1 1 100%; display: grid; gap: 4px; padding: 9px 11px; border-radius: 10px; border: 1px solid var(--line); background: var(--moss-2); font-size: .9rem; }
+.upnext.later .chip { opacity: .8; }
+.event { flex: 1 1 100%; display: grid; gap: 4px; padding: 9px 11px; border-radius: 10px; border: 1px solid var(--line); background: var(--moss-2); font-size: .95rem; }
 .event b { font-family: var(--font-display); font-weight: 400; font-size: 1.05rem; }
-.event.bad { border-color: var(--ember); } .event.bad b { color: #ffb39c; }
-.event.good { border-color: var(--leaf); } .event.good b { color: #bfe6a4; }
+.event.bad { border-color: var(--ember); } .event.bad b { color: var(--ember-glow); }
+.event.good { border-color: var(--leaf); } .event.good b { color: var(--leaf); }
 .event.choice { border-color: var(--gold); } .event.choice b { color: var(--gold); }
 .event .row button { padding: 6px 10px; flex: 1 1 120px; }
 .chip canvas { width: 26px; height: 26px; display: block; }
@@ -144,15 +186,15 @@ ol.board .bd .more { font-size: .72rem; color: var(--parch-dim); }
 .palette { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
 .tile { display: grid; justify-items: center; gap: 0; padding: 4px 4px 6px; font-weight: 700; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; cursor: grab; }
 .tile canvas { width: 44px; height: 44px; display: block; pointer-events: none; }
-.tile .tn { font-size: .8rem; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-.tile .tr { font-size: .68rem; line-height: 1.1; color: var(--frost); text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.tile .tn { font-size: .82rem; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.tile .tr { font-size: .72rem; line-height: 1.1; color: var(--frost); text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .best { margin: 0; font-size: .95rem; padding: 8px 10px; border-radius: 10px; background: rgba(148,214,234,.08); border: 1px solid rgba(148,214,234,.25); }
 .best b { color: var(--frost); }
-.tile .tc { font-size: .8rem; color: var(--gold); font-variant-numeric: tabular-nums; }
-.tile.poor { opacity: .55; }
-.tile.poor .tc { color: var(--ember); }
-.tile.locked { opacity: .45; }
-.tile.active { border-color: var(--gold); background: #34473c; }
+.tile .tc { font-size: .82rem; color: var(--gold); font-variant-numeric: tabular-nums; }
+.tile.poor canvas, .tile.locked canvas { opacity: .45; }
+.tile.poor .tc { color: var(--ember-glow); }
+.tile.locked .tn, .tile.locked .tr, .tile.locked .tc { color: var(--parch-dim); }
+.tile.active { border-color: var(--gold); background: color-mix(in srgb, var(--gold) 14%, var(--moss-2)); }
 .dragfloat { position: fixed; left: 0; top: 0; width: 56px; height: 56px; pointer-events: none; z-index: 100; transform: translate(-50%, -70%); filter: drop-shadow(0 4px 6px rgba(0,0,0,.4)); }
 .infohead { display: flex; gap: 10px; align-items: center; }
 .infohead canvas { width: 56px; height: 56px; flex: none; }
@@ -186,89 +228,109 @@ html.lock, html.lock body { overflow: hidden; overscroll-behavior: none; height:
 .heirloom { display: grid; align-content: start; gap: 6px; text-align: left; padding: 14px; border: 2px solid var(--rc); font-weight: 400;
         background: linear-gradient(180deg, color-mix(in srgb, var(--rc) 20%, var(--moss-2)), var(--moss-2) 70%); transition: transform .15s; }
 .heirloom:hover:not(:disabled) { transform: translateY(-3px); border-color: var(--rc); }
+.heirloom .hi { width: 52px; height: 52px; display: block; }
+.perklist .hi { width: 34px; height: 34px; grid-row: span 2; align-self: center; }
 .heirloom .rr { font-size: .72rem; text-transform: uppercase; letter-spacing: .1em; color: var(--rc); font-weight: 800; }
-.heirloom .bn { font-family: var(--font-display); font-size: 1.2rem; color: var(--parch); line-height: 1.15; }
-.heirloom .bd { font-size: .92rem; color: var(--parch); }
-.heirloom .bo { font-size: .78rem; color: var(--parch-dim); }
+.heirloom .bn { font-family: var(--font-display); font-size: 1.15rem; color: var(--parch); line-height: 1.15; }
+.heirloom .bd { font-size: .95rem; color: var(--parch); }
+.heirloom .bo { font-size: .82rem; color: var(--parch-dim); }
 /* bestiary */
 .beasts { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 6px; }
-.beasts button { display: grid; justify-items: center; gap: 2px; padding: 6px 4px; font-weight: 700; font-size: .78rem; line-height: 1.15; }
+.beasts button { display: grid; justify-items: center; gap: 2px; padding: 6px 4px; font-weight: 700; font-size: .82rem; line-height: 1.15; }
 .beasts button canvas { width: 44px; height: 44px; }
 .beasts button.on { border-color: var(--gold); background: color-mix(in srgb, var(--gold) 14%, var(--moss-2)); }
-.beasts button.boss { color: #ffc1a8; }
+.beasts button.boss { color: var(--ember-glow); }
 .beasts button.unknown { color: var(--parch-dim); }
 .beast { display: grid; grid-template-columns: 132px minmax(0, 1fr); gap: 4px 16px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--moss-2); }
-.beast > canvas { width: 132px; height: 132px; border-radius: 12px; background: radial-gradient(circle at 50% 60%, #33493c, var(--night) 72%); }
+.beast > canvas { width: 132px; height: 132px; border-radius: 12px; background: radial-gradient(circle at 50% 60%, var(--line), var(--night) 72%); }
 .beast .bt { display: grid; gap: 6px; align-content: start; min-width: 0; }
 .beast h3 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 1.4rem; color: var(--parch); }
 .beast .tags { display: flex; flex-wrap: wrap; gap: 4px; }
 .beast .tags span { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; font-weight: 800; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--parch-dim); }
-.beast .tags .boss { border-color: var(--ember); color: #ffb39c; } .beast .tags .fly { border-color: #6c8fb0; color: #b9d4ec; }
+.beast .tags .boss { border-color: var(--ember); color: var(--ember-glow); } .beast .tags .fly { border-color: var(--wing); color: var(--parch); }
 .beast blockquote { margin: 0; font-style: italic; color: var(--parch); }
 .beast .kv { grid-column: 1 / -1; margin: 6px 0 0; }
 .beast .kv { grid-template-columns: minmax(8.5em, 1fr) minmax(0, max-content); }
 .beast .kv dd { margin: 0; text-align: right; }
-.beast .tips { grid-column: 1 / -1; margin: 4px 0 0; padding-left: 18px; display: grid; gap: 3px; font-size: .92rem; }
+.beast .tips { grid-column: 1 / -1; margin: 4px 0 0; padding-left: 18px; display: grid; gap: 3px; font-size: .95rem; }
 @media (max-width: 520px) { .beast { grid-template-columns: 88px minmax(0, 1fr); } .beast > canvas { width: 88px; height: 88px; } }
 .chip.link { cursor: pointer; } .chip.link:hover, .chip.link:focus-visible { border-color: var(--gold); outline: none; }
 .panelhead { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.panelhead button { padding: 3px 10px; font-size: .8rem; }
+.panelhead button { padding: 5px 12px; font-size: .82rem; }
 .heirloom.legendary { box-shadow: 0 0 18px rgba(233, 185, 73, .35); }
 .perklist { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-.perklist li { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; padding: 8px 10px; border-radius: 10px; background: var(--moss-2); border-left: 4px solid var(--rc); }
+.perklist li { display: grid; grid-template-columns: 34px auto 1fr; gap: 2px 10px; align-items: center; padding: 8px 10px; border-radius: 10px; background: var(--moss-2); border-left: 4px solid var(--rc); }
 .perklist b { color: var(--parch); }
-.perklist .n { color: var(--rc); font-weight: 800; justify-self: end; grid-column: 2; grid-row: 1; }
+.perklist .n { color: var(--rc); font-weight: 800; justify-self: end; grid-column: 3; grid-row: 1; }
 .dynasty { display: grid; gap: 8px; padding: 12px; border-radius: 12px; border: 1px solid var(--gold-deep); background: rgba(233, 185, 73, .07); }
 .dynasty h3 { margin: 0; font-family: var(--font-display); font-weight: 400; color: var(--gold); }
-.dynasty p { font-size: .9rem; }
-.perklist span.d { grid-column: 1 / 3; font-size: .85rem; color: var(--parch-dim); }
+.dynasty p { font-size: .95rem; }
+.perklist span.d { grid-column: 2 / 4; font-size: .82rem; color: var(--parch-dim); }
 textarea.code { width: 100%; min-height: 96px; font: 12px/1.4 ui-monospace, Menlo, monospace; background: var(--night); color: var(--parch); border: 1px solid var(--line); border-radius: 10px; padding: 8px; word-break: break-all; resize: vertical; }
 button.glow { border-color: var(--gold); color: var(--gold); box-shadow: 0 0 12px rgba(233, 185, 73, .35); }
 /* two-player mode */
-button.versus { width: 100%; padding: 10px 14px; border-color: #7a4a9a; background: #2c2338; color: #e3d2ff; }
-button.versus:hover:not(:disabled) { border-color: #c58bff; }
+button.versus { width: 100%; padding: 10px 14px; border-color: var(--violet-edge); background: var(--violet-night); color: var(--violet-ink); }
+button.versus:hover:not(:disabled) { border-color: var(--violet); }
 .vs #btnAuto, .dl #btnSpeed, .dl #btnPause, .vs #hallPanel, .vs #achPanel { display: none; }
-.dl .stat.gold b { color: #c58bff; }
+.dl .stat.gold b { color: var(--violet); }
 .roomcode { font: 800 2.4rem/1 ui-monospace, Menlo, monospace; letter-spacing: .18em; color: var(--gold); text-align: center; padding: 12px; border: 2px dashed var(--gold-deep); border-radius: 12px; user-select: all; }
 .codein { font: 800 1.6rem/1 ui-monospace, Menlo, monospace !important; letter-spacing: .2em; text-transform: uppercase; text-align: center; }
 .army { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
-.army li { display: grid; grid-template-columns: 30px 1fr auto auto; gap: 8px; align-items: center; font-size: .92rem; }
+.army li { display: grid; grid-template-columns: 30px 1fr auto auto; gap: 8px; align-items: center; font-size: .95rem; }
 .army canvas { width: 30px; height: 30px; }
-.army button { padding: 2px 10px; }
+.army button { padding: 4px 12px; }
 .dlstat { display: flex; justify-content: space-between; gap: 8px; font-variant-numeric: tabular-nums; }
-.dlstat b { color: #c58bff; font-size: 1.15rem; }
-.spell { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; text-align: left; font-weight: 400; padding: 8px 10px; border-color: #7a4a9a; }
-.spell .nm { font-weight: 800; color: #e3d2ff; } .spell .cs { font-weight: 800; color: #c58bff; } .spell .ds { grid-column: 1 / 3; font-size: .82rem; color: var(--parch-dim); }
-.spell.on { background: #3a2a4a; }
-.tile.summon .tc { color: #c58bff; }
-.keys { font-size: .8rem; color: var(--parch-dim); margin: 0; }
+.dlstat b { color: var(--violet); font-size: 1.15rem; }
+.spell { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; text-align: left; font-weight: 400; padding: 8px 10px; border-color: var(--violet-edge); }
+.spell .nm { font-weight: 800; color: var(--violet-ink); } .spell .cs { font-weight: 800; color: var(--violet); } .spell .ds { grid-column: 1 / 3; font-size: .82rem; color: var(--parch-dim); }
+.spell.on { background: color-mix(in srgb, var(--violet) 14%, var(--violet-night)); }
+.tile.summon .tc { color: var(--violet); }
+.keys { font-size: .82rem; color: var(--parch-dim); margin: 0; }
 @media (max-width: 520px) {
   header.top h1 { font-size: 1.35rem; }
   .stat { padding: 4px 9px; }
   .controls { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   #btnWave { grid-column: 1 / -1; }
+  .controls.buzz { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .controls.buzz #btnWave { grid-column: span 2; }
   .controls button { padding: 8px 4px; }
   .card { padding: 14px; gap: 9px; }
   .card h2 { font-size: 1.4rem; }
 }
-@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+/* phones: the board is too short to hold a card, so an open card grows the stage instead of scrolling inside it.
+   The board stays at its true shape along the top and the card sits over it, pushing the defenders bar down. */
+@media (max-width: 700px) {
+  .stage:has(> .overlay:not([hidden])) { aspect-ratio: auto; }
+  .stage:has(> .overlay:not([hidden])) canvas#board { position: absolute; inset: 0 0 auto 0; height: auto; }
+  .stage > .overlay:not([hidden]) { position: relative; aspect-ratio: 960 / 560; }
+  .stage > .overlay .card { max-height: none; overflow: visible; }
+  .wrap.full .gamecol:has(.overlay:not([hidden])) { flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+}
+@media (max-width: 420px) {
+  .stat { gap: 4px; padding: 4px 8px; }
+  .stat span { letter-spacing: .05em; }
+  .tile { padding-inline: 2px; }
+  .tile .tr { text-transform: none; letter-spacing: 0; font-size: .75rem; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } .heirloom { transition: none; } }
 </style>
 
 <div class="wrap" id="wrap">
   <header class="top">
     <h1>Endless Keep</h1>
-    <div class="hud" aria-live="polite">
+    <div class="hud">
       <div class="stat"><span>Level</span><b id="hLevel">1</b></div>
       <div class="stat gold"><span id="hGoldLbl">Gold</span><b id="hGold">0</b></div>
-      <div class="stat hearts"><span>Castle</span><b id="hHearts">20/20</b></div>
+      <div class="stat hearts" id="hHeartsBox"><span class="lbl"><span class="ok">Castle</span><span class="lo">Low!</span></span><b id="hHearts">20/20</b></div>
     </div>
-    <div class="controls">
-      <button id="btnWave" class="primary">Start level 1</button>
+    <div class="controls" id="controls">
+      <button id="btnWave" disabled>Start level 1</button>
       <button id="btnAuto" title="Start each level on its own">Auto: off</button>
       <button id="btnSpeed" title="Game speed">Speed 1×</button>
       <button id="btnPause">Pause</button>
       <button id="btnSound" class="on">Sound: on</button>
       <button id="btnMusic" class="on">Music: on</button>
+      <button id="btnBuzz" class="on" title="Buzz the phone when the castle is hit">Buzz: on</button>
       <button id="btnFull">Fullscreen</button>
     </div>
   </header>
@@ -277,8 +339,8 @@ button.versus:hover:not(:disabled) { border-color: #c58bff; }
     <div class="gamecol">
     <div class="stagebox">
     <div class="stage" id="stage">
-      <canvas id="board" aria-label="Game board: a meadow road leading to your castle"></canvas>
-      <div id="toast" class="toast" hidden></div>
+      <canvas id="board" tabindex="0" aria-label="Game board: a meadow road leading to your castle. Use the arrow keys to move the cursor (hold Shift for big steps) and Enter to tap."></canvas>
+      <div id="toast" class="toast" hidden aria-hidden="true"></div>
 
       <div id="startCard" class="overlay">
         <div class="card">
@@ -323,7 +385,7 @@ button.versus:hover:not(:disabled) { border-color: #c58bff; }
       </div>
     </div>
     </div>
-    <div class="palette" id="palette" aria-label="Defenders: tap for details, drag onto the grass to build"></div>
+    <div class="palette" id="palette" role="group" aria-label="Defenders: tap for details, drag onto the grass to build"></div>
     </div>
 
     <aside class="side">
@@ -333,7 +395,7 @@ button.versus:hover:not(:disabled) { border-color: #c58bff; }
         <div class="upnext" id="upNext"></div>
         <h4>Later</h4>
         <div class="upnext later" id="upLater"></div>
-        <p class="keys">Drag a defender from the bar under the map onto open grass, or tap a tree to chop it. Tap open grass to plant a sapling. Tap the castle to repair it, fortify it or grow your treasury. Keys: Space starts a level, P pauses, F toggles fullscreen.</p>
+        <p class="keys">Drag a defender from the bar under the map onto open grass, or tap a tree to chop it. Tap open grass to plant a sapling. Tap the castle to repair it, fortify it or grow your treasury. Keys: Space starts a level, P pauses, F toggles fullscreen. On the map, the arrow keys move a cursor and Enter taps.</p>
       </section>
       <section class="panel" id="hallPanel">
         <div class="boardhead"><h3>Hall of Heroes</h3><select id="boardVer" aria-label="Which rules version's scores to show" hidden></select></div>
@@ -350,6 +412,7 @@ button.versus:hover:not(:disabled) { border-color: #c58bff; }
   </div>
 </div>
 
+<div id="srStatus" class="sr-only" role="status" aria-live="polite"></div>
 <div id="modal" class="modal" hidden><div class="card" id="modalCard" role="dialog" aria-modal="true"></div></div>
 
 <canvas id="dragFloat" class="dragfloat" width="112" height="112" hidden></canvas>
@@ -359,11 +422,52 @@ button.versus:hover:not(:disabled) { border-color: #c58bff; }
 "use strict";
 // GAME_VERSION changes with any update. RULES_VERSION goes up ONLY when a balance change makes the game easier or
 // harder: each rules version gets its own leaderboard, so scores from different rules are never mixed.
-const GAME_VERSION = "1.2.1", RULES_VERSION = 2;   // v2: special dragon names give bonuses
+const GAME_VERSION = "1.3.0", RULES_VERSION = 3;   // v2: special dragon names give bonuses; v3: slower heirlooms, rebalanced towers, tougher monsters after level 50
 const W = 960, H = 560;
 const $ = id => document.getElementById(id);
 const cv = $("board"), ctx = cv.getContext("2d");
 const reduceMotion = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* ---------- castle hits ----------
+   Every hit shows in three places that each work alone: a flash at the gate, a jolt on the hearts counter,
+   and (on phones that can) a buzz. Tiers: 1 graze, 2 the walls are low, 3 a heavy blow (a boss, or the hit
+   that takes the walls low). Timers run on real time so a hit still reads at 3x speed, and hits that land
+   close together build into one bigger cue instead of strobing. */
+const DANGER = 1 / 3;
+const canBuzz = !!(navigator.vibrate && window.matchMedia && matchMedia("(pointer: coarse)").matches);
+let buzz = canBuzz;
+const hitFx = { gate: 0, tier: 0, edge: 0, shake: 0, saved: 0, pulseAt: 0, buzzAt: 0, buzzTier: 0 };
+const HIT_GATE = [0, .45, .6, .8], HIT_SHAKE = [0, .14, .22, .4], HIT_AMP = [0, 2.5, 4.5, 8];
+const HIT_BUZZ = [0, 25, 55, [70, 50, 80]];
+function hitTier(dmg, before, after, max) {
+  if (dmg >= 6 || (before / max > DANGER && after / max <= DANGER)) return 3;
+  return after / max <= DANGER ? 2 : 1;
+}
+function castleHit(tier, own) {
+  const now = performance.now(), recent = hitFx.gate > 0;
+  hitFx.tier = recent ? Math.max(hitFx.tier, tier) : tier;
+  hitFx.gate = Math.min(1.2, Math.max(hitFx.gate + (recent ? .12 : 0), HIT_GATE[tier]));
+  if (tier === 3 && own) hitFx.edge = .9;
+  if (!reduceMotion) hitFx.shake = Math.max(hitFx.shake, HIT_SHAKE[tier]);
+  if (now - hitFx.pulseAt > 160 || tier === 3) {  // restart the counter's jolt
+    hitFx.pulseAt = now; const box = $("hHeartsBox");
+    box.classList.remove("hit", "heavy"); void box.offsetWidth; box.classList.add("hit"); box.classList.toggle("heavy", hitFx.tier === 3);
+  }
+  if (own && buzz && canBuzz && (now - hitFx.buzzAt > 400 || tier > hitFx.buzzTier)) {
+    hitFx.buzzAt = now; hitFx.buzzTier = tier;
+    try { navigator.vibrate(HIT_BUZZ[tier]); } catch {}
+  }
+}
+function hitDecay(dt) {
+  for (const k of ["gate", "edge", "shake", "saved"]) if (hitFx[k] > 0) hitFx[k] = Math.max(0, hitFx[k] - dt);
+}
+function resetHits() {
+  Object.assign(hitFx, { gate: 0, tier: 0, edge: 0, shake: 0, saved: 0 });
+  $("hHeartsBox").classList.remove("hit", "heavy"); heartsAlert();
+}
+function heartsAlert() {
+  $("hHeartsBox").classList.toggle("low", !!S && S.phase !== "over" && S.hp > 0 && S.hp / S.maxHp <= DANGER);
+}
 
 /* ---------- storage helpers ---------- */
 // Player-name cleaning and a basic profanity filter.
@@ -445,10 +549,14 @@ const CASTLE = { x: 836, y: 270, w: 124, h: 200 };
 const SPOTS = [[110, 50], [110, 195], [140, 330], [140, 480], [300, 200], [300, 330], [400, 260], [350, 500], [560, 80], [580, 240], [620, 330], [640, 480], [800, 80], [790, 250]];
 
 const TOWERS = {
-  archer:   { name: "Archer Tower", cost: 50,  range: 140, dmg: 8,  rate: 1.4, air: true,  magic: false, splash: 0,  role: "Fast · air", desc: "Cheap, quick arrows. Hits flying foes.", best: "Bats, wolves, wolf riders and goblins. Weak against armoured skeleton knights." },
-  mage:     { name: "Mage Tower",   cost: 90,  range: 125, dmg: 20, rate: 0.7, air: true,  magic: true,  splash: 42, role: "Armour", desc: "Arcane blasts that pierce armour.", best: "Skeleton knights, orcs and the Bone Wyrm: magic ignores their armour." },
+  // each tower has a clear job and a clear weakness:
+  //   archers fire fast but each arrow is light, so armour blunts them badly (armorMul);
+  //   mages pierce armour but are slow and expensive; catapults hit hard over a wide area but slowly, and can't aim
+  //   at anything right beside them (minRange); frost does little damage; the dragon does everything but costs a fortune
+  archer:   { name: "Archer Tower", cost: 50,  range: 140, dmg: 5.5, rate: 2.0, air: true, magic: false, splash: 0, armorMul: 1.6, role: "Fast · air", desc: "Cheap, rapid arrows. Hits flying foes, but armour turns them aside.", best: "Bats, wolves, wolf riders and goblins. Poor against armour: skeleton knights shrug most arrows off." },
+  mage:     { name: "Mage Tower",   cost: 100, range: 125, dmg: 32, rate: 0.5, air: true,  magic: true,  splash: 0,  role: "Armour", desc: "Slow, powerful bolts that pierce armour. One target at a time.", best: "Skeleton knights, trolls, orcs and bosses: magic ignores armour. Hits one monster at a time, so it struggles with big packs." },
   frost:    { name: "Frost Spire",  cost: 70,  range: 115, dmg: 4,  rate: 0.8, air: true,  magic: true,  splash: 48, slow: 0.45, role: "Slow", desc: "Slows everything it touches.", best: "Trolls, fast wolves and riders, and bosses. Low damage, so place it beside your hard hitters." },
-  catapult: { name: "Catapult",     cost: 110, range: 178, dmg: 34, rate: 0.4, air: false, magic: false, splash: 58, role: "Crowds", desc: "Big splash damage. Ground only.", best: "Big packs of goblins and orcs on the road. Can't hit bats or wyverns." },
+  catapult: { name: "Catapult",     cost: 110, range: 185, dmg: 50, rate: 0.28, air: false, magic: false, splash: 64, minRange: 60, role: "Crowds", desc: "Slow, heavy boulders that crush whole packs. Ground only.", best: "Big packs of goblins and orcs on the road. Can't hit bats or wyverns, or anything right beside it, so build it back from the road." },
   dragon:   { name: "Dragon Roost", cost: 350, range: 155, dmg: 26, rate: 1.1, air: true,  magic: true,  splash: 40, burn: true, role: "All-round", desc: "Your own dragon breathes fire. Unlocks partway through a game.", best: "Anything, flying or armoured. Its fire keeps burning, which is great against healing trolls." },
 };
 const DRAGON_STAGES = [
@@ -468,6 +576,8 @@ const SECRET_DRAGONS = {
   nibnib:    { name: "Nibnib",     msg: "Nibnib has the sharpest eyes in the valley: +15% range.",       range: 1.15 },
   nightfury: { name: "Night Fury", msg: "Scales as dark as midnight and purple fire: +10% damage, +25% at night.", dark: true },
   baby:      { name: "Baby",       msg: "Baby will always be a baby. While Baby is on guard, the castle mends a heart after every level.", tiny: true, mend: 1 },
+  mushu:     { name: "Mushu",      msg: "Mushu is small, pink and part axolotl, but very fierce: breathes fire 10% faster, and the flames cling 50% longer.", tiny: true, rate: 1.1, burn: 1.5,
+               look: { body: "#f4a3bf", wing: "#e57fa4", belly: "#fcd8e3", gill: "#d9467f", axolotl: true } },
 };
 const secretKey = n => String(n || "").toLowerCase().replace(/[^a-z]/g, "");
 const dragonSecret = t => (t && t.type === "dragon" && SECRET_DRAGONS[secretKey(t.name)]) || null;
@@ -520,7 +630,7 @@ const PERKS = {
   boulders: { r: "common", name: "Heavier stones",  max: 10, desc: n => `Catapults deal +${6 * n}% damage.` },
   embers:   { r: "common", name: "Hotter embers",   max: 10, desc: n => `Dragons deal +${6 * n}% damage.` },
   chill:    { r: "common", name: "Bitter cold",     max: 5,  desc: n => `Frost Spires slow monsters ${3 * n}% more.` },
-  lumber:   { r: "common", name: "Lumber rights",   max: 5,  desc: n => `Firewood sells for +${20 * n}% and woodcutters cost ${10 * n}% less.` },
+  lumber:   { r: "common", name: "Lumber rights",   max: 5,  desc: n => `Firewood sells for +${20 * n}%, and woodcutters keep only ${Math.round(100 * Math.max(.1, .5 - .08 * n))}% of it as their fee.` },
   bounty:   { r: "common", name: "Bounty hunter",   max: 10, desc: n => `Monsters drop +${4 * n}% gold.` },
   quarter:  { r: "rare", name: "Quartermaster",     max: 5,  desc: n => `Towers cost ${5 * n}% less to build.` },
   masonry:  { r: "rare", name: "Guild of masons",   max: 5,  desc: n => `Tower upgrades cost ${5 * n}% less.` },
@@ -539,7 +649,7 @@ const TYPE_PERK = { archer: "arrows", mage: "arcane", catapult: "boulders", drag
 // heirlooms active in the current game (copied from your collection when a new game starts, and kept in its save)
 const perk = id => (id && S && S.perks && S.perks[id]) || 0;
 // every monster and boss, for the bestiary's "met" and "defeated" records
-const BEAST_KEYS = ["goblin", "wolf", "orc", "bat", "wolfrider", "knight", "troll", "wyvern", "orcrider", "trollking", "bigdragon", "wyrm"];
+const BEAST_KEYS = ["goblin", "wolf", "orc", "bat", "wolfrider", "knight", "troll", "wyvern", "orcrider", "trollking", "bigdragon", "wyrm", "jasmine"];
 const beastRecord = (src, max) => { const o = {}; if (src && typeof src === "object") for (const k of BEAST_KEYS) { const n = Math.floor(+src[k] || 0); if (n > 0) o[k] = Math.min(max, n); } return o; };
 function normMeta(m) {
   m = m && typeof m === "object" ? m : {};
@@ -551,6 +661,9 @@ function normMeta(m) {
 }
 let meta = normMeta(ls.get("ek_meta"));
 const heirloomCount = () => Object.values(meta.perks).reduce((a, b) => a + b, 0);
+// heirlooms earned by one game: the 1st at level 5, then each needs 5 more levels than the gap before (5, 15, 30, 50, 75, 105, 140…)
+const heirloomLevel = k => 5 * k * (k + 1) / 2;
+const heirloomsFor = held => { let k = 0; while (heirloomLevel(k + 1) <= held) k++; return k; };
 /* ---------- prestige: found a new dynasty ----------
    Give up every heirloom to raise your house's rank for good: +5% tower damage and gold per rank, and rarer heirlooms
    turn up more often. Each rank needs more heirlooms than the last, and brings a few more random events. */
@@ -578,6 +691,8 @@ const BOSSES = [
   { key: "trollking", name: "Troll King",   hp: 26, spd: 22, armor: .25, gold: 150, r: 24, col: "#56707f", dmg: 6 },
   { key: "bigdragon", name: "Elder Dragon", hp: 21, spd: 26, armor: .2,  gold: 200, r: 26, col: "#b8402c", dmg: 6, fly: true },
   { key: "wyrm",      name: "Bone Wyrm",    hp: 32, spd: 20, armor: .45, gold: 250, r: 24, col: "#e6dfcc", dmg: 6 },
+  // flies on a broomstick and hexes whichever tower hurts her (it stops firing for 2 seconds), one tower every 1.5 seconds
+  { key: "jasmine",   name: "Jasmine the Witch", hp: 18, spd: 24, armor: .1, gold: 300, r: 24, col: "#4a3a63", dmg: 6, fly: true, hex: 1.5, named: true },
 ];
 const bossFor = L => BOSSES[(L / 10 - 1) % BOSSES.length];
 // the bestiary's words for each monster: a line of flavour and how to beat it
@@ -593,22 +708,24 @@ const LORE = {
   wolfrider: { lore: "A goblin who has discovered wolves. Nearly twice the speed, all of the attitude, and the wolf doesn't seem to mind.",
                tip: "Slow them with a Frost Spire first, then let Archer Towers do the rest." },
   knight:    { lore: "Soldiers from a war nobody remembers, still marching. Their rusted plate turns arrows and stones, but spells pass straight through.",
-               tip: "Bring magic. Mage Towers and the Dragon Roost ignore their armour entirely." },
+               tip: "Bring magic. Mage Towers and the Dragon Roost ignore their armour entirely, while arrows barely scratch them." },
   troll:     { lore: "Huge, patient and very hard to hurt for long: a troll's cuts close up while you watch, and it hits the gate like a falling tree.",
                tip: "Hit it hard and keep hitting. A Frost Spire holds it in range, and the Dragon Roost's fire keeps burning while it heals." },
   wyvern:    { lore: "Lesser cousins of the dragons, scaled like armour and far too proud to walk. They glide in high and low, never by the road.",
                tip: "Catapults can't hit them. Every other tower can." },
   orcrider:  { lore: "Orc raiders ride hard and hit harder, charging past the outer towers before the archers have finished taking aim.",
                tip: "A Frost Spire at the start of the road buys time for your other towers." },
-  trollking: { lore: "The oldest troll under the mountain, crowned with whatever he crushed last. Every thirty levels he comes to see why his trolls haven't come home.",
+  jasmine:   { lore: "Queen of the witches of the Gloaming Wood. Jasmine burns the mill, curses the bridge and turns the miller into a newt, then flies off to tell everyone how cruelly the village treated her. In every version of the story she tells, she is the one who was wronged.",
+               tip: "She rides a broomstick, so Catapults can't touch her, and she hexes the towers that hurt her, silencing each for two seconds. Spread the damage across many Archer and Mage Towers so there's always another one left to blame. Castle archers are beneath her notice: she never hexes them." },
+  trollking: { lore: "The oldest troll under the mountain, crowned with whatever he crushed last. Every forty levels he comes to see why his trolls haven't come home.",
                tip: "A long fight. Line the road with Frost Spires, and lean on Mage Towers: his armour blunts arrows and boulders." },
   bigdragon: { lore: "An ancient dragon who takes your little roost as a personal insult. She flies straight for the keep and burns anything that argues.",
                tip: "She flies, so Catapults are no use. Every other tower can reach her." },
   wyrm:      { lore: "A dragon's skeleton held together by old magic and older spite. Its bones shrug off arrows and boulders alike.",
                tip: "Mage Towers and the Dragon Roost ignore its armour, and a Frost Spire keeps it in their range." },
 };
-// enemy health compounds 5% a level up to 60, then eases to 3.2% so the late game (80+) ramps instead of hitting a wall
-const hpScale = L => (1 + 0.12 * (L - 1)) * Math.pow(1.05, Math.min(L, 60) - 1) * Math.pow(1.032, Math.max(0, L - 60));
+// enemy health compounds 5% a level up to 50, then 4.5% after that, so level 100 is a real achievement
+const hpScale = L => (1 + 0.12 * (L - 1)) * Math.pow(1.05, Math.min(L, 50) - 1) * Math.pow(1.045, Math.max(0, L - 50));
 const goldScale = L => 1 + 0.06 * (L - 1);
 const repairCost = () => 20 + 4 * S.level;
 const wallCost = () => Math.round(80 * Math.pow(1.6, S.walls));
@@ -618,14 +735,18 @@ const treasCost = () => Math.round(100 * Math.pow(1.6, S.treasury));
 const treasPay = (n = S.treasury, L = S.level) => Math.round(n * 18 * goldScale(L));
 // fortifications bought at the castle
 const FORT = {
-  archers: { name: "Castle archers", max: 99, cost: n => Math.round(140 * Math.pow(1.65, n)),
-             desc: n => n ? `Level ${n}: ${Math.round(keepStats(n).dmg)} damage, ${keepStats(n).rate.toFixed(1)} shots/sec. Next: ${Math.round(keepStats(n + 1).dmg)} damage.` : "Archers on the battlements shoot anything near the castle, flying or not." },
+  // castle archers level n shoot like a level n + 3 Archer Tower (same heirloom bonuses, same armour weakness) with a
+  // long 300 range from the battlements, but cost the same as a level n + 2 one: they only see monsters that got past
+  // every tower (plus every flier, which heads straight for the castle), so they need the extra punch. Jasmine can't hex them.
+  archers: { name: "Castle archers", max: 99, cost: n => Math.round(n ? 37.5 * Math.pow(1.55, n + 1) : 145),
+             desc: n => n ? `Level ${n}: shoot like a level ${n + 3} Archer Tower with long range. ${Math.round(keepStats(n).dmg)} damage, ${keepStats(n).rate.toFixed(1)} shots/sec. Next: ${Math.round(keepStats(n + 1).dmg)} damage.`
+                          : "Archers on the battlements shoot anything near the castle, flying or not. They fire like a level 4 Archer Tower with long range, need no build spot, and can't be hexed." },
   moat:    { name: "Moat",           max: 3,  cost: n => Math.round(150 * Math.pow(2, n)),
              desc: n => `Ground monsters wade through the water by the gate, slowed by ${n * 12}%${n < 3 ? ` (next: ${(n + 1) * 12}%)` : ""}.` },
   masons:  { name: "Masons",         max: 5,  cost: n => Math.round(120 * Math.pow(1.8, n)),
              desc: n => `Patch up ${n * 2} heart${n === 1 ? "" : "s"} for free after every level you clear${n < 5 ? ` (next: ${(n + 1) * 2})` : ""}.` },
 };
-const keepStats = n => ({ dmg: 12 * Math.pow(1.45, n - 1), rate: Math.min(2.5, 1.1 + .1 * n), range: 200, slow: 0 });
+const keepStats = n => ({ ...tStats({ type: "archer", lvl: n + 3 }), range: 300 * (evOn("fog") || vsOn("fog") ? .8 : 1) });
 const KEEP = { type: "archer", x: CASTLE.x + 62, y: CASTLE.y + 50, cd: 0, ang: 0, flash: 0, keep: true };
 
 function makeWave(L) {
@@ -653,7 +774,7 @@ function newRun() {
   S = { rv: RULES_VERSION, level: 1, gold: 180, hp: 20, maxHp: 20, walls: 0, treasury: 0, dragon: false, fort: { archers: 0, moat: 0, masons: 0 },
         towers: [], trees: freshTrees(), enemies: [], shots: [], fx: [], texts: [],
         phase: "build", queue: [], spawnT: 0, nextT: 6, income: 0, shake: 0, waveHp: 20, newBadges: [],
-        stats: { kills: 0, gold: 0, bosses: 0, chopped: 0, built: 0, slowed: 0 } };
+        stats: { kills: 0, gold: 0, bosses: 0, chopped: 0, built: 0, slowed: 0, grown: 0, events: 0 } };
 }
 function makeSave() {
   return { v: 1, level: S.level, gold: Math.floor(S.gold), hp: S.hp, maxHp: S.maxHp, walls: S.walls, treasury: S.treasury, fort: S.fort,
@@ -715,6 +836,7 @@ function sfx(name) {
     case "boom":  noise(.25, .06, 380); break;
     case "coin":  tone(1320, .06, "square", .012); tone(1760, .09, "square", .012, 0, .06); break;
     case "leak":  tone(140, .35, "sawtooth", .05, 60); break;
+    case "leakBig": tone(120, .5, "sawtooth", .07, 45); noise(.3, .06, 260); break;
     case "chop":  noise(.07, .07, 1800); tone(240, .06, "square", .02, 180); break;
     case "timber": noise(.6, .05, 300); tone(180, .5, "triangle", .03, 90); break;
     case "build": tone(330, .07, "square", .025); tone(495, .1, "square", .025, 0, .07); break;
@@ -777,6 +899,7 @@ function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let
 const bg = document.createElement("canvas"); bg.width = W * 2; bg.height = H * 2;
 function ell(c, x, y, rx, ry) { c.beginPath(); c.ellipse(x, y, Math.max(0.1, rx), Math.max(0.1, ry), 0, 0, Math.PI * 2); c.fill(); }
 function tri(c, a, b, d, e, f, g) { c.beginPath(); c.moveTo(a, b); c.lineTo(d, e); c.lineTo(f, g); c.closePath(); c.fill(); }
+function star(c, x, y, r) { c.beginPath(); for (let i = 0; i < 8; i++) { const q = i * Math.PI / 4, d = i % 2 ? r * .4 : r; c.lineTo(x + Math.cos(q) * d, y + Math.sin(q) * d); } c.closePath(); c.fill(); }
 function drawTree(g, x, y, s, tone, shadow = true) {
   if (shadow) { g.fillStyle = "rgba(20,40,20,.28)"; ell(g, x + 4, y + 4, 16 * s, 7 * s); }
   g.fillStyle = "#5a3f26"; g.fillRect(x - 2.5 * s, y - 8 * s, 5 * s, 10 * s);
@@ -827,7 +950,9 @@ const TREES = (() => {
   return out;
 })();
 const freshTrees = () => TREES.map(t => ({ ...t, hp: t.max, shake: 0, fall: 0, dir: 1 }));
-const fellCost = () => Math.round((15 + 2 * S.level) * (1 - .1 * perk("lumber")));
+// a woodcutter clears a tree at once and sells the firewood, keeping a share as their fee (smaller with Lumber rights)
+const cutterFee = () => Math.max(.1, .5 - .08 * perk("lumber"));
+const cutterPay = t => Math.round(woodValue(t) * (1 - cutterFee()));
 // chopping a tree yourself sells the firewood for gold; big oaks give more, and it scales with the level like monster bounties
 const woodValue = t => Math.round((t.wood || (t.max > 4 ? 8 : 5)) * goldScale(S.level) * (1 + .2 * perk("lumber")));
 // saplings the player plants: an investment that grows each level cleared, but takes up tower space meanwhile
@@ -858,7 +983,7 @@ function plantSapling(x, y) {
 
 /* ---------- drawing ---------- */
 function drawCastle() {
-  const c = ctx, { x, y, w, h } = CASTLE, hurt = S && S.hp / S.maxHp < .35;
+  const c = ctx, { x, y, w, h } = CASTLE, hurt = S && S.hp / S.maxHp <= DANGER;
   if (S && S.fort.moat) {  // water along the castle front with a plank bridge where the road crosses
     const mw = 10 + S.fort.moat * 4, mx = x - mw - 4;
     c.fillStyle = season.edge; c.beginPath(); c.roundRect(mx - 3, y + 26, mw + 6, h - 10, 8); c.fill();
@@ -894,6 +1019,22 @@ function drawCastle() {
   // gate
   c.fillStyle = "#4a3320"; c.beginPath(); c.moveTo(x + 30, y + h); c.lineTo(x + 30, y + 150); c.arc(x + 46, y + 150, 16, Math.PI, 0); c.lineTo(x + 62, y + h); c.fill();
   c.strokeStyle = "#2e2014"; c.lineWidth = 1.5; for (let i = 0; i < 4; i++) { c.beginPath(); c.moveTo(x + 34 + i * 8, y + 140); c.lineTo(x + 34 + i * 8, y + h); c.stroke(); }
+  if (hitFx.gate > 0) {  // the gate glows where the blow landed: warm for a graze, red once the walls are low
+    const a = Math.min(1, hitFx.gate / .3), rgb = hitFx.tier > 1 ? "255,84,58" : "255,170,100";
+    c.save(); c.globalCompositeOperation = "lighter";
+    c.fillStyle = `rgba(${rgb},${a * (hitFx.tier > 1 ? .75 : .55)})`;
+    c.beginPath(); c.moveTo(x + 30, y + h); c.lineTo(x + 30, y + 150); c.arc(x + 46, y + 150, 16, Math.PI, 0); c.lineTo(x + 62, y + h); c.fill();
+    const gr = c.createRadialGradient(x + 46, y + h - 18, 4, x + 46, y + h - 18, 40 + 16 * hitFx.tier);
+    gr.addColorStop(0, `rgba(${rgb},${a * .5})`); gr.addColorStop(1, `rgba(${rgb},0)`);
+    c.fillStyle = gr; c.fillRect(x - 40, y + 90, 170, h - 50);
+    c.restore();
+  }
+  if (hitFx.saved > 0) {  // second wind: a golden swell around the whole keep
+    const a = Math.min(1, hitFx.saved / .6), r = 70 + (1.4 - hitFx.saved) * 60;
+    const gr = c.createRadialGradient(x + w / 2, y + h / 2, 10, x + w / 2, y + h / 2, r);
+    gr.addColorStop(0, `rgba(255,226,140,${a * .45})`); gr.addColorStop(1, "rgba(255,226,140,0)");
+    c.save(); c.globalCompositeOperation = "lighter"; c.fillStyle = gr; c.fillRect(x + w / 2 - r, y + h / 2 - r, r * 2, r * 2); c.restore();
+  }
   // windows
   c.fillStyle = "#f3d77a"; c.fillRect(x + 80, y + 100, 7, 11); c.fillRect(x + 50, y + 92, 7, 11);
   if (season.night) { c.fillStyle = "rgba(243,215,122,.22)"; ell(c, x + 83, y + 105, 14, 14); ell(c, x + 53, y + 97, 14, 14); }
@@ -985,7 +1126,7 @@ function drawTowerShape(c, type, x, y, ang, flash, lvl, name) {
       c.fillStyle = "#6d5134"; ell(c, x, y - 2, 20, 8);
       c.strokeStyle = "#8a6a44"; c.lineWidth = 1.5; for (let i = -2; i <= 2; i++) { c.beginPath(); c.moveTo(x - 18, y - 2 + i * 2); c.lineTo(x + 18, y - 4 - i * 2); c.stroke(); }
       const sp = SECRET_DRAGONS[secretKey(name)] || {};
-      const ds = sp.dark ? { ...dragonStage(lvl), ...DARK_DRAGON } : dragonStage(lvl), sc = sp.tiny ? .7 : ds.s;
+      const ds = { ...dragonStage(lvl), ...(sp.dark ? DARK_DRAGON : sp.look || {}) }, sc = sp.tiny ? .7 : ds.s;
       c.save(); c.translate(x, y - 10); c.scale(face * sc, sc);
       const flap = Math.sin(time * 5) * 6;
       c.fillStyle = ds.wing; tri(c, -2, -4, -16, -26 - flap, 8, -6);
@@ -993,11 +1134,30 @@ function drawTowerShape(c, type, x, y, ang, flash, lvl, name) {
       c.fillStyle = ds.belly; ell(c, 2, 3, 8, 4);
       c.strokeStyle = ds.body; c.lineWidth = 4; c.lineCap = "round"; c.beginPath(); c.moveTo(-10, 2); c.quadraticCurveTo(-22, 2, -20, -8); c.stroke();
       if (lvl >= 4) { c.fillStyle = ds.wing; tri(c, -9, -5, -6, -11, -3, -6); tri(c, -3, -7, 0, -13, 3, -7); }
-      c.fillStyle = ds.body; ell(c, 12, -8, 7, 6); ell(c, 18, -6, 5, 3.5);
-      c.fillStyle = lvl >= 10 ? "#fff3c4" : "#e9b949"; tri(c, 8, -12, 6, -20, 12, -13);
-      if (lvl >= 7) tri(c, 12, -13, 13, -21, 15, -12);
-      c.fillStyle = "#1b1b1b"; ell(c, 13, -10, 1.6, 1.6);
+      if (ds.axolotl) {  // a wide, round head and a little smile; the feathery gills go on after the near wing
+        c.fillStyle = ds.body; ell(c, 13, -7, 8.5, 6.5); ell(c, 19, -5.5, 4.5, 4);
+        c.fillStyle = "#1b1b1b"; ell(c, 15, -9.5, 1.5, 1.5);
+        c.strokeStyle = "#9c3a5f"; c.lineWidth = 1; c.beginPath(); c.arc(18, -6, 3.2, .35, 1.45); c.stroke();
+        if (lvl >= 7) { c.fillStyle = lvl >= 10 ? "#fff3c4" : "#e9b949"; ell(c, 12, -13.5, 2, 1.4); }  // a tiny crown of sparkle as it grows
+      } else {
+        c.fillStyle = ds.body; ell(c, 12, -8, 7, 6); ell(c, 18, -6, 5, 3.5);
+        c.fillStyle = lvl >= 10 ? "#fff3c4" : "#e9b949"; tri(c, 8, -12, 6, -20, 12, -13);
+        if (lvl >= 7) tri(c, 12, -13, 13, -21, 15, -12);
+        c.fillStyle = "#1b1b1b"; ell(c, 13, -10, 1.6, 1.6);
+      }
       c.fillStyle = ds.wing; tri(c, 2, -4, 10, -24 + flap, 12, -4);
+      if (ds.axolotl) {  // three feathery gills fanning up and back from the head, swaying gently
+        const sway = Math.sin(time * 3) * .1;
+        c.lineCap = "round"; c.fillStyle = ds.gill; c.strokeStyle = ds.gill;
+        for (const [bx, by, a0, len] of [[9, -10, -2.5, 10], [11, -12, -2.0, 11.5], [14, -12.5, -1.55, 10]]) {
+          const a = a0 + sway, ux = Math.cos(a), uy = Math.sin(a);
+          c.lineWidth = 2.2; c.beginPath(); c.moveTo(bx, by); c.lineTo(bx + ux * len, by + uy * len); c.stroke();
+          for (let k = .35; k <= 1.01; k += .22) {  // little frills on both sides of each stalk
+            const px = bx + ux * len * k, py = by + uy * len * k;
+            ell(c, px - uy * 2, py + ux * 2, 1.5, 1.5); ell(c, px + uy * 2, py - ux * 2, 1.5, 1.5);
+          }
+        }
+      }
       if (lvl >= 10 && Math.sin(time * 3) > .6) { c.fillStyle = "rgba(255,250,210,.95)"; ell(c, -2, -10, 1.6, 1.6); ell(c, 6, 2, 1.2, 1.2); }
       c.restore();
       break;
@@ -1043,11 +1203,12 @@ function drawLiveTree(t) {
     c.strokeStyle = "#e9b949"; c.beginPath(); c.arc(t.x, cy, rr, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (1 - t.hp / t.max)); c.stroke();
   }
 }
-function treeAt(x, y) {
+// pad widens the hit area (in board pixels) so trees are easy to hit with a finger on a small screen
+function treeAt(x, y, pad = 0) {
   if (!S) return null; let best = null, bd = 1e9;
   for (const t of S.trees) {
     if (t.fall) continue;
-    const d = Math.min(Math.hypot(t.x - x, t.y - 16 * t.s - y) / (17 * t.s), Math.hypot(t.x - x, t.y - y) / 10);
+    const d = Math.min(Math.hypot(t.x - x, t.y - 16 * t.s - y) / (17 * t.s + pad), Math.hypot(t.x - x, t.y - y) / (10 + pad));
     if (d < 1 && d < bd) { bd = d; best = t; }
   }
   return best;
@@ -1057,12 +1218,13 @@ function chop(t) {
   if (!t.max) { t.shake = .2; return; }  // a sapling: too small to chop
   t.hp--; t.shake = .25; sfx("chop");
   for (let i = 0; i < 5; i++) S.fx.push({ x: t.x + (Math.random() - .5) * 6, y: t.y - 4, vx: (Math.random() - .5) * 90, vy: -40 - Math.random() * 50, life: .5, max: .5, col: Math.random() < .5 ? "#c9a46a" : "#e8d3a4", r: 2, g: 260 });
-  if (t.hp <= 0) fell(t, woodValue(t));
+  if (t.hp <= 0) fell(t, woodValue(t), true);
 }
-function fell(t, wood) {
+function fell(t, wood, byHand) {
   if (t.fall) return;
   t.fall = .001; t.dir = Math.random() < .5 ? -1 : 1; sfx("timber");
-  if (wood) { earn(wood); S.stats.chopped++; if (S.stats.chopped >= 20) unlock("lumberjack"); S.texts.push({ x: t.x, y: t.y - 30, txt: "+" + wood + " gold (firewood)", life: 1.2, col: "#ffe08a" }); }
+  if (byHand) { S.stats.chopped++; if (S.stats.chopped >= 20) unlock("lumberjack"); }
+  if (wood) { earn(wood); S.texts.push({ x: t.x, y: t.y - 30, txt: "+" + wood + " gold (firewood)", life: 1.2, col: "#ffe08a" }); }
   for (let i = 0; i < 10; i++) S.fx.push({ x: t.x + (Math.random() - .5) * 20, y: t.y - 10 * t.s, vx: (Math.random() - .5) * 60, vy: -30 - Math.random() * 30, life: .7, max: .7, col: season.trees[t.tone][1 + (i % 2)], r: 3, g: 120 });
   if (sel && sel.kind === "tree" && sel.t === t) sel = !canBuild(t.x, t.y) ? { kind: "place", x: t.x, y: t.y } : null;
   schedulePersist(); renderPanel(); updateHud();
@@ -1295,6 +1457,36 @@ function enemyBody(c, e) {
       if (Math.sin(t * 2.5) > .7) { c.fillStyle = "rgba(220,220,220,.7)"; ell(c, r * 1.95, -9, 2, 2); ell(c, r * 2.15, -12, 1.4, 1.4); }
       webWing(c, 3, -4, -1, r * 2.1, Math.max(.25, flap * .85), "#3a8a73", "#7fc9ae");
       wear(c, e, { hx: r * 1.05, hy: -7, hr: 6 }); break; }
+    case "jasmine": {
+      // Jasmine: a witch riding side-saddle on a broomstick, cape streaming, hat tip flopping back,
+      // wand raised and one perfect tear on her cheek (none of this is her fault, apparently)
+      c.save(); c.scale(r / 11, r / 11);
+      const wave = Math.sin(t * 7) * 1.6, tw = Math.sin(t * 9) > 0;
+      { const r = 11;
+      c.fillStyle = "#c9a35a"; c.beginPath(); c.moveTo(-r * 1.35, 4); c.lineTo(-r * 2.3, -1 + wave * .4); c.lineTo(-r * 2.4, 5); c.lineTo(-r * 2.25, 11 - wave * .4); c.closePath(); c.fill();
+      c.strokeStyle = "#a07f3c"; c.lineWidth = .8; c.beginPath(); for (let i = -2; i <= 2; i++) { c.moveTo(-r * 1.4, 4.5); c.lineTo(-r * 2.3, 5 + i * 2.4); } c.stroke();
+      c.strokeStyle = "#7a5532"; c.lineWidth = 2.2; c.lineCap = "round"; c.beginPath(); c.moveTo(-r * 1.4, 4.5); c.lineTo(r * 1.25, 1); c.stroke();
+      c.fillStyle = "#8f3d4a"; c.fillRect(-r * 1.45, 2.6, 2.2, 3.8);
+      c.fillStyle = "#2d2342"; c.beginPath(); c.moveTo(-1, -7); c.quadraticCurveTo(-r * 1.2, -6 + wave, -r * 1.75, -1 + wave); c.quadraticCurveTo(-r * 1.1, 2, -2, 4); c.closePath(); c.fill();
+      c.fillStyle = "#5a2340"; ell(c, -.5, -7.5, 4.6, 4.8); ell(c, -4, -4.5 + wave * .3, 3, 4.5);
+      c.fillStyle = e.col; ell(c, 1, 0, 6, 6.5);
+      c.fillStyle = "#e9e2f2"; c.fillRect(2, 4.5, 4.5, 2.6); c.fillStyle = "#8f3d4a"; c.fillRect(3.4, 4.5, 1.3, 2.6);
+      c.fillStyle = "#221a2e"; ell(c, 7.2, 6.4, 2.6, 1.6); tri(c, 8.6, 5.4, 11, 4.2, 9.2, 7);
+      c.fillStyle = "#f0d2bd"; ell(c, 3.4, -9, 4.2, 4.4); tri(c, 7, -9.4, 8.6, -8, 7, -7.4);
+      c.fillStyle = "#fff"; ell(c, 5, -9.6, 1.4, 1.5); c.fillStyle = "#2a2433"; ell(c, 5.3, -9.4, .8, .9);
+      c.strokeStyle = "#5a2340"; c.lineWidth = .9; c.beginPath(); c.moveTo(3.6, -11.3); c.lineTo(6.2, -12.2); c.stroke();
+      c.fillStyle = "#aee3f5"; c.beginPath(); c.moveTo(5.3, -8.2); c.quadraticCurveTo(6.2, -6.4, 5.3, -6); c.quadraticCurveTo(4.4, -6.4, 5.3, -8.2); c.fill();
+      c.strokeStyle = "#9c3c4f"; c.lineWidth = .9; c.beginPath(); c.arc(6.4, -5.6, 1.3, Math.PI * 1.15, Math.PI * 1.85); c.stroke();
+      const flop = Math.sin(t * 4) * 1.2;
+      c.fillStyle = "#231b33"; c.beginPath(); c.moveTo(-1.6, -12.6); c.lineTo(1, -19.5); c.quadraticCurveTo(-1.5, -23.5, -5.5, -22 + flop); c.quadraticCurveTo(-1, -21.5, 3.6, -19.3); c.lineTo(6.4, -12.6); c.closePath(); c.fill();
+      ell(c, 2.6, -12.6, 7.4, 1.7);
+      c.fillStyle = "#8f3d4a"; c.fillRect(-1.1, -14.7, 7, 1.7); c.fillStyle = "#e9b949"; c.fillRect(2, -14.9, 1.8, 2.1);
+      c.strokeStyle = e.col; c.lineWidth = 3; c.beginPath(); c.moveTo(3, -2); c.lineTo(8.5, -4.5); c.stroke();
+      c.fillStyle = "#f0d2bd"; ell(c, 9.2, -4.8, 1.6, 1.6);
+      c.strokeStyle = "#3b2a1e"; c.lineWidth = 1.1; c.beginPath(); c.moveTo(9, -4.6); c.lineTo(14, -8.6); c.stroke();
+      c.fillStyle = tw ? "#ffe08a" : "#c9a8ff"; star(c, 14.6, -9.1, tw ? 2.6 : 2);
+      }
+      c.restore(); break; }
     case "trollking": {
       // the oldest troll: a bigger, greyer troll with a lichen beard, a tattered ermine-trimmed cloak,
       // a stone maul on his shoulder and a stolen crown, dented and a size too small. Drawn at troll scale, then grown.
@@ -1456,6 +1648,15 @@ function enemyBody(c, e) {
       c.restore(); break; }
   }
 }
+// a hexed tower: a slow ring of violet runes round its base and sparks circling the top until the hex wears off
+function hexMark(x, y, T) {
+  const c = ctx, sp = reduceMotion ? 0 : time * 3;
+  c.save(); c.globalAlpha = Math.min(1, T * 2);
+  c.strokeStyle = "rgba(201,168,255,.9)"; c.lineWidth = 2; c.setLineDash([4, 4]); c.lineDashOffset = -sp * 6;
+  c.beginPath(); c.ellipse(x, y - 2, 22, 9, 0, 0, Math.PI * 2); c.stroke(); c.setLineDash([]);
+  c.fillStyle = "#c9a8ff"; for (let i = 0; i < 3; i++) { const q = sp + i * 2.09; ell(c, x + Math.cos(q) * 15, y - 46 + Math.sin(q) * 5, 2, 2); }
+  c.restore();
+}
 function drawEnemy(e) {
   const c = ctx, r = e.r, t = e.t;
   const bob = e.fly ? Math.sin(t * 5) * 3 : -Math.abs(Math.sin(t * 9)) * 2.5;
@@ -1516,18 +1717,24 @@ function spawn(item) {
   if (d.fly) { const sy = 60 + Math.random() * 440; path = mkPath([[-40, sy], [CASTLE.x + 20, 380 + (Math.random() - .5) * 60]]); }
   const hp = base * d.hp * hpScale(L), cols = VCOLS[d.k];
   const e = { v: Math.random(), v2: Math.random(), sz: d.boss ? 1 : .93 + Math.random() * .14, k: d.k, path, d: 0, x: -40, y: 0, hp, max: hp, spd: d.spd * (1 + Math.min(.35, L * .004)) * (0.92 + Math.random() * .16),
-              armor: d.armor, gold: d.gold, fly: !!d.fly, r: d.r, col: cols ? cols[(Math.random() * cols.length) | 0] : d.col, dmg: d.dmg, regen: d.regen || 0, boss: !!d.boss,
+              armor: d.armor, gold: d.gold, fly: !!d.fly, r: d.r, col: cols ? cols[(Math.random() * cols.length) | 0] : d.col, dmg: d.dmg, regen: d.regen || 0, boss: !!d.boss, hex: d.hex || 0, hexCd: 0,
               slowT: 0, slowA: 0, burnT: 0, burnDps: 0, t: Math.random() * 6, face: 1, dead: false };
   if (evOn("swift")) e.spd *= 1.2;
   if (evOn("ironclad")) e.armor = Math.min(.75, e.armor + .25);
   [e.x, e.y] = posAt(path, 0);
   S.enemies.push(e);
 }
-function hurt(e, amt, magic, src) {
+function hurt(e, amt, magic, src, armorMul = 1) {
   if (e.dead) return;
-  const dmg = Math.min(e.hp, amt * (magic ? 1 : 1 - Math.min(.75, e.armor + (vsOn("armor") ? .25 : 0))));
+  const dmg = Math.min(e.hp, amt * (magic ? 1 : 1 - Math.min(.8, (e.armor + (vsOn("armor") ? .25 : 0)) * armorMul)));
   e.hp -= dmg;
   if (src) src.dmg = (src.dmg || 0) + dmg;
+  // Jasmine never accepts that she started it: the tower that hurt her is hexed and falls silent for a moment
+  if (e.hex && e.hexCd <= 0 && e.hp > 1e-9 && src && S.towers.includes(src)) {
+    src.hexT = 2; e.hexCd = e.hex;
+    S.texts.push({ x: src.x, y: src.y - 50, txt: "Hexed!", life: 1, col: "#c9a8ff" });
+    for (let i = 0; i < 8; i++) { const a = Math.random() * 6.28; S.fx.push({ x: src.x, y: src.y - 30, vx: Math.cos(a) * 40, vy: Math.sin(a) * 40 - 20, life: .5, max: .5, col: "rgba(201,168,255,.9)", r: 2.2 }); }
+  }
   if (e.hp <= 1e-9) { if (src) src.kills = (src.kills || 0) + 1; kill(e, src); }
 }
 function earn(g) { S.gold += g; S.stats.gold += g; }
@@ -1535,7 +1742,7 @@ function kill(e, src) {
   e.dead = true;
   const g = Math.max(1, Math.round(e.gold * goldScale(S.level) * (1 + .04 * perk("bounty") + .1 * perk("chest") + .05 * dyn()) * (evOn("goldrush") ? 2 : 1) * ((dragonSecret(src) || {}).gold || 1)));
   earn(g); S.stats.kills++;
-  if (BEAST_KEYS.includes(e.k)) { meta.slain[e.k] = (meta.slain[e.k] || 0) + 1; beastDirty = true; }
+  if (BEAST_KEYS.includes(e.k)) { meta.slain[e.k] = (meta.slain[e.k] || 0) + 1; beastDirty = true; if (BEAST_KEYS.reduce((a, k) => a + (meta.slain[k] || 0), 0) >= 10000) unlock("slayer"); }
   S.texts.push({ x: e.x, y: e.y - (e.fly ? 30 : 12), txt: "+" + g, life: 1, col: "#ffe08a" });
   for (let i = 0; i < (e.boss ? 30 : 8); i++) { const a = Math.random() * 6.28, sp = 30 + Math.random() * (e.boss ? 120 : 60); S.fx.push({ x: e.x, y: e.y - (e.fly ? 22 : 0), vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 20, life: .6, max: .6, col: e.boss ? "#ffd25e" : "rgba(240,235,220,.9)", r: e.boss ? 3.5 : 2.5, g: 60 }); }
   sfx("coin");
@@ -1543,11 +1750,11 @@ function kill(e, src) {
 }
 function target(t, st) {
   const tx = t.x, ty = t.y; let best = null, bp = -1;
-  const air = TOWERS[t.type].air;
+  const air = TOWERS[t.type].air, near = TOWERS[t.type].minRange || 0;
   for (const e of S.enemies) {
     if (e.dead || (e.fly && !air) || e.d <= 0) continue;
-    const ey = e.fly ? e.y - 22 : e.y;
-    if (Math.hypot(e.x - tx, ey - ty) > st.range) continue;
+    const ey = e.fly ? e.y - 22 : e.y, dist = Math.hypot(e.x - tx, ey - ty);
+    if (dist > st.range || dist < near) continue;
     const p = e.d / e.path.len + (e.boss ? .0001 : 0);
     if (p > bp) { bp = p; best = e; }
   }
@@ -1559,7 +1766,7 @@ function fire(t, e, st) {
   const oy = { archer: -36, mage: -66, frost: -40, catapult: -30, dragon: -24 }[t.type];
   const s = { kind, x, y: y + oy, tgt: e, tx: e.x, ty: e.fly ? e.y - 22 : e.y, spd: { arrow: 520, magic: 300, frost: 320, rock: 240, fire: 330 }[kind],
               dmg: st.dmg, magic: D.magic, splash: D.splash ? D.splash * (1 + (t.lvl - 1) * .02) : 0, air: D.air, slow: st.slow, burn: !!D.burn, vx: 0, vy: 0, trav: 0, d0: 1,
-              src: t, stage: t.type === "dragon" ? DRAGON_STAGES.indexOf(dragonStage(t.lvl)) : 0, dark: !!(dragonSecret(t) || {}).dark, burnLen: 3 * ((dragonSecret(t) || {}).burn || 1) };
+              armorMul: D.armorMul || 1, src: t, stage: t.type === "dragon" ? DRAGON_STAGES.indexOf(dragonStage(t.lvl)) : 0, dark: !!(dragonSecret(t) || {}).dark, burnLen: 3 * ((dragonSecret(t) || {}).burn || 1) };
   if (kind === "rock") { s.y = y - 14; s.tgt = null; }
   s.d0 = Math.max(1, Math.hypot(s.tx - s.x, s.ty - s.y));
   if (kind === "rock") { // lead the target a little since rocks don't home
@@ -1588,7 +1795,7 @@ function affect(e, s) {
     e.slowT = 1.6; e.slowA = Math.max(e.boss ? s.slow * .5 : s.slow, e.slowA);
   }
   if (s.burn) { e.burnT = s.burnLen || 3; e.burnDps = Math.max(e.burnDps, s.dmg * .35); e.burnSrc = s.src; }
-  hurt(e, s.dmg, s.magic, s.src);
+  hurt(e, s.dmg, s.magic, s.src, s.armorMul);
 }
 
 // the next level's monsters are decided in advance so "Up next" can show exactly what's coming
@@ -1664,7 +1871,7 @@ function startWave() {
     else for (let i = 0; i < n; i++) S.queue.splice((Math.random() * S.queue.length) | 0, 0, { ...base[(Math.random() * base.length) | 0] });
   }
   if (ev && !ev.choice) ev.choice = "refuse";
-  if (S.level % 10 === 0) { sfx("boss"); toast(`Boss level! The ${bossFor(S.level).name} approaches.`); }
+  if (S.level % 10 === 0) { sfx("boss"); toast(`Boss level! ${bossFor(S.level).named ? "" : "The "}${bossFor(S.level).name} approaches.`); }
   else { sfx("wave"); if (ev) toast(`${EVENTS[ev.id].name}! ${EVENTS[ev.id].kind === "choice" ? (ev.choice === "pay" ? "Paid." : "Refused.") : EVENTS[ev.id].desc(S.level)}`); }
   updateHud(); renderUpNext();
 }
@@ -1674,7 +1881,8 @@ function clearWave() {
   sfx("clear");
   const tpay = S.treasury ? treasPay(S.treasury, L) : 0;
   if (tpay) earn(tpay);
-  const unhurt = S.hp >= S.waveHp;  // judged before the masons patch the walls up
+  const unhurt = S.hp >= S.waveHp, thread = S.hp === 1;  // judged before the masons patch the walls up
+  if (S.ev && S.ev.L === L) S.stats.events = (S.stats.events || 0) + 1;
   const mend = Math.min(S.maxHp - S.hp, S.fort.masons * 2 + perk("crown") + S.towers.reduce((a, t) => a + ((dragonSecret(t) || {}).mend || 0), 0));
   if (mend > 0) { S.hp += mend; S.texts.push({ x: CASTLE.x + 50, y: CASTLE.y + 30, txt: "+" + mend + " ♥", life: 1.4, col: "#9fe08a" }); }
   let msg = `Level ${L} cleared! +${bonus + tpay} gold${tpay ? ` (${tpay} from the treasury)` : ""}`;
@@ -1684,12 +1892,17 @@ function clearWave() {
     grew++;
     for (let i = 0; i < 8; i++) S.fx.push({ x: t.x + (Math.random() - .5) * 20 * t.s, y: t.y - 16 * t.s, vx: (Math.random() - .5) * 40, vy: -30 - Math.random() * 30, life: .8, max: .8, col: "#c9f29a", r: 2.2, g: 40 });
   }
+  S.stats.grown = (S.stats.grown || 0) + grew;
   if (grew) msg += ` · ${grew === 1 ? "A tree has" : grew + " trees have"} grown`;
   toast(msg);
   if (S.vs) { vsLevelCleared(L); updateHud(); renderUpNext(); renderPanel(); return; }
   savePlayer(L);
   [10, 25, 50, 100].forEach(n => { if (L >= n) unlock("lv" + n); });
   if (L % 10 === 0 && unhurt) unlock("untouched");
+  if (thread) unlock("laststand");
+  if (BEAST_KEYS.every(beastMet)) unlock("scholar");
+  if (S.stats.grown >= 10) unlock("greenthumb");
+  if (S.stats.events >= 10) unlock("eventful");
   persist();
   updateHud(); renderUpNext(); renderPanel();
 }
@@ -1717,10 +1930,11 @@ function gameOver() {
     ob.append(el("p", "", "New achievements this game:"));
     S.newBadges.forEach(id => { const a = ACH.find(x => x.id === id); if (!a) return; const d = el("div", "nb"), im = new Image(); im.src = badgeImg(id); im.alt = ""; d.append(im, document.createTextNode(a.name)); ob.append(d); });
   }
-  const earned = held >= 5 ? 1 + Math.floor(held / 10) : 0;
+  const earned = heirloomsFor(held), next = heirloomLevel(earned + 1);
   if (earned) { meta.picks += earned; meta.luck = held; }
   meta.runs++; saveMeta();
-  $("overHeirlooms").textContent = earned ? `You earned ${earned} heirloom${earned === 1 ? "" : "s"} to keep for future games.` : "Hold out to level 5 to earn an heirloom for future games.";
+  $("overHeirlooms").textContent = (earned ? `You earned ${earned} heirloom${earned === 1 ? "" : "s"} to keep for future games. ` : "")
+    + `Hold out to level ${next} in one game to earn ${earned ? "another" : "an heirloom"}.`;
   $("btnAgain").textContent = meta.picks ? `Choose your heirloom${meta.picks === 1 ? "" : "s"}` : "Play again";
   $("overCard").hidden = false;
   clearSave();
@@ -1744,17 +1958,20 @@ function update(dt) {
     if (e.slowT > 0) { e.slowT -= dt; if (e.slowT <= 0) e.slowA = 0; }
     if (e.burnT > 0) { e.burnT -= dt; if (Math.random() < .25) S.fx.push(emberFx(e)); hurt(e, e.burnDps * dt, true, e.burnSrc); if (e.dead) continue; }
     if (e.regen) e.hp = Math.min(e.max, e.hp + e.max * e.regen * dt);
+    if (e.hexCd > 0) e.hexCd -= dt;
     const px = e.x;
     const moat = S.fort.moat && !e.fly && e.x > 770 ? 1 - .12 * S.fort.moat : 1;
     e.d += e.spd * (1 - e.slowA) * moat * (vsOn("swift") ? 1.2 : 1) * dt;
     [e.x, e.y] = posAt(e.path, e.d);
     if (Math.abs(e.x - px) > .01) e.face = e.x >= px ? 1 : -1;
     if (e.d >= e.path.len) {
-      e.dead = true; S.hp -= e.dmg; S.shake = reduceMotion ? 0 : .3; sfx("leak");
-      if (S.vs) S.vs.dread += Math.round(e.gold * 1.5);  // the Dark Lord feeds on every blow to the castle
+      const hpWas = S.hp, tier = hitTier(e.dmg, hpWas, hpWas - e.dmg, S.maxHp);
+      e.dead = true; S.hp -= e.dmg; S.hitTotal = (S.hitTotal || 0) + e.dmg;
+      castleHit(tier, true); sfx(tier === 3 ? "leakBig" : "leak");
+      if (S.vs) { const g = Math.round(e.gold * 1.5); S.vs.dread += g; S.hitDread = (S.hitDread || 0) + g; }  // the Dark Lord feeds on every blow to the castle
       S.texts.push({ x: CASTLE.x + 40, y: CASTLE.y + 40, txt: "-" + e.dmg, life: 1.2, col: "#ff9a86" });
       if (S.hp <= 0) {
-        if (perk("wind") && !S.windUsed) { S.windUsed = true; S.hp = Math.ceil(S.maxHp / 2); toast("Second wind! The castle springs back to half its hearts."); sfx("clear"); }
+        if (perk("wind") && !S.windUsed) { S.windUsed = true; S.hp = Math.ceil(S.maxHp / 2); toast("Second wind! The castle springs back to half its hearts."); sfx("clear"); hitFx.saved = 1.4; hitFx.gate = hitFx.edge = 0; }
         else { S.hp = 0; gameOver(); return; }
       }
     }
@@ -1765,6 +1982,7 @@ function update(dt) {
   }
   S.towers.forEach(t => {
     t.cd -= dt; t.flash = Math.max(0, t.flash - dt);
+    if (t.hexT > 0) { t.hexT -= dt; return; }
     if (t.cd > 0) return;
     const st = tStats(t), e = target(t, st);
     if (e) { fire(t, e, st); t.cd = 1 / st.rate; } else t.cd = .1;
@@ -1794,20 +2012,26 @@ function update(dt) {
   S.fx = S.fx.filter(f => f.life > 0);
   for (const t of S.texts) { t.life -= dt; t.y -= 22 * dt; }
   S.texts = S.texts.filter(t => t.life > 0);
-  if (S.shake > 0) S.shake -= dt;
   if (S.phase === "wave" && !S.queue.length && !S.enemies.length) clearWave();
 }
 
+// a catapult can't aim at anything right beside it: show that blind spot inside its range ring
+function deadZone(type, x, y) {
+  const m = TOWERS[type] && TOWERS[type].minRange; if (!m) return;
+  ctx.fillStyle = "rgba(20,29,25,.22)"; ctx.strokeStyle = "rgba(255,240,200,.5)"; ctx.lineWidth = 1.2; ctx.setLineDash([4, 4]);
+  ctx.beginPath(); ctx.arc(x, y, m, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.setLineDash([]);
+}
 function render() {
   const sc = cv.width / W;
   ctx.setTransform(sc, 0, 0, sc, 0, 0);
-  if (S && S.shake > 0) ctx.translate((Math.random() - .5) * 6, (Math.random() - .5) * 6);
+  if (S && hitFx.shake > 0) { const m = HIT_AMP[hitFx.tier] * Math.min(1, hitFx.shake / .12); ctx.translate((Math.random() - .5) * m * 2, (Math.random() - .5) * m * 2); }
   ctx.drawImage(bg, 0, 0, W, H);
   if (fadeT > 0 && bgOld) { ctx.globalAlpha = Math.min(1, fadeT / 1.5); ctx.drawImage(bgOld, 0, 0, W, H); ctx.globalAlpha = 1; }
   // build spots + range ring
   if (S && sel && sel.kind === "tower") {
     const t = sel.t, rr = tStats(t).range;
     ctx.fillStyle = "rgba(255,240,200,.12)"; ctx.strokeStyle = "rgba(255,240,200,.6)"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(t.x, t.y, rr, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    deadZone(t.type, t.x, t.y);
     // show which trees are acting as lookouts for this tower
     ctx.strokeStyle = "rgba(170,235,140,.9)"; ctx.lineWidth = 2; ctx.setLineDash([3, 3]);
     for (const tr of lookoutTrees(t)) { ctx.beginPath(); ctx.moveTo(t.x, t.y - 10); ctx.lineTo(tr.x, tr.y - 10 * tr.s); ctx.stroke(); ctx.beginPath(); ctx.arc(tr.x, tr.y - 16 * tr.s, 17 * tr.s, 0, Math.PI * 2); ctx.stroke(); }
@@ -1816,12 +2040,18 @@ function render() {
   if (S && sel && sel.kind === "place") drawGhost(sel.x, sel.y, true, true);
   const dragGhost = S && drag && drag.moved && drag.over;
   if (S && hoverPt && !(sel && sel.kind === "place" && Math.hypot(sel.x - hoverPt.x, sel.y - hoverPt.y) < 4) && !towerAt(hoverPt.x, hoverPt.y) && !treeAt(hoverPt.x, hoverPt.y) && !hitCastle(hoverPt.x, hoverPt.y)) drawGhost(hoverPt.x, hoverPt.y, !canBuild(hoverPt.x, hoverPt.y), false);
+  if (kbd && document.activeElement === cv) {
+    ctx.strokeStyle = "rgba(20,29,25,.7)"; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(kbd.x, kbd.y, 18, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = "#e9b949"; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(kbd.x, kbd.y, 18, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); for (const [a, b] of [[-26, -12], [12, 26]]) { ctx.moveTo(kbd.x + a, kbd.y); ctx.lineTo(kbd.x + b, kbd.y); ctx.moveTo(kbd.x, kbd.y + a); ctx.lineTo(kbd.x, kbd.y + b); } ctx.stroke();
+  }
   drawCastle();
   // depth-sort towers and ground enemies by y; fliers on top
   const items = [];
   if (S) {
     S.towers.forEach(t => items.push({ y: t.y, f: () => {
       drawTowerShape(ctx, t.type, t.x, t.y, t.ang, t.flash, t.lvl, t.name);
+      if (t.hexT > 0) hexMark(t.x, t.y, t.hexT);
       if (t.type === "dragon" && t.name) {
         ctx.font = "700 11px 'Alegreya Sans', sans-serif"; ctx.textAlign = "center";
         ctx.lineWidth = 3; ctx.strokeStyle = "rgba(20,29,25,.75)"; ctx.strokeText(t.name, t.x, t.y + 24);
@@ -1835,6 +2065,7 @@ function render() {
     const rr = TOWERS[drag.type].range;
     ctx.fillStyle = drag.ok ? "rgba(255,240,200,.12)" : "rgba(226,104,62,.12)"; ctx.strokeStyle = drag.ok ? "rgba(255,240,200,.7)" : "rgba(255,150,120,.8)";
     ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(drag.x, drag.y, rr, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    deadZone(drag.type, drag.x, drag.y);
     drawGhost(drag.x, drag.y, drag.ok, true);
     items.push({ y: drag.y, f: () => { ctx.globalAlpha = .8; drawTowerShape(ctx, drag.type, drag.x, drag.y, 0, 0, 1); ctx.globalAlpha = 1; } });
   }
@@ -1857,6 +2088,11 @@ function render() {
     ctx.globalAlpha = 1;
   }
   drawAmbient();
+  if (S && hitFx.edge > 0) {  // a heavy blow: the edges of the board blush red for a moment
+    const a = Math.min(1, hitFx.edge / .45) * .5, g = ctx.createRadialGradient(W / 2, H / 2, H * .38, W / 2, H / 2, W * .62);
+    g.addColorStop(0, "rgba(226,70,50,0)"); g.addColorStop(1, `rgba(226,70,50,${a})`);
+    ctx.fillStyle = g; ctx.fillRect(-12, -12, W + 24, H + 24);
+  }
 }
 
 /* ---------- seasons in motion ---------- */
@@ -1903,21 +2139,25 @@ function drawAmbient() {
 }
 
 /* ---------- loop ---------- */
-let last = performance.now();
+let last = performance.now(), lastDraw = 0;
 function frame(now) {
   let dt = Math.min(.05, (now - last) / 1000); last = now;
   if (NET.role === "guest") {  // the Dark Lord's screen: draw the Keeper's game, moving things along between updates
     if (S) guestTick(dt); else time += dt;
+    hitDecay(dt);
     checkSeason(); if (fadeT > 0) fadeT -= dt; ambient(dt); musicTick(); render(); guestHud();
     requestAnimationFrame(frame); return;
   }
   const running = S && !paused && $("startCard").hidden;
   if (running) { for (let i = 0; i < speed; i++) update(dt); } else time += dt;
+  hitDecay(dt);
   checkSeason();
   if (fadeT > 0) fadeT -= dt;
   ambient(dt);
   musicTick();
-  render();
+  // behind a card, while paused or after the keep falls, only the gentle scenery moves: redraw at ~20 fps (4 with reduced motion) to save battery
+  const idle = !running && (!S || paused || S.phase === "over" || !$("startCard").hidden || !$("modal").hidden);
+  if (!idle || drag || now - lastDraw >= (reduceMotion ? 250 : 50)) { render(); lastDraw = now; }
   hudTick();
   requestAnimationFrame(frame);
 }
@@ -1931,11 +2171,29 @@ new ResizeObserver(resize).observe(cv);
 function toLogical(ev) { const r = cv.getBoundingClientRect(); return [(ev.clientX - r.left) * W / r.width, (ev.clientY - r.top) * H / r.height]; }
 function towerAt(x, y) { let best = null, bd = 30; if (S) for (const t of S.towers) { const d = Math.min(Math.hypot(t.x - x, t.y - y), Math.hypot(t.x - x, t.y - 26 - y)); if (d < bd) { bd = d; best = t; } } return best; }
 function hitCastle(x, y) { return x > CASTLE.x - 6 && x < CASTLE.x + CASTLE.w + 6 && y > CASTLE.y - 30 && y < CASTLE.y + CASTLE.h + 20; }
-cv.addEventListener("pointerdown", ev => {
+// fingers are much bigger than a mouse pointer: give touch taps about 22 css px of slack round trees
+cv.addEventListener("pointerdown", ev => { kbd = null; tapBoard(...toLogical(ev), true, ev.pointerType === "mouse" ? 0 : Math.max(0, 22 * W / cv.getBoundingClientRect().width - 12)); });
+// keyboard: the arrow keys move a cursor over the map and Enter (or Space) taps where it is
+let kbd = null;
+cv.addEventListener("keydown", ev => {
+  const dir = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[ev.key];
+  if (dir) {
+    ev.preventDefault(); const st = ev.shiftKey ? 60 : 20;
+    kbd = kbd || { x: W / 2, y: H / 2 };
+    kbd.x = Math.max(10, Math.min(W - 10, kbd.x + dir[0] * st)); kbd.y = Math.max(10, Math.min(H - 10, kbd.y + dir[1] * st));
+    hoverPt = { ...kbd }; return;
+  }
+  if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); kbd = kbd || { x: W / 2, y: H / 2 }; hoverPt = { ...kbd }; tapBoard(kbd.x, kbd.y, false); }
+});
+cv.addEventListener("focus", () => { if (cv.matches(":focus-visible")) { kbd = kbd || { x: W / 2, y: H / 2 }; hoverPt = { ...kbd }; } });
+cv.addEventListener("blur", () => { if (kbd) hoverPt = null; kbd = null; });
+function tapBoard(x, y, byPointer, pad = 0) {
   audio();
   if (!S || S.phase === "over" || NET.role === "guest") return;
-  const [x, y] = toLogical(ev), t = towerAt(x, y);
-  const tr = !t && treeAt(x, y);
+  const t = towerAt(x, y);
+  // once a tree is picked, taps anywhere close to it keep chopping it, so you needn't hit it exactly each time
+  const cur = sel && sel.kind === "tree" && !sel.t.fall && S.trees.includes(sel.t) && Math.hypot(sel.t.x - x, sel.t.y - 12 * sel.t.s - y) < 30 * sel.t.s + pad ? sel.t : null;
+  const tr = !t && (cur || treeAt(x, y, pad));
   if (t) sel = { kind: "tower", t };
   else if (tr) { sel = { kind: "tree", t: tr }; chop(tr); }
   else if (hitCastle(x, y)) sel = { kind: "castle" };
@@ -1945,15 +2203,15 @@ cv.addEventListener("pointerdown", ev => {
     else { sel = null; if (BUILD_MSG[why]) toast(BUILD_MSG[why]); }
   }
   renderPanel();
-  if (sel && sel.kind !== "tree" && window.innerWidth < 900) $("selPanel").scrollIntoView({ block: "nearest", behavior: reduceMotion ? "auto" : "smooth" });
-});
+  if (byPointer && sel && sel.kind !== "tree" && window.innerWidth < 900) $("selPanel").scrollIntoView({ block: "nearest", behavior: reduceMotion ? "auto" : "smooth" });
+}
 cv.addEventListener("pointermove", ev => {
   if (ev.pointerType !== "mouse") return;
   if (NET.role === "guest" || (S && S.vsGuest)) return;
   const [x, y] = toLogical(ev); hoverPt = { x, y };
   cv.style.cursor = towerAt(x, y) || treeAt(x, y) || hitCastle(x, y) || !canBuild(x, y) ? "pointer" : "not-allowed";
 });
-cv.addEventListener("pointerleave", () => { hoverPt = null; });
+cv.addEventListener("pointerleave", () => { hoverPt = kbd ? { ...kbd } : null; });
 
 /* ---------- side panel ---------- */
 function fmt(n) { return Math.round(n).toLocaleString(); }
@@ -2000,7 +2258,7 @@ function renderPanel() {
       row("Raise the walls", wallCost(), `+5 max hearts (to ${S.maxHp + 5}), and fills those 5 now.`, false, () => { S.walls++; S.maxHp += 5; S.hp += 5; }));
     for (const k of ["archers", "moat", "masons"]) {
       const f = FORT[k], n = S.fort[k], maxed = n >= f.max;
-      walls.append(row(n ? `${f.name} · level ${n}` : f.name, f.cost(n), f.desc(maxed ? n : n || 0), maxed, () => { S.fort[k]++; }));
+      walls.append(row(n ? `${f.name} · level ${n}` : f.name, f.cost(n), f.desc(maxed ? n : n || 0), maxed, () => { S.fort[k]++; if (S.fort.moat >= FORT.moat.max && S.fort.masons >= FORT.masons.max) unlock("fortress"); }));
     }
     econ.append(row(S.treasury ? `Treasury · level ${S.treasury}` : "Open a treasury", treasCost(),
       `Pays ${S.treasury ? `${treasPay()} → ${treasPay(S.treasury + 1)}` : treasPay(1)} gold every time you clear a level.`, false, () => { S.treasury++; }));
@@ -2023,9 +2281,11 @@ function renderPanel() {
     p.append(el("h3", "", planted ? GROWTH[gi].name : tr.s > 1.1 ? "Old oak" : "Young tree"));
     if (next) p.append(el("p", "hint", `Leave it ${lv(left)} more and it becomes ${next.name === "Mighty oak" ? "a" : "an"} ${next.name.toLowerCase()} worth ${Math.round(next.wood * goldScale(S.level + left))} gold of firewood.`));
     p.append(el("p", "hint", `Any tower within a short walk of this tree gets +5% range from it as a lookout.`));
-    p.append(el("p", "hint", `Tap the tree to chop it yourself (${tr.hp} more chop${tr.hp === 1 ? "" : "s"}) and sell the firewood for ${woodValue(tr)} gold, or pay a woodcutter to clear it now.`));
-    const opts = el("div", "opts");
-    opts.append(costBtn(`Hire a woodcutter · ${fellCost()} gold`, fellCost(), () => { const c = fellCost(); if (S.gold < c || tr.fall) return; S.gold -= c; fell(tr, 0); }));
+    p.append(el("p", "hint", `Chop it yourself for all ${woodValue(tr)} gold of firewood (${tr.hp} more chop${tr.hp === 1 ? "" : "s"}), or let a woodcutter clear it straight away for a share: they keep ${Math.round(cutterFee() * 100)}%.`));
+    const opts = el("div", "opts"), axe = el("button", "primary", `Chop · ${tr.hp} left · ${woodValue(tr)} gold`), cutter = el("button", "", `Hire a woodcutter · you get ${cutterPay(tr)} gold`);
+    axe.addEventListener("click", () => { if (tr.fall) return; const left = tr.hp - 1; chop(tr); if (left > 0 && !tr.fall) { renderPanel(); const b = document.querySelector("#selPanel .opts .primary"); if (b) b.focus({ preventScroll: true }); } });
+    cutter.addEventListener("click", () => { if (tr.fall) return; fell(tr, cutterPay(tr), false); });
+    opts.append(axe, cutter);
     p.append(opts);
     return;
   }
@@ -2107,11 +2367,23 @@ function renderPanel() {
     t.lvl++; sfx("up");
     if (before && dragonStage(t.lvl) !== before) toast(`${dragonLabel(t)} has grown into a ${dragonStage(t.lvl).name}!`);
     if (t.type === "dragon" && t.lvl >= 10) unlock("greatwyrm");
+    if (t.lvl >= 10) unlock("toplevel");
     schedulePersist(); renderPanel(); updateHud();
   }, "primary"));
   const refund = Math.floor(t.spent * .7);
   const sell = el("button", "", `Sell for ${refund} gold`);
-  sell.addEventListener("click", () => { S.gold += refund; S.towers = S.towers.filter(x => x !== t); sel = null; sfx("coin"); schedulePersist(); renderPanel(); updateHud(); });
+  // selling asks once more first: a stray tap shouldn't cost a tower
+  sell.addEventListener("click", () => {
+    const yes = el("button", "", `Yes, sell for ${refund} gold`), no = el("button", "", "Keep it");
+    yes.addEventListener("click", () => {
+      if (!S.towers.includes(t)) return;
+      S.gold += refund; S.towers = S.towers.filter(x => x !== t); sel = null; sfx("coin"); toast(`Sold for ${refund} gold.`); schedulePersist(); renderPanel(); updateHud();
+    });
+    no.addEventListener("click", () => { confirmRow.replaceWith(sell); sell.focus(); });
+    const confirmRow = el("div", "confirm");
+    confirmRow.append(el("p", "fine", `Sell this ${TOWERS[t.type].name}? You get back ${refund} of the ${t.spent} gold spent on it.`), yes, no);
+    sell.replaceWith(confirmRow); no.focus();
+  });
   opts.append(sell); p.append(opts);
 }
 function refreshAfford() {
@@ -2140,7 +2412,7 @@ function chip(cls, icon, text) {
   c.append(document.createTextNode(text)); return c;
 }
 function renderVsUpNext() {
-  const V = S.vs, L = S.level, box = $("upNext"), later = $("upLater"); box.textContent = ""; later.textContent = "";
+  const V = S.vs, L = S.level, box = $("upNext"), later = $("upLater"); box.textContent = ""; later.textContent = ""; later.previousElementSibling.textContent = "Later";
   $("upTitle").textContent = S.phase === "wave" ? `Level ${L} (under way)` : `Coming in level ${L}`;
   if (L % 10 === 0) { const b = bossFor(L); box.append(chip("boss", enemyIcon(b.key, b), "Boss: " + b.name)); }
   if (S.phase === "wave" && V.revealed) Object.entries(V.revealed).sort((a, b) => b[1] - a[1]).forEach(([k, n]) => box.append(chip(ENEMIES[k].fly ? "fly" : "", enemyIcon(k), `${n} × ${ENEMIES[k].name}`)));
@@ -2178,9 +2450,11 @@ function renderUpNext() {
   const counts = new Map(); plan.forEach(q => { if (q.k !== "boss") counts.set(q.k, (counts.get(q.k) || 0) + 1); });
   [...counts].sort((a, b) => b[1] - a[1]).forEach(([k, n]) => box.append(beastChip(ENEMIES[k].fly ? "fly" : "", k, null, `${n} × ${ENEMIES[k].name}` + (ENEMIES[k].fly ? " (flying)" : ""))));
   const later = $("upLater"); later.textContent = "";
-  const fresh = Object.keys(ENEMIES).find(k => ENEMIES[k].from > L);
-  if (L % 10 !== 0) { const nb = Math.ceil(L / 10) * 10, b = bossFor(nb); later.append(chip("boss", enemyIcon(b.key, b), `${b.name} at level ${nb}`)); }
-  if (fresh) later.append(chip(ENEMIES[fresh].fly ? "fly" : "", enemyIcon(fresh), `${ENEMIES[fresh].name} from level ${ENEMIES[fresh].from}`));
+  // bosses and new monsters are only hinted one level ahead, so each one is still a bit of a surprise
+  const N = L + 1;
+  if (N % 10 === 0) { const b = bossFor(N); later.append(chip("boss", enemyIcon(b.key, b), `Boss: ${b.name}` + (b.fly ? " (flying)" : ""))); }
+  Object.keys(ENEMIES).filter(k => ENEMIES[k].from === N).forEach(k => later.append(chip(ENEMIES[k].fly ? "fly" : "", enemyIcon(k), `New: ${ENEMIES[k].name}` + (ENEMIES[k].fly ? " (flying)" : ""))));
+  later.previousElementSibling.textContent = `Then, in level ${N}`;
   later.hidden = later.previousElementSibling.hidden = !later.childElementCount;
 }
 
@@ -2198,6 +2472,7 @@ function placeTower(k, x, y) {
   if (k === "dragon") { nt.name = suggestDragonName(); toast(`${nt.name} the dragon has hatched! Tap it to give it a new name.`); }
   S.towers.push(nt); sel = { kind: "tower", t: nt }; S.stats.built++;
   if (S.towers.length >= 25) unlock("architect");
+  if (Object.keys(TOWERS).every(type => S.towers.some(t => t.type === type))) unlock("allfive");
   sfx("build"); schedulePersist(); renderPanel(); updateHud();
   return true;
 }
@@ -2271,18 +2546,25 @@ document.addEventListener("fullscreenchange", () => { if (!document.fullscreenEl
 /* ---------- HUD ---------- */
 let hudCache = "";
 function updateHud() { hudCache = ""; hudTick(); }
+const waveBtn = $("btnWave"), startCardEl = $("startCard");
 function hudTick() {
-  if (!S) return;
-  const btn = $("btnWave");
+  const onStart = !startCardEl.hidden;
+  if (!S || onStart) {  // on the start screen the next move is New game or Continue, not this button
+    if (!waveBtn.disabled) waveBtn.disabled = true;
+    if (waveBtn.classList.contains("primary")) waveBtn.classList.remove("primary");
+    hudCache = ""; if (!S) return;
+  } else if (!waveBtn.classList.contains("primary")) waveBtn.classList.add("primary");
+  const btn = waveBtn;
   let label;
   if (S.phase === "build") label = S.vs && S.vs.dl ? (S.vs.ready.k ? "Waiting for the Dark Lord…" : S.vs.ready.d ? `Start level ${S.level} (they're ready)` : `Ready for level ${S.level}`)
     : auto ? `Start level ${S.level} (${Math.max(0, Math.ceil(S.nextT))})` : `Start level ${S.level}`;
   else if (S.phase === "wave") label = `Level ${S.level} under way`;
   else label = "Game over";
   const key = [S.level, Math.floor(S.gold), S.hp, S.maxHp, label].join("|");
+  if (onStart) { if (btn.textContent !== label) btn.textContent = label; return; }
   if (key === hudCache) return; hudCache = key;
   if (S.gold >= 5000 && S.phase !== "over") unlock("rich");
-  $("hLevel").textContent = S.level; $("hGold").textContent = Math.floor(S.gold).toLocaleString(); $("hHearts").textContent = `${S.hp}/${S.maxHp}`;
+  $("hLevel").textContent = S.level; $("hGold").textContent = Math.floor(S.gold).toLocaleString(); $("hHearts").textContent = `${S.hp}/${S.maxHp}`; heartsAlert();
   btn.textContent = label; btn.disabled = S.phase !== "build" || !!(S.vs && S.vs.dl && S.vs.ready.k);
   refreshAfford();
 }
@@ -2291,7 +2573,7 @@ const toastQ = [];
 function toast(msg) {
   const t = $("toast");
   if (!t.hidden) { if (toastQ.length < 4 && !toastQ.includes(msg) && t.textContent !== msg) toastQ.push(msg); return; }
-  t.textContent = msg; t.hidden = false; clearTimeout(toastTimer);
+  t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); $("srStatus").textContent = msg;
   toastTimer = setTimeout(() => { t.hidden = true; if (toastQ.length) toast(toastQ.shift()); }, toastQ.length ? 2400 : 3000);
 }
 
@@ -2307,14 +2589,21 @@ $("btnQuit").addEventListener("click", () => { if (S && S.phase === "build") per
 document.addEventListener("visibilitychange", () => { if (document.hidden && S && S.phase === "wave") setPaused(true); });
 document.addEventListener("keydown", ev => {
   if (!$("modal").hidden) { if (ev.key === "Escape") closeModal(); return; }
-  if (ev.target.tagName === "INPUT" || ev.target.tagName === "TEXTAREA") return;
-  if (ev.code === "Space") { ev.preventDefault(); if (S && S.phase === "build" && $("startCard").hidden && !paused) startWave(); }
+  if (ev.target.tagName === "INPUT" || ev.target.tagName === "TEXTAREA" || ev.target.tagName === "SELECT") return;
+  const onControl = ev.target.closest && ev.target.closest("button, a, summary, [tabindex]");
+  if (ev.code === "Space" && !onControl) { ev.preventDefault(); if (S && S.phase === "build" && $("startCard").hidden && !paused) startWave(); }
   if (NET.role === "guest") return;
   if (ev.key === "p" || ev.key === "P") setPaused(!paused);
   if (ev.key === "Escape") { sel = null; renderPanel(); }
-  if (ev.key === "f" || ev.key === "F") setFull(!full);
+  if ((ev.key === "f" || ev.key === "F") && !ev.ctrlKey && !ev.metaKey && !ev.altKey) setFull(!full);
 });
+function setBuzz(on) {
+  buzz = on; $("btnBuzz").textContent = `Buzz: ${on ? "on" : "off"}`; $("btnBuzz").classList.toggle("on", on);
+}
+$("btnBuzz").addEventListener("click", () => { setBuzz(!buzz); ls.set("ek_buzz", buzz); if (buzz) try { navigator.vibrate(HIT_BUZZ[1]); } catch {} });
 (function prefs() {
+  $("controls").classList.toggle("buzz", canBuzz);
+  if (ls.get("ek_buzz") === false) setBuzz(false);
   const a = ls.get("ek_auto"), s = ls.get("ek_sound");
   if (a === true) { auto = true; $("btnAuto").textContent = "Auto: on"; $("btnAuto").classList.add("on"); }
   if (s === false) { sound = false; $("btnSound").textContent = "Sound: off"; $("btnSound").classList.remove("on"); }
@@ -2330,7 +2619,7 @@ function readName() {
   ls.set("ek_name", playerName);
 }
 function showStart() {
-  $("startCard").hidden = false; $("overCard").hidden = true;
+  $("startCard").hidden = false; $("overCard").hidden = true; resetHits();
   $("pname").value = playerName;
   const c = $("btnContinue");
   if (savedGame && savedGame.level) { c.hidden = false; c.textContent = `Continue from level ${savedGame.level}` + (Number.isInteger(savedGame.rv) && savedGame.rv !== RULES_VERSION ? ` (rules v${savedGame.rv})` : ""); $("btnNew").classList.remove("primary"); }
@@ -2339,16 +2628,22 @@ function showStart() {
   bb.classList.toggle("glow", !!meta.picks);
   renderPanel();
 }
-let modalDone = null;
+let modalDone = null, modalFrom = null;
 function openModal(build, onClose) {
   const card = $("modalCard"); card.textContent = ""; build(card);
-  modalDone = onClose || null; $("modal").hidden = false;
-  const f = card.querySelector("button, textarea"); if (f) f.focus({ preventScroll: true });
+  if ($("modal").hidden) modalFrom = document.activeElement;
+  const h = card.querySelector("h2, h3");
+  if (h) { h.id = "modalTitle"; card.setAttribute("aria-labelledby", "modalTitle"); } else card.removeAttribute("aria-labelledby");
+  modalDone = onClose || null; $("modal").hidden = false; $("wrap").inert = true;
+  const f = card.querySelector("button, textarea, input, select"); if (f) f.focus({ preventScroll: true });
 }
 function closeModal() {
   if ($("modal").hidden) return;
-  $("modal").hidden = true; const f = modalDone; modalDone = null; if (f) f();
+  $("modal").hidden = true; $("wrap").inert = false; const f = modalDone; modalDone = null; if (f) f();
   if (!$("startCard").hidden) showStart();
+  const back = modalFrom; modalFrom = null;
+  if (back && back.isConnected && back.offsetParent !== null && !back.disabled) back.focus({ preventScroll: true });
+  else if (!$("startCard").hidden) $("btnNew").focus({ preventScroll: true });
 }
 $("modal").addEventListener("click", ev => { if (ev.target === $("modal")) closeModal(); });
 /* ---------- bestiary: every monster, with its numbers and how to beat it ----------
@@ -2398,6 +2693,7 @@ function beastPage(k, atLevel) {
   if (d.rider) tags.append(el("span", "", "Mounted"));
   if (d.armor >= .3) tags.append(el("span", "", "Heavy armour"));
   if (d.regen) tags.append(el("span", "", "Heals"));
+  if (d.hex) tags.append(el("span", "", "Hexes towers"));
   bt.append(el("h3", "", d.name), tags, el("blockquote", "", lore.lore || ""));
   // the same numbers spawn() uses (before random events, heirlooms and the little per-monster variation)
   const hp = Math.round(18 * d.hp * hpScale(L)), spd = Math.round(d.spd * (1 + Math.min(.35, L * .004)));
@@ -2406,11 +2702,12 @@ function beastPage(k, atLevel) {
   const row = (a, b) => kv.append(el("dt", "", a), el("dd", "", b));
   row(`Health (level ${L})`, hp.toLocaleString());
   row("Speed", `${pace[0].toUpperCase() + pace.slice(1)} (${spd})`);
-  row("Armour", d.armor ? `${Math.round(d.armor * 100)}%, not vs magic` : "None");
+  row("Armour", d.armor ? `${Math.round(d.armor * 100)}% (more against arrows, none against magic)` : "None");
   if (d.regen) row("Healing", `${Math.round(d.regen * 100)}% a second`);
+  if (d.hex) row("Hex", `Silences the tower that hurt her for 2 seconds (one every ${d.hex} seconds)`);
   row("Castle hearts it takes", String(d.dmg));
   row(`Gold per kill (level ${L})`, String(Math.max(1, Math.round(d.gold * goldScale(L)))));
-  row(boss ? "Comes at levels" : "First appears", boss ? `${first}, ${first + 30}, ${first + 60}…` : `level ${first}`);
+  row(boss ? "Comes at levels" : "First appears", boss ? `${first}, ${first + 10 * BOSSES.length}, ${first + 20 * BOSSES.length}…` : `level ${first}`);
   row("Defeated by you", (meta.slain[k] || 0).toLocaleString());
   box.append(kv);
   const tips = el("ul", "tips");
@@ -2435,9 +2732,89 @@ function rollOffer() {
   }
   return out;
 }
+/* ---------- heirloom icons: one small painted emblem per heirloom, ringed in its rarity colour ---------- */
+const heirloomCache = {};
+function heart(g, x, y, s, col) {
+  g.fillStyle = col; g.beginPath(); g.moveTo(x, y + s * .9);
+  g.bezierCurveTo(x - s * 1.4, y - s * .1, x - s * .7, y - s * 1.1, x, y - s * .35);
+  g.bezierCurveTo(x + s * .7, y - s * 1.1, x + s * 1.4, y - s * .1, x, y + s * .9); g.fill();
+}
+function coin(g, x, y, r) { g.fillStyle = "#a8790c"; ell(g, x, y + r * .22, r, r * .55); g.fillStyle = "#f2c94c"; ell(g, x, y, r, r * .55); g.fillStyle = "#ffe9a3"; ell(g, x - r * .3, y - r * .12, r * .35, r * .15); }
+function arrow(g, x1, y1, x2, y2, col = "#c9ced4") {
+  const a = Math.atan2(y2 - y1, x2 - x1), ux = Math.cos(a), uy = Math.sin(a);
+  g.strokeStyle = "#8a6a44"; g.lineWidth = 2; g.lineCap = "round"; g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2 - ux * 4, y2 - uy * 4); g.stroke();
+  g.fillStyle = col; tri(g, x2, y2, x2 - ux * 7 - uy * 3.5, y2 - uy * 7 + ux * 3.5, x2 - ux * 7 + uy * 3.5, y2 - uy * 7 - ux * 3.5);
+  g.fillStyle = "#e9e2cf"; for (const k of [0, 3]) { const bx = x1 + ux * k, by = y1 + uy * k; tri(g, bx, by, bx - ux * 4 - uy * 3, by - uy * 4 + ux * 3, bx + ux * 2, by + uy * 2); tri(g, bx, by, bx - ux * 4 + uy * 3, by - uy * 4 - ux * 3, bx + ux * 2, by + uy * 2); }
+}
+const HEIRLOOM_ART = {
+  purse(g) { g.fillStyle = "#7a4f26"; ell(g, 26, 31, 12, 11); tri(g, 20, 22, 32, 22, 26, 28); g.fillStyle = "#9a6a38"; ell(g, 22, 28, 5, 6);
+    g.fillStyle = "#6a4220"; tri(g, 19, 17, 26, 23, 22, 23); tri(g, 33, 17, 26, 23, 30, 23); g.strokeStyle = "#e9b949"; g.lineWidth = 2; g.beginPath(); g.moveTo(20, 22); g.lineTo(32, 22); g.stroke();
+    coin(g, 15, 40, 5); coin(g, 37, 41, 5.5); },
+  stones(g) { for (let r = 0; r < 3; r++) for (let i = 0; i < 3; i++) { const x = 11 + i * 10 + (r % 2 ? 5 : 0), y = 37 - r * 7; if (x > 37) continue; g.fillStyle = r % 2 ? "#8d949b" : "#a9b2ba"; g.fillRect(x, y, 9, 6); }
+    heart(g, 33, 14, 8, "#f08a7a"); },
+  arrows(g) { arrow(g, 13, 39, 39, 13); arrow(g, 13, 13, 39, 39); },
+  arcane(g) { g.strokeStyle = "#7a5a3a"; g.lineWidth = 3; g.lineCap = "round"; g.beginPath(); g.moveTo(22, 44); g.lineTo(28, 24); g.stroke();
+    const r = g.createRadialGradient(29, 17, 1, 29, 18, 11); r.addColorStop(0, "#f3e6ff"); r.addColorStop(.45, "#a98bff"); r.addColorStop(1, "rgba(120,90,255,0)");
+    g.fillStyle = r; ell(g, 29, 18, 11, 11); g.fillStyle = "#8f6cff"; ell(g, 29, 18, 5, 5); g.fillStyle = "#f3e6ff"; ell(g, 27.5, 16.5, 1.8, 1.8); },
+  boulders(g) { g.strokeStyle = "rgba(241,230,200,.55)"; g.lineWidth = 2; g.lineCap = "round"; for (const y of [18, 25, 32]) { g.beginPath(); g.moveTo(8, y + 2); g.lineTo(17, y); g.stroke(); }
+    g.fillStyle = "#6f767c"; ell(g, 30, 28, 13, 12); g.fillStyle = "#8d949b"; ell(g, 28, 25, 10, 8.5); g.fillStyle = "#a9b2ba"; ell(g, 25, 22, 4, 3);
+    g.strokeStyle = "#565c61"; g.lineWidth = 1.2; g.beginPath(); g.moveTo(31, 22); g.lineTo(34, 28); g.lineTo(32, 33); g.stroke(); },
+  embers(g) { const flame = (s, col) => { g.fillStyle = col; g.beginPath(); g.moveTo(26, 44); g.bezierCurveTo(26 - 13 * s, 40, 26 - 12 * s, 28, 26 - 2 * s, 10 + (1 - s) * 16); g.bezierCurveTo(26 + 2 * s, 20, 26 + 13 * s, 26, 26 + 11 * s, 36); g.bezierCurveTo(26 + 9 * s, 42, 26 + 3, 44, 26, 44); g.fill(); };
+    flame(1, "#e2683e"); flame(.68, "#ff9d3a"); flame(.38, "#fff0a8"); },
+  chill(g) { g.strokeStyle = "#94d6ea"; g.lineWidth = 2.2; g.lineCap = "round"; g.beginPath();
+    for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3, ux = Math.cos(a), uy = Math.sin(a), px = -uy, py = ux; g.moveTo(26, 26); g.lineTo(26 + ux * 15, 26 + uy * 15);
+      for (const k of [7, 11]) { g.moveTo(26 + ux * k, 26 + uy * k); g.lineTo(26 + ux * (k + 4) + px * 4, 26 + uy * (k + 4) + py * 4); g.moveTo(26 + ux * k, 26 + uy * k); g.lineTo(26 + ux * (k + 4) - px * 4, 26 + uy * (k + 4) - py * 4); } }
+    g.stroke(); g.fillStyle = "#e9f8fd"; ell(g, 26, 26, 2.5, 2.5); },
+  lumber(g) { g.fillStyle = "#6d4a2a"; g.fillRect(9, 30, 26, 11); g.fillStyle = "#c9a06a"; ell(g, 35, 35.5, 5, 5.5); g.strokeStyle = "#8a6a44"; g.lineWidth = 1; g.beginPath(); g.arc(35, 35.5, 2.6, 0, Math.PI * 2); g.stroke();
+    g.strokeStyle = "#8a5a2b"; g.lineWidth = 3; g.lineCap = "round"; g.beginPath(); g.moveTo(16, 30); g.lineTo(30, 10); g.stroke();
+    g.fillStyle = "#c9ced4"; g.beginPath(); g.moveTo(27, 8); g.quadraticCurveTo(40, 8, 41, 19); g.lineTo(31, 15); g.closePath(); g.fill(); g.fillStyle = "#8a8f96"; tri(g, 27, 8, 31, 15, 29, 13); },
+  bounty(g) { for (const [r, c] of [[16, "#e2683e"], [11.5, "#f1e6c8"], [7, "#e2683e"]]) { g.fillStyle = c; ell(g, 26, 27, r, r); } coin(g, 26, 26, 5.5); arrow(g, 44, 9, 31, 22); },
+  quarter(g) { g.save(); g.translate(26, 26); g.rotate(-.7); g.fillStyle = "#8a5a2b"; g.fillRect(-2, -4, 4, 22); g.fillStyle = "#8d949b"; g.fillRect(-9, -12, 18, 9); g.fillStyle = "#a9b2ba"; g.fillRect(-9, -12, 18, 3); g.restore();
+    g.fillStyle = "#e9b949"; g.font = "800 13px 'Alegreya Sans', sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText("%", 38, 39); },
+  masonry(g) { for (let r = 0; r < 3; r++) for (let i = 0; i < 3; i++) { const x = 10 + i * 11 - (r % 2 ? 5 : 0); if (x < 7) continue; g.fillStyle = (r + i) % 2 ? "#b0643e" : "#c47a50"; g.fillRect(x, 31 - r * 7, 10, 6); }
+    g.fillStyle = "#8cc06a"; g.beginPath(); g.moveTo(26, 6); g.lineTo(36, 15); g.lineTo(31, 15); g.lineTo(31, 22); g.lineTo(21, 22); g.lineTo(21, 15); g.lineTo(16, 15); g.closePath(); g.fill(); },
+  eagle(g) { g.strokeStyle = "rgba(233,185,73,.7)"; g.lineWidth = 1.5; g.lineCap = "round"; g.beginPath(); for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; g.moveTo(26 + Math.cos(a) * 15, 26 + Math.sin(a) * 11); g.lineTo(26 + Math.cos(a) * 20, 26 + Math.sin(a) * 15); } g.stroke();
+    g.fillStyle = "#f1e6c8"; g.beginPath(); g.moveTo(10, 26); g.quadraticCurveTo(26, 12, 42, 26); g.quadraticCurveTo(26, 40, 10, 26); g.fill();
+    g.fillStyle = "#c98a1e"; ell(g, 26, 26, 7, 7); g.fillStyle = "#1b1b1b"; ell(g, 26, 26, 3.4, 3.4); g.fillStyle = "#fff"; ell(g, 24, 24, 1.4, 1.4); },
+  mint(g) { g.fillStyle = "#a8790c"; ell(g, 26, 28, 16, 16); g.fillStyle = "#f2c94c"; ell(g, 26, 26, 16, 16); g.strokeStyle = "#c9921f"; g.lineWidth = 1.5; g.beginPath(); g.arc(26, 26, 12.5, 0, Math.PI * 2); g.stroke();
+    g.fillStyle = "#b07d12"; g.beginPath(); g.moveTo(18, 31); g.lineTo(18, 21); g.lineTo(22, 25); g.lineTo(26, 19); g.lineTo(30, 25); g.lineTo(34, 21); g.lineTo(34, 31); g.closePath(); g.fill(); },
+  thumb(g) { g.fillStyle = "#6d5134"; ell(g, 26, 41, 14, 5); g.strokeStyle = "#5e9444"; g.lineWidth = 2.5; g.lineCap = "round"; g.beginPath(); g.moveTo(26, 40); g.quadraticCurveTo(25, 30, 26, 22); g.stroke();
+    g.fillStyle = "#8cc06a"; g.save(); g.translate(25, 25); g.rotate(-.6); ell(g, -7, 0, 8, 4.2); g.restore(); g.save(); g.translate(27, 20); g.rotate(.5); ell(g, 7, 0, 8, 4.2); g.restore();
+    g.fillStyle = "#c9f29a"; ell(g, 33, 18, 2.5, 1.2); },
+  sentries(g) { g.fillStyle = "#8d949b"; g.fillRect(12, 28, 28, 16); for (let i = 0; i < 4; i++) g.fillRect(12 + i * 8, 23, 5, 6); g.fillStyle = "#a9b2ba"; g.fillRect(12, 28, 28, 2.5);
+    g.strokeStyle = "#8a5a2b"; g.lineWidth = 2.2; g.beginPath(); g.arc(22, 14, 10, -1.1, 1.1); g.stroke(); g.strokeStyle = "#e9e2cf"; g.lineWidth = 1; g.beginPath(); g.moveTo(22 + Math.cos(-1.1) * 10, 14 + Math.sin(-1.1) * 10); g.lineTo(22 + Math.cos(1.1) * 10, 14 + Math.sin(1.1) * 10); g.stroke();
+    arrow(g, 20, 14, 40, 14); },
+  chest(g) { coin(g, 20, 17, 4.5); coin(g, 30, 15, 4.5); coin(g, 25, 13, 4.5);
+    g.fillStyle = "#6d4a2a"; g.fillRect(10, 22, 32, 20); g.fillStyle = "#8a5a2b"; g.beginPath(); g.moveTo(10, 24); g.quadraticCurveTo(26, 12, 42, 24); g.closePath(); g.fill();
+    g.fillStyle = "#e9b949"; g.fillRect(10, 26, 32, 3); g.fillRect(16, 22, 3, 20); g.fillRect(33, 22, 3, 20); g.fillRect(23, 29, 6, 6); g.fillStyle = "#2a1d05"; g.fillRect(25.3, 31, 1.6, 3); },
+  volley(g) { arrow(g, 26, 44, 26, 9); arrow(g, 22, 44, 11, 13); arrow(g, 30, 44, 41, 13); },
+  moat(g) { g.fillStyle = "#4d8fb0"; ell(g, 26, 37, 20, 8); g.fillStyle = "#94d6ea"; ell(g, 15, 37, 4, 1.2); ell(g, 39, 39, 3, 1);
+    g.fillStyle = "#8d949b"; g.fillRect(18, 16, 16, 21); for (let i = 0; i < 3; i++) g.fillRect(18 + i * 6, 11, 4, 6); g.fillStyle = "#a9b2ba"; g.fillRect(18, 16, 16, 2.5);
+    g.fillStyle = "#3a2a20"; g.beginPath(); g.arc(26, 37, 4, Math.PI, 0); g.fill(); },
+  egg(g) { g.fillStyle = "#3f9a6a"; g.beginPath(); g.moveTo(26, 9); g.bezierCurveTo(38, 10, 40, 30, 38, 36); g.bezierCurveTo(36, 44, 16, 44, 14, 36); g.bezierCurveTo(12, 30, 14, 10, 26, 9); g.fill();
+    g.fillStyle = "#9fd39a"; for (const [x, y, r] of [[21, 20, 2.5], [31, 26, 3], [23, 34, 2], [33, 36, 1.8], [28, 15, 1.6]]) ell(g, x, y, r, r);
+    g.strokeStyle = "#fff0a8"; g.lineWidth = 1.5; g.beginPath(); g.moveTo(16, 28); g.lineTo(21, 25); g.lineTo(24, 29); g.lineTo(28, 25); g.lineTo(31, 29); g.stroke(); },
+  crown(g) { g.fillStyle = "#c9921f"; g.fillRect(12, 32, 28, 7); g.fillStyle = "#e9b949"; g.beginPath(); g.moveTo(12, 33); g.lineTo(10, 15); g.lineTo(19, 24); g.lineTo(26, 11); g.lineTo(33, 24); g.lineTo(42, 15); g.lineTo(40, 33); g.closePath(); g.fill();
+    g.fillStyle = "#fff3c4"; for (const [x, y] of [[10, 15], [26, 11], [42, 15]]) ell(g, x, y, 2.2, 2.2);
+    g.fillStyle = "#e2683e"; ell(g, 26, 35.5, 2.6, 2.4); g.fillStyle = "#6fb6e0"; ell(g, 18, 35.5, 2, 2); ell(g, 34, 35.5, 2, 2); },
+  wind(g) { g.strokeStyle = "#e9f8fd"; g.lineWidth = 2.4; g.lineCap = "round";
+    for (const [y, len, r] of [[15, 24, 3.5], [25, 30, 4], [35, 20, 3]]) { g.beginPath(); g.moveTo(8, y); g.lineTo(8 + len, y); g.arc(8 + len, y - r, r, Math.PI / 2, -Math.PI * .9, true); g.stroke(); }
+    heart(g, 40, 37, 6, "#f08a7a"); },
+};
+function heirloomIcon(id) {
+  if (heirloomCache[id]) return heirloomCache[id];
+  const c = document.createElement("canvas"); c.width = 104; c.height = 104; const g = c.getContext("2d"); g.scale(2, 2);
+  const P = PERKS[id], col = RARITY[P.r].col;
+  g.fillStyle = "#1f2c26"; ell(g, 26, 26, 25, 25);
+  const glow = g.createRadialGradient(26, 26, 4, 26, 26, 25); glow.addColorStop(0, "rgba(255,255,255,0)"); glow.addColorStop(1, col + "33"); g.fillStyle = glow; ell(g, 26, 26, 25, 25);
+  g.strokeStyle = col; g.lineWidth = 2.5; g.beginPath(); g.arc(26, 26, 23.5, 0, Math.PI * 2); g.stroke();
+  g.save(); g.beginPath(); g.arc(26, 26, 22, 0, Math.PI * 2); g.clip(); (HEIRLOOM_ART[id] || (() => {}))(g); g.restore();
+  return (heirloomCache[id] = c.toDataURL());
+}
+function heirloomImg(id, cls) { const im = new Image(); im.src = heirloomIcon(id); im.alt = ""; im.className = cls; im.width = im.height = 52; return im; }
 function heirloomCard(id, n, cls = "heirloom") {
   const P = PERKS[id], R = RARITY[P.r], b = el("button", `${cls} ${P.r}`); b.style.setProperty("--rc", R.col);
-  b.append(el("span", "rr", R.name), el("span", "bn", P.name), el("span", "bd", P.desc(n + 1)), el("span", "bo", n ? `You have ${n} of ${P.max}` : P.max > 1 ? `Stacks up to ${P.max} times` : "One of a kind"));
+  b.append(heirloomImg(id, "hi"), el("span", "rr", R.name), el("span", "bn", P.name), el("span", "bd", P.desc(n + 1)), el("span", "bo", n ? `You have ${n} of ${P.max}` : P.max > 1 ? `Stacks up to ${P.max} times` : "One of a kind"));
   return b;
 }
 function openPicker() {
@@ -2466,14 +2843,14 @@ function openCollection() {
   openModal(card => {
     card.append(el("h2", "", "Your heirlooms"));
     const ids = Object.keys(PERKS).filter(id => meta.perks[id]);
-    if (!ids.length) card.append(el("p", "", "No heirlooms yet. Reach level 5 to earn your first, plus one more for every 10 levels you hold. Each one makes every future game a little easier."));
+    if (!ids.length) card.append(el("p", "", "No heirlooms yet. Reach level 5 in a game to earn your first. More come at levels 15, 30, 50, 75 and so on, each a little further apart. Each one makes every future game a little easier."));
     else {
       card.append(el("p", "", "Treasures handed down through the keep. They help in every new game you start."));
       const ul = el("ul", "perklist");
       const order = Object.keys(RARITY);
       ids.sort((a, b) => order.indexOf(PERKS[b].r) - order.indexOf(PERKS[a].r)).forEach(id => {
         const P = PERKS[id], n = meta.perks[id], li = el("li"); li.style.setProperty("--rc", RARITY[P.r].col);
-        li.append(el("b", "", P.name), el("span", "n", P.max > 1 ? `${n} / ${P.max}` : RARITY[P.r].name), el("span", "d", P.desc(n)));
+        li.append(heirloomImg(id, "hi"), el("b", "", P.name), el("span", "n", P.max > 1 ? `${n} / ${P.max}` : RARITY[P.r].name), el("span", "d", P.desc(n)));
         ul.append(li);
       });
       card.append(ul);
@@ -2629,6 +3006,7 @@ const ACH = [
   { id: "trollking",  name: "Kingslayer",          desc: "Defeat the Troll King" },
   { id: "bigdragon",  name: "Dragonslayer",        desc: "Defeat the Elder Dragon" },
   { id: "wyrm",       name: "Bone Breaker",        desc: "Defeat the Bone Wyrm" },
+  { id: "jasmine",    name: "Not the Victim",      desc: "Defeat Jasmine the Witch" },
   { id: "untouched",  name: "Not a Scratch",       desc: "Clear a boss level without losing a heart" },
   { id: "greatwyrm",  name: "Dragon Keeper",       desc: "Raise a dragon into a Great wyrm (level 10)" },
   { id: "lumberjack", name: "Lumberjack",          desc: "Chop down 20 trees by hand in one game" },
@@ -2636,7 +3014,15 @@ const ACH = [
   { id: "architect",  name: "Master Builder",      desc: "Have 25 defenders at once" },
   { id: "frosty",     name: "Winter's Grip",       desc: "Slow 1,000 monsters in one game" },
   { id: "namesake",   name: "What's in a Name",    desc: "Give a dragon a very special name" },
-  { id: "whisperer",  name: "Dragon Whisperer",    desc: "Find all seven special dragon names" },
+  { id: "whisperer",  name: "Dragon Whisperer",    desc: "Find all eight special dragon names" },
+  { id: "laststand",  name: "By a Thread",         desc: "Clear a level with only 1 heart left" },
+  { id: "allfive",    name: "Every Banner Flies",  desc: "Have all five kinds of defender at once" },
+  { id: "toplevel",   name: "Tower of Strength",   desc: "Upgrade any defender to level 10" },
+  { id: "fortress",   name: "Fortress",            desc: "Fill the moat and hire all five masons" },
+  { id: "greenthumb", name: "Green Thumb",         desc: "Grow 10 saplings into trees in one game" },
+  { id: "eventful",   name: "Through Thick and Thin", desc: "Clear 10 levels with a random event in one game" },
+  { id: "scholar",    name: "Monster Scholar",     desc: "Meet every monster in the Bestiary" },
+  { id: "slayer",     name: "Ten Thousand Fallen", desc: "Defeat 10,000 monsters across all your games" },
 ];
 const badgeCache = {};
 function medal(g, text, col = "#2a1d05") {
@@ -2654,10 +3040,37 @@ function badgeImg(id) {
   else if (id === "namesake" || id === "whisperer") {
     g.fillStyle = id === "whisperer" ? "#3a2a4a" : "#2a3a32"; ell(g, 26, 26, 25, 25);
     g.save(); g.translate(-6, 6); drawTowerShape(g, "dragon", 32, 40, 0, 0, id === "whisperer" ? 7 : 1, id === "whisperer" ? "Night Fury" : "Baby"); g.restore();
-    if (id === "whisperer") { g.fillStyle = "#e9b949"; for (let i = 0; i < 7; i++) { const a = -Math.PI / 2 + i * Math.PI * 2 / 7; ell(g, 26 + Math.cos(a) * 21, 26 + Math.sin(a) * 21, 2, 2); } }
+    if (id === "whisperer") { g.fillStyle = "#e9b949"; const nSecret = Object.keys(SECRET_DRAGONS).length; for (let i = 0; i < nSecret; i++) { const a = -Math.PI / 2 + i * Math.PI * 2 / nSecret; ell(g, 26 + Math.cos(a) * 21, 26 + Math.sin(a) * 21, 2, 2); } }
   }
   else if (id === "rich") { for (const [x, y] of [[18, 36], [34, 36], [26, 28], [26, 18]]) { g.fillStyle = "#a8790c"; ell(g, x, y + 2, 10, 5); g.fillStyle = "#f2c94c"; ell(g, x, y, 10, 5); } }
   else if (id === "lumberjack") { const keep = season; season = SEASONS[1]; drawTree(g, 26, 46, 1.3, 0); season = keep; g.strokeStyle = "#8a8f96"; g.lineWidth = 3; g.beginPath(); g.moveTo(36, 48); g.lineTo(46, 30); g.stroke(); g.fillStyle = "#c9ced4"; tri(g, 42, 28, 50, 31, 45, 37); }
+  else if (id === "slayer") medal(g, "10k");
+  else if (id === "laststand") medal(g, "1\u2665", "#b8322a");
+  else if (id === "greenthumb") { const keep = season; season = SEASONS[0]; drawTree(g, 26, 46, 1.3, 0); season = keep; }
+  else if (id === "allfive") {
+    g.fillStyle = "#2a3a32"; ell(g, 26, 26, 25, 25);
+    Object.keys(TOWERS).forEach((type, i) => { const a = -Math.PI / 2 + i * Math.PI * 2 / 5; g.drawImage(towerIcon(type), 26 + Math.cos(a) * 14 - 13, 26 + Math.sin(a) * 14 - 15, 26, 26); });
+  }
+  else if (id === "fortress") {
+    g.fillStyle = "#2a3a32"; ell(g, 26, 26, 25, 25);
+    g.fillStyle = "#4d8fb0"; ell(g, 26, 42, 21, 6); g.fillStyle = "#94d6ea"; ell(g, 22, 41, 8, 1.4);
+    g.fillStyle = "#8d949b"; g.fillRect(14, 16, 24, 24); for (let i = 0; i < 4; i++) g.fillRect(14 + i * 7, 11, 4, 6);
+    g.fillStyle = "#a9b2ba"; g.fillRect(14, 16, 24, 3); g.fillStyle = "#3a2a20"; g.beginPath(); g.arc(26, 40, 5, Math.PI, 0); g.fill(); g.fillRect(21, 35, 10, 5);
+    g.strokeStyle = "#5a3f26"; g.lineWidth = 1.5; g.beginPath(); g.moveTo(26, 11); g.lineTo(26, 2); g.stroke(); g.fillStyle = "#e9b949"; tri(g, 26, 2, 35, 4.5, 26, 7);
+  }
+  else if (id === "eventful") {
+    g.fillStyle = "#2a3a32"; ell(g, 26, 26, 25, 25);
+    g.fillStyle = "#e9b949"; g.beginPath(); g.moveTo(28, 26); g.lineTo(20, 38); g.lineTo(26, 38); g.lineTo(22, 49); g.lineTo(34, 33); g.lineTo(28, 33); g.lineTo(32, 26); g.fill();
+    g.fillStyle = "#8d949b"; ell(g, 18, 22, 9, 7); ell(g, 30, 18, 11, 9); ell(g, 37, 24, 8, 6); g.fillStyle = "#b7bec5"; ell(g, 27, 15, 7, 4);
+  }
+  else if (id === "scholar") {
+    g.fillStyle = "#2a3a32"; ell(g, 26, 26, 25, 25);
+    g.fillStyle = "#b7ae93"; g.beginPath(); g.moveTo(26, 22); g.lineTo(6, 18); g.lineTo(6, 42); g.lineTo(26, 46); g.lineTo(46, 42); g.lineTo(46, 18); g.closePath(); g.fill();
+    g.fillStyle = "#f1e6c8"; g.beginPath(); g.moveTo(26, 21); g.lineTo(8, 17); g.lineTo(8, 39); g.lineTo(26, 43); g.lineTo(44, 39); g.lineTo(44, 17); g.closePath(); g.fill();
+    g.strokeStyle = "#8a7a58"; g.lineWidth = 1; g.beginPath(); g.moveTo(26, 21); g.lineTo(26, 43); for (let i = 0; i < 3; i++) { g.moveTo(30, 28 + i * 4); g.lineTo(41, 26 + i * 4); } g.stroke();
+    g.drawImage(enemyIcon("goblin", null, 26), 7, 15, 20, 20);
+  }
+  else if (id === "toplevel") { g.fillStyle = "#2a3a32"; ell(g, 26, 26, 25, 25); g.drawImage(towerIcon("mage", 10), 1, -1, 50, 50); }
   else { const type = { greatwyrm: "dragon", architect: "archer", frosty: "frost" }[id] || "archer"; g.drawImage(towerIcon(type, id === "greatwyrm" ? 10 : 1), -8, -12, 68, 68); }
   return (badgeCache[id] = c.toDataURL());
 }
@@ -3032,9 +3445,9 @@ function vsShowOver(head, note) {
 const r1 = v => Math.round(v * 10) / 10;
 function vsSnap() {
   return {
-    t: "snap", L: S.level, ph: S.phase, hp: S.hp, mh: S.maxHp, gold: Math.floor(S.gold), fort: S.fort, shake: S.shake > 0 ? 1 : 0,
+    t: "snap", L: S.level, ph: S.phase, hp: S.hp, mh: S.maxHp, gold: Math.floor(S.gold), fort: S.fort, hl: S.hitTotal || 0, hd: S.hitDread || 0,
     vs: { dread: Math.floor(S.vs.dread), army: S.vs.army, ready: S.vs.ready, spells: S.vs.spells, len: S.vs.len },
-    tw: S.towers.map(t => [t.type, t.lvl, r1(t.x), r1(t.y), r1(t.ang || 0), r1(t.flash || 0), t.name || ""]),
+    tw: S.towers.map(t => [t.type, t.lvl, r1(t.x), r1(t.y), r1(t.ang || 0), r1(t.flash || 0), t.name || "", r1(t.hexT || 0)]),
     tr: S.trees.map(t => [t.id, t.x, t.y, r1(t.s), t.tone, t.max, t.hp, r1(t.fall || 0), t.dir, t.planted == null ? null : t.planted]),
     en: S.enemies.filter(e => !e.dead).map(e => [e.k, r1(e.d), e.fly ? e.path.pts : 0, Math.round(e.hp), Math.round(e.max), r1(e.spd), r1(e.slowA), r1(e.slowT), r1(e.burnT), e.face, r1(e.t), r1(e.v), r1(e.v2), r1(e.sz || 1), e.col, e.r, e.boss ? 1 : 0]),
     sh: S.shots.map(q => [q.kind, r1(q.x), r1(q.y), r1(q.tx), r1(q.ty), q.spd, q.stage || 0, r1(q.trav), r1(q.d0)]),
@@ -3058,17 +3471,24 @@ function guestMsg(m) {
   }
   if (m.t !== "snap") return;
   const first = !S || !S.vsGuest;
-  const keepFx = S && S.vsGuest ? S.fx.filter(f => f.local) : [];
+  const keepFx = S && S.vsGuest ? S.fx.filter(f => f.local) : [], keepTx = S && S.vsGuest ? S.texts.filter(q => q.local) : [];
+  const was = S && S.vsGuest ? S : null;
   S = {
-    vsGuest: true, level: m.L, phase: m.ph, hp: m.hp, maxHp: m.mh, gold: m.gold, fort: m.fort, vs: m.vs, perks: {}, dyn: 0, shake: m.shake ? .05 : 0,
-    towers: m.tw.map(a => ({ type: a[0], lvl: a[1], x: a[2], y: a[3], ang: a[4], flash: a[5], name: a[6] || undefined })),
+    vsGuest: true, level: m.L, phase: m.ph, hp: m.hp, maxHp: m.mh, gold: m.gold, fort: m.fort, vs: m.vs, perks: {}, dyn: 0, hitTotal: m.hl || 0, hitDread: m.hd || 0,
+    towers: m.tw.map(a => ({ type: a[0], lvl: a[1], x: a[2], y: a[3], ang: a[4], flash: a[5], name: a[6] || undefined, hexT: a[7] || 0 })),
     trees: m.tr.map(a => ({ id: a[0], x: a[1], y: a[2], s: a[3], tone: a[4], max: a[5], hp: a[6], fall: a[7], dir: a[8], planted: a[9], shake: 0 })),
     enemies: m.en.map(a => { const path = a[2] ? pathFor(a[2]) : ROAD, e = { k: a[0], d: a[1], path, hp: a[3], max: a[4], spd: a[5], slowA: a[6], slowT: a[7], burnT: a[8], face: a[9], t: a[10], v: a[11], v2: a[12], sz: a[13], col: a[14], r: a[15], boss: !!a[16], fly: !!a[2] }; [e.x, e.y] = posAt(path, e.d); return e; }),
     shots: m.sh.map(a => { const dx = a[3] - a[1], dy = a[4] - a[2], dd = Math.hypot(dx, dy) || 1; return { kind: a[0], x: a[1], y: a[2], tx: a[3], ty: a[4], spd: a[5], stage: a[6], trav: a[7], d0: a[8], vx: dx / dd, vy: dy / dd }; }),
-    fx: m.fx.concat(keepFx), texts: m.tx.map(a => ({ txt: a[0], x: a[1], y: a[2], life: a[3], col: a[4] })),
+    fx: m.fx.concat(keepFx), texts: m.tx.map(a => ({ txt: a[0], x: a[1], y: a[2], life: a[3], col: a[4] })).concat(keepTx),
     trees0: null, stats: {}, newBadges: [],
   };
+  if (was && S.hitTotal > was.hitTotal) {  // the Dark Lord's side of a castle hit: a reward, not an alarm
+    const lost = S.hitTotal - was.hitTotal, gain = S.hitDread - was.hitDread;
+    castleHit(hitTier(lost, S.hp + lost, S.hp, S.maxHp), false);
+    S.texts.push({ x: CASTLE.x - 60, y: CASTLE.y + 112, txt: gain > 0 ? `Your army got through! +${gain} dread` : "Your army got through!", life: 1.8, col: "#dcc0ff", local: true });
+  }
   if (first) {
+    resetHits();
     document.documentElement.classList.add("vs", "dl"); $("hGoldLbl").textContent = "Dread";
     modalDone = null; closeModal(); $("startCard").hidden = true; $("overCard").hidden = true;
     seasonI = seasonIdx(S.level); season = SEASONS[seasonI]; buildBg(); amb = []; fadeT = 0;
@@ -3094,7 +3514,7 @@ function guestTick(dt) {
 function guestHud() {
   if (!S || !S.vs) return;
   const V = S.vs, btn = $("btnWave");
-  $("hLevel").textContent = S.level; $("hGold").textContent = V.dread.toLocaleString(); $("hHearts").textContent = `${S.hp}/${S.maxHp}`;
+  $("hLevel").textContent = S.level; $("hGold").textContent = V.dread.toLocaleString(); $("hHearts").textContent = `${S.hp}/${S.maxHp}`; heartsAlert();
   const label = S.phase === "over" ? "Game over" : S.phase === "wave" ? `Level ${S.level} under way` : V.ready.d ? "Waiting for the Keeper…" : "Unleash the army";
   if (btn.textContent !== label) btn.textContent = label;
   btn.disabled = S.phase !== "build" || V.ready.d;
@@ -3145,7 +3565,7 @@ function renderDL() {
     Object.keys(counts).forEach(t => box.append(chip("", towerIcon(t), `${counts[t]} × ${SHORT[t]}`)));
     if (!S.towers.length) box.append(chip("plain", null, "No towers yet"));
     box.append(chip("plain", null, `${S.gold.toLocaleString()} gold`), chip("plain", null, `Castle ${S.hp}/${S.maxHp}`));
-    const later = $("upLater"); later.textContent = ""; later.append(chip("plain", null, `The Keeper wins by clearing level ${V.len}`));
+    const later = $("upLater"); later.textContent = ""; later.previousElementSibling.textContent = "Later"; later.append(chip("plain", null, `The Keeper wins by clearing level ${V.len}`));
     later.hidden = later.previousElementSibling.hidden = false;
   }
 }

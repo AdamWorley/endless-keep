@@ -11,5 +11,15 @@
   "d1_databases": [
     { "binding": "DB", "database_name": "endless-keep-leaderboard", "database_id": "c698067c-5de7-4811-8732-34cf760820e5" }
   ],
-  "observability": { "enabled": true }
+  "observability": { "enabled": true },
+  // branch preview builds: same rules, but their own test database so they never touch the real Hall of Heroes.
+  // Previews don't get the production secrets, so they run with no HASH_SALT and no Turnstile check.
+  "previews": {
+    "vars": {
+      "ALLOWED_ORIGINS": "https://adamworley.github.io,http://localhost:8420"
+    },
+    "d1_databases": [
+      { "binding": "DB", "database_name": "endless-keep-leaderboard-preview", "database_id": "04d26651-df0b-48ee-88de-6fcf648d00fe" }
+    ]
+  }
 }
