@@ -368,6 +368,8 @@ button.versus:hover:not(:disabled) { border-color: var(--violet); }
           <h2>Paused</h2>
           <p>The goblins are waiting politely.</p>
           <div class="row"><button id="btnResume" class="primary">Resume</button><button id="btnQuit">Save &amp; leave</button></div>
+          <button id="btnSaver" aria-describedby="saverNote">Battery saver: off</button>
+          <p class="fine" id="saverNote">Battery saver draws fewer frames, so the battery lasts longer and the animation is a little less smooth.</p>
         </div>
       </div>
 
@@ -425,7 +427,7 @@ button.versus:hover:not(:disabled) { border-color: var(--violet); }
 const GAME_VERSION = "1.3.0", RULES_VERSION = 3;   // v2: special dragon names give bonuses; v3: dragon names must be unique, slower heirlooms, rebalanced towers, tougher monsters after level 50
 const W = 960, H = 560;
 const $ = id => document.getElementById(id);
-const cv = $("board"), ctx = cv.getContext("2d");
+const cv = $("board"), ctx = cv.getContext("2d", { alpha: false });  // opaque: the browser needn't blend the board with the page behind it
 const reduceMotion = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /* ---------- castle hits ----------
@@ -812,7 +814,14 @@ function restore(sv) {
 
 /* ---------- sound ---------- */
 let AC = null; const lastS = {};
-function audio() { if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch { AC = null; } } if (AC && AC.state === "suspended") AC.resume(); return AC; }
+function audio() {
+  if (!sound && !music) return AC;  // nothing to play: don't wake the audio hardware
+  if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch { AC = null; } }
+  if (AC && AC.state === "suspended" && !document.hidden) AC.resume();
+  return AC;
+}
+// a running audio engine keeps the phone's sound hardware awake even when silent: let it sleep when nothing can play
+function audioRest() { if (AC && AC.state === "running" && (document.hidden || (!sound && !music))) AC.suspend(); }
 function tone(f, dur, type = "sine", vol = .05, slide = 0, delay = 0) {
   if (!sound || !AC) return;
   const t0 = AC.currentTime + delay, o = AC.createOscillator(), g = AC.createGain();
@@ -869,6 +878,7 @@ function setMusic(on) {
   music = on; ls.set("ek_music", on);
   $("btnMusic").textContent = `Music: ${on ? "on" : "off"}`; $("btnMusic").classList.toggle("on", on);
   if (mBus && AC) mBus.gain.setTargetAtTime(on ? .55 : 0, AC.currentTime, .15);
+  if (on) audio(); else setTimeout(audioRest, 600);  // after the fade-out
 }
 function musicTick() {
   if (!AC || !music || AC.state !== "running") return;
@@ -915,7 +925,7 @@ function drawTree(g, x, y, s, tone, shadow = true) {
   if (season.snow) { g.fillStyle = "#f7fafc"; ell(g, x - 1 * s, y - 26 * s, 10 * s, 4.5 * s); ell(g, x + 7 * s, y - 15 * s, 5 * s, 2.5 * s); }
 }
 function buildBg() {
-  const g = bg.getContext("2d"); g.setTransform(2, 0, 0, 2, 0, 0);
+  const g = bg.getContext("2d"); g.setTransform(bg.width / W, 0, 0, bg.height / H, 0, 0);
   const r = rng(7);
   const Z = season;
   const grd = g.createLinearGradient(0, 0, 0, H); grd.addColorStop(0, Z.grass[0]); grd.addColorStop(1, Z.grass[1]);
@@ -2050,10 +2060,17 @@ function deadZone(type, x, y) {
 }
 function render() {
   const sc = cv.width / W;
-  ctx.setTransform(sc, 0, 0, sc, 0, 0);
-  if (S && hitFx.shake > 0) { const m = HIT_AMP[hitFx.tier] * Math.min(1, hitFx.shake / .12); ctx.translate((Math.random() - .5) * m * 2, (Math.random() - .5) * m * 2); }
-  ctx.drawImage(bg, 0, 0, W, H);
-  if (fadeT > 0 && bgOld) { ctx.globalAlpha = Math.min(1, fadeT / 1.5); ctx.drawImage(bgOld, 0, 0, W, H); ctx.globalAlpha = 1; }
+  let ox = 0, oy = 0;  // a heavy blow shakes the board (in screen pixels)
+  if (S && hitFx.shake > 0) {
+    const m = HIT_AMP[hitFx.tier] * Math.min(1, hitFx.shake / .12) * sc;
+    ox = Math.round((Math.random() - .5) * m * 2); oy = Math.round((Math.random() - .5) * m * 2);
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = "#141d19"; ctx.fillRect(0, 0, cv.width, cv.height);
+  }
+  // the background is drawn pixel for pixel when it matches the board's size: no rescaling every frame
+  ctx.setTransform(1, 0, 0, 1, ox, oy);
+  if (bg.width === cv.width && bg.height === cv.height) ctx.drawImage(bg, 0, 0); else ctx.drawImage(bg, 0, 0, cv.width, cv.height);
+  if (fadeT > 0 && bgOld) { ctx.globalAlpha = Math.min(1, fadeT / 1.5); ctx.drawImage(bgOld, 0, 0, cv.width, cv.height); ctx.globalAlpha = 1; }
+  ctx.setTransform(sc, 0, 0, sc, ox, oy);
   // build spots + range ring
   if (S && sel && sel.kind === "tower") {
     const t = sel.t, rr = tStats(t).range;
@@ -2167,13 +2184,25 @@ function drawAmbient() {
 
 /* ---------- loop ---------- */
 let last = performance.now(), lastDraw = 0;
+// frame pacing saves battery: up to 60 fps while a level is under way or you're dragging (phones can refresh at 120).
+// Between levels only the scenery and the odd tree move, so the loop sleeps between frames: about 30 fps, or 20 behind
+// a card or while paused. Sleeping with a timer, not skipping animation frames, lets the phone's screen and CPU rest too.
+// Battery saver halves that: 30 fps during a level, 20 between levels.
+let saver = false;
+const liveNow = () => !!S && S.phase === "wave" && !paused && $("startCard").hidden;
+function nextFrame() {
+  if (drag || (liveNow() && !saver)) return requestAnimationFrame(frame);
+  const idle = !S || paused || S.phase === "over" || !$("startCard").hidden || !$("modal").hidden;
+  setTimeout(() => requestAnimationFrame(frame), idle || (saver && !liveNow()) ? 40 : saver ? 26 : 22);
+}
 function frame(now) {
+  if (now - last < (saver && !drag ? 28 : 15)) { requestAnimationFrame(frame); return; }  // 120 Hz screens: every other refresh
   let dt = Math.min(.05, (now - last) / 1000); last = now;
   if (NET.role === "guest") {  // the Dark Lord's screen: draw the Keeper's game, moving things along between updates
     if (S) guestTick(dt); else time += dt;
     hitDecay(dt);
     checkSeason(); if (fadeT > 0) fadeT -= dt; ambient(dt); musicTick(); render(); guestHud();
-    requestAnimationFrame(frame); return;
+    nextFrame(); return;
   }
   const running = S && !paused && $("startCard").hidden;
   if (running) { for (let i = 0; i < speed; i++) update(dt); } else time += dt;
@@ -2186,13 +2215,21 @@ function frame(now) {
   const idle = !running && (!S || paused || S.phase === "over" || !$("startCard").hidden || !$("modal").hidden);
   if (!idle || drag || now - lastDraw >= (reduceMotion ? 250 : 50)) { render(); lastDraw = now; }
   hudTick();
-  requestAnimationFrame(frame);
+  nextFrame();
 }
 
 /* ---------- canvas sizing & input ---------- */
+let bgSizeT = 0;
 function resize() {
   const r = cv.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
   cv.width = Math.max(1, Math.round(r.width * dpr)); cv.height = Math.max(1, Math.round(r.width * H / W * dpr));
+  // repaint the background at the board's own size (up to 2× the map), once the resizing settles
+  clearTimeout(bgSizeT);
+  bgSizeT = setTimeout(() => {
+    if (cv.width < 200) return;  // hidden or tiny: keep what we have
+    const w = Math.min(cv.width, W * 2), h = Math.round(w * cv.height / cv.width);
+    if (bg.width !== w || bg.height !== h) { bg.width = w; bg.height = h; buildBg(); }
+  }, 150);
 }
 new ResizeObserver(resize).observe(cv);
 function toLogical(ev) { const r = cv.getBoundingClientRect(); return [(ev.clientX - r.left) * W / r.width, (ev.clientY - r.top) * H / r.height]; }
@@ -2620,12 +2657,12 @@ $("btnWave").addEventListener("click", startWave);
 $("btnAuto").addEventListener("click", () => { auto = !auto; if (S) S.nextT = Math.max(S.nextT, 3); $("btnAuto").textContent = `Auto: ${auto ? "on" : "off"}`; $("btnAuto").classList.toggle("on", auto); ls.set("ek_auto", auto); updateHud(); });
 $("btnMusic").addEventListener("click", () => { audio(); setMusic(!music); });
 $("btnSpeed").addEventListener("click", () => { speed = speed % 3 + 1; $("btnSpeed").textContent = `Speed ${speed}×`; });
-$("btnSound").addEventListener("click", () => { sound = !sound; audio(); $("btnSound").textContent = `Sound: ${sound ? "on" : "off"}`; $("btnSound").classList.toggle("on", sound); ls.set("ek_sound", sound); });
+$("btnSound").addEventListener("click", () => { sound = !sound; audio(); $("btnSound").textContent = `Sound: ${sound ? "on" : "off"}`; $("btnSound").classList.toggle("on", sound); ls.set("ek_sound", sound); audioRest(); });
 function setPaused(v) { if (!S || S.phase === "over" || !$("startCard").hidden || NET.role === "guest") return; paused = v; if (S.vs) vsSend({ t: "toast", msg: v ? "The Keeper has paused the game." : "The Keeper is back. The battle continues." }); $("pauseCard").hidden = !v; $("btnPause").textContent = v ? "Resume" : "Pause"; }
 $("btnPause").addEventListener("click", () => setPaused(!paused));
 $("btnResume").addEventListener("click", () => setPaused(false));
 $("btnQuit").addEventListener("click", () => { if (S && S.phase === "build") persist(); paused = false; $("pauseCard").hidden = true; $("btnPause").textContent = "Pause"; showStart(); });
-document.addEventListener("visibilitychange", () => { if (document.hidden && S && S.phase === "wave") setPaused(true); });
+document.addEventListener("visibilitychange", () => { if (document.hidden && S && S.phase === "wave") setPaused(true); if (document.hidden) audioRest(); else if (AC) audio(); });
 document.addEventListener("keydown", ev => {
   if (!$("modal").hidden) { if (ev.key === "Escape") closeModal(); return; }
   if (ev.target.tagName === "INPUT" || ev.target.tagName === "TEXTAREA" || ev.target.tagName === "SELECT") return;
@@ -2639,10 +2676,15 @@ document.addEventListener("keydown", ev => {
 function setBuzz(on) {
   buzz = on; $("btnBuzz").textContent = `Buzz: ${on ? "on" : "off"}`; $("btnBuzz").classList.toggle("on", on);
 }
+function setSaver(on) {
+  saver = on; $("btnSaver").textContent = `Battery saver: ${on ? "on" : "off"}`; $("btnSaver").classList.toggle("on", on);
+}
+$("btnSaver").addEventListener("click", () => { setSaver(!saver); ls.set("ek_saver", saver); });
 $("btnBuzz").addEventListener("click", () => { setBuzz(!buzz); ls.set("ek_buzz", buzz); if (buzz) try { navigator.vibrate(HIT_BUZZ[1]); } catch {} });
 (function prefs() {
   $("controls").classList.toggle("buzz", canBuzz);
   if (ls.get("ek_buzz") === false) setBuzz(false);
+  if (ls.get("ek_saver") === true) setSaver(true);
   const a = ls.get("ek_auto"), s = ls.get("ek_sound");
   if (a === true) { auto = true; $("btnAuto").textContent = "Auto: on"; $("btnAuto").classList.add("on"); }
   if (s === false) { sound = false; $("btnSound").textContent = "Sound: off"; $("btnSound").classList.remove("on"); }
