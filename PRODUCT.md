@@ -26,6 +26,7 @@ The combination is the point; no one feature is the hook:
 
 - Played at https://adamworley.github.io/endless-keep/, installed as a fullscreen PWA, or opened as a Claude artifact. The artifact copy has its own Hall of Heroes, stored in the artifact's database.
 - Sessions are short and interruptible. Players move saved games and heirlooms between devices, and between the app and the Claude page, with export/import codes.
+- Players often run at 3× speed and often play with sound off, so moment-to-moment events are easy to miss.
 - Two-player matches use a 5-letter code (PeerJS matchmaking, then a direct connection) and last 10, 20 or 30 levels.
 - The Hall of Heroes is a Cloudflare Worker with a D1 database (`leaderboard/`). Each `RULES_VERSION` has its own board.
 
@@ -42,6 +43,7 @@ The combination is the point; no one feature is the hook:
 
 - The name is **Endless Keep**. The app icons are in `pwa/` (`icon.svg`, `icon-192.png`, `icon-512.png`, `apple-touch-icon.png`).
 - **Voice:** plain, short and friendly, written for players rather than gamers. Say what something does in everyday words.
+- **Kid-friendly tone:** playful and gentle. Nothing grim or gory.
 
 ## Evidence on Hand
 
@@ -55,3 +57,8 @@ The combination is the point; no one feature is the hook:
 3. **Every run should feel different.** New content should add variety to runs or depth across runs, not just bigger numbers.
 4. **Plain words over jargon.** When the UI explains a rule, it uses everyday language a non-gamer understands on first read.
 5. **Fair to compare.** Anything that changes difficulty respects `RULES_VERSION`, so scores on a board stay comparable.
+
+## Accessibility & Inclusion
+
+- Respects `prefers-reduced-motion`. Feedback that moves must have a non-motion equivalent.
+- Important information is never carried by sound alone, or by colour alone.

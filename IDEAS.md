@@ -40,7 +40,7 @@ Ticked items are in the game. Rough order within each section is by value for ef
 - [ ] **Separate boards for heirloom-free runs** — heirlooms and dynasty ranks make runs easier; a "pure" board could keep those apart.
 
 ## Feel and UI
-- [ ] **Clearer castle hits** — red flash at the gate and a short vibration on phones; easy to miss at 3× speed.
+- [x] **Clearer castle hits** — the gate flashes, the Castle counter jolts and turns to "Low!" below a third, heavy blows redden the board's edges, phones buzz (Buzz toggle), and the Dark Lord sees "Your army got through!". Hits close together build into one cue.
 - [ ] **Undo during build** — full refund for a tower placed this build phase.
 - [ ] **Install button in the PWA build** — catch the browser's install prompt and offer it on the start card.
 

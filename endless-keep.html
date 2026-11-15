@@ -61,6 +61,21 @@ header.top h1 { font-family: var(--font-display); font-weight: 400; font-size: 1
 .stat span { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--parch-dim); }
 .stat.gold b { color: var(--gold); }
 .stat.hearts b { color: var(--rose); }
+/* castle hits: the counter jolts on every hit and stays on alert while the walls are low */
+.stat.hearts { transition: background-color .6s cubic-bezier(.16, 1, .3, 1), border-color .6s cubic-bezier(.16, 1, .3, 1); }
+.stat.hearts .lbl { display: grid; } .stat.hearts .lbl > span { grid-area: 1 / 1; }
+.stat.hearts .lbl .lo { visibility: hidden; color: #ffd0c4; font-weight: 800; }
+.stat.hearts.low { background: #4a2620; border-color: var(--ember); }
+.stat.hearts.low .lbl .ok { visibility: hidden; } .stat.hearts.low .lbl .lo { visibility: visible; }
+.stat.hearts.low b { color: #ffd0c4; }
+.stat.hearts.hit { animation: heartsHit .5s cubic-bezier(.16, 1, .3, 1); }
+.stat.hearts.hit.heavy { animation: heartsHeavy .8s cubic-bezier(.16, 1, .3, 1); }
+@keyframes heartsHit { from { transform: scale(1.1); background-color: #7a2c20; border-color: #ff9a86; box-shadow: 0 3px 12px rgba(226, 104, 62, .5); } }
+@keyframes heartsHeavy { from { transform: scale(1.18) rotate(-2deg); background-color: #9a2a1c; border-color: #ffc2b4; box-shadow: 0 4px 18px rgba(226, 80, 50, .65); } 30% { transform: scale(1.06) rotate(1.5deg); } }
+@media (prefers-reduced-motion: reduce) {
+  @keyframes heartsHit { from { background-color: #7a2c20; border-color: #ff9a86; } }
+  @keyframes heartsHeavy { from { background-color: #9a2a1c; border-color: #ffc2b4; } }
+}
 /* fixed-size button grid: labels change ("Sound: off", "Level 12 under way") but no button ever moves or resizes */
 .controls { display: grid; width: 100%; grid-template-columns: minmax(0, 1.8fr) repeat(6, minmax(0, 1fr)); gap: 6px; }
 .controls button { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; padding-inline: 6px; }
@@ -68,6 +83,13 @@ header.top h1 { font-family: var(--font-display); font-weight: 400; font-size: 1
 @media (max-width: 820px) {
   .controls { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   #btnWave { grid-column: span 2; }
+}
+/* phones that can vibrate get an eighth button; these grids keep the bar at the same number of rows */
+#btnBuzz { display: none; } .controls.buzz #btnBuzz { display: block; } .dl #btnBuzz { display: none !important; }
+.controls.buzz { grid-template-columns: minmax(0, 1.8fr) repeat(7, minmax(0, 1fr)); }
+@media (max-width: 820px) {
+  .controls.buzz { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .controls.buzz #btnWave { grid-column: span 3; }
 }
 button { font: inherit; cursor: pointer; border-radius: 10px; border: 1px solid var(--line); background: var(--moss-2); color: var(--parch); padding: 7px 12px; font-weight: 700; touch-action: manipulation; }
 button:hover:not(:disabled) { border-color: var(--parch-dim); }
@@ -269,6 +291,8 @@ button.versus:hover:not(:disabled) { border-color: var(--violet); }
   .stat { padding: 4px 9px; }
   .controls { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   #btnWave { grid-column: 1 / -1; }
+  .controls.buzz { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .controls.buzz #btnWave { grid-column: span 2; }
   .controls button { padding: 8px 4px; }
   .card { padding: 14px; gap: 9px; }
   .card h2 { font-size: 1.4rem; }
@@ -297,15 +321,16 @@ button.versus:hover:not(:disabled) { border-color: var(--violet); }
     <div class="hud">
       <div class="stat"><span>Level</span><b id="hLevel">1</b></div>
       <div class="stat gold"><span id="hGoldLbl">Gold</span><b id="hGold">0</b></div>
-      <div class="stat hearts"><span>Castle</span><b id="hHearts">20/20</b></div>
+      <div class="stat hearts" id="hHeartsBox"><span class="lbl"><span class="ok">Castle</span><span class="lo">Low!</span></span><b id="hHearts">20/20</b></div>
     </div>
-    <div class="controls">
+    <div class="controls" id="controls">
       <button id="btnWave" disabled>Start level 1</button>
       <button id="btnAuto" title="Start each level on its own">Auto: off</button>
       <button id="btnSpeed" title="Game speed">Speed 1×</button>
       <button id="btnPause">Pause</button>
       <button id="btnSound" class="on">Sound: on</button>
       <button id="btnMusic" class="on">Music: on</button>
+      <button id="btnBuzz" class="on" title="Buzz the phone when the castle is hit">Buzz: on</button>
       <button id="btnFull">Fullscreen</button>
     </div>
   </header>
@@ -402,6 +427,47 @@ const W = 960, H = 560;
 const $ = id => document.getElementById(id);
 const cv = $("board"), ctx = cv.getContext("2d");
 const reduceMotion = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* ---------- castle hits ----------
+   Every hit shows in three places that each work alone: a flash at the gate, a jolt on the hearts counter,
+   and (on phones that can) a buzz. Tiers: 1 graze, 2 the walls are low, 3 a heavy blow (a boss, or the hit
+   that takes the walls low). Timers run on real time so a hit still reads at 3x speed, and hits that land
+   close together build into one bigger cue instead of strobing. */
+const DANGER = 1 / 3;
+const canBuzz = !!(navigator.vibrate && window.matchMedia && matchMedia("(pointer: coarse)").matches);
+let buzz = canBuzz;
+const hitFx = { gate: 0, tier: 0, edge: 0, shake: 0, saved: 0, pulseAt: 0, buzzAt: 0, buzzTier: 0 };
+const HIT_GATE = [0, .45, .6, .8], HIT_SHAKE = [0, .14, .22, .4], HIT_AMP = [0, 2.5, 4.5, 8];
+const HIT_BUZZ = [0, 25, 55, [70, 50, 80]];
+function hitTier(dmg, before, after, max) {
+  if (dmg >= 6 || (before / max > DANGER && after / max <= DANGER)) return 3;
+  return after / max <= DANGER ? 2 : 1;
+}
+function castleHit(tier, own) {
+  const now = performance.now(), recent = hitFx.gate > 0;
+  hitFx.tier = recent ? Math.max(hitFx.tier, tier) : tier;
+  hitFx.gate = Math.min(1.2, Math.max(hitFx.gate + (recent ? .12 : 0), HIT_GATE[tier]));
+  if (tier === 3 && own) hitFx.edge = .9;
+  if (!reduceMotion) hitFx.shake = Math.max(hitFx.shake, HIT_SHAKE[tier]);
+  if (now - hitFx.pulseAt > 160 || tier === 3) {  // restart the counter's jolt
+    hitFx.pulseAt = now; const box = $("hHeartsBox");
+    box.classList.remove("hit", "heavy"); void box.offsetWidth; box.classList.add("hit"); box.classList.toggle("heavy", hitFx.tier === 3);
+  }
+  if (own && buzz && canBuzz && (now - hitFx.buzzAt > 400 || tier > hitFx.buzzTier)) {
+    hitFx.buzzAt = now; hitFx.buzzTier = tier;
+    try { navigator.vibrate(HIT_BUZZ[tier]); } catch {}
+  }
+}
+function hitDecay(dt) {
+  for (const k of ["gate", "edge", "shake", "saved"]) if (hitFx[k] > 0) hitFx[k] = Math.max(0, hitFx[k] - dt);
+}
+function resetHits() {
+  Object.assign(hitFx, { gate: 0, tier: 0, edge: 0, shake: 0, saved: 0 });
+  $("hHeartsBox").classList.remove("hit", "heavy"); heartsAlert();
+}
+function heartsAlert() {
+  $("hHeartsBox").classList.toggle("low", !!S && S.phase !== "over" && S.hp > 0 && S.hp / S.maxHp <= DANGER);
+}
 
 /* ---------- storage helpers ---------- */
 // Player-name cleaning and a basic profanity filter.
@@ -770,6 +836,7 @@ function sfx(name) {
     case "boom":  noise(.25, .06, 380); break;
     case "coin":  tone(1320, .06, "square", .012); tone(1760, .09, "square", .012, 0, .06); break;
     case "leak":  tone(140, .35, "sawtooth", .05, 60); break;
+    case "leakBig": tone(120, .5, "sawtooth", .07, 45); noise(.3, .06, 260); break;
     case "chop":  noise(.07, .07, 1800); tone(240, .06, "square", .02, 180); break;
     case "timber": noise(.6, .05, 300); tone(180, .5, "triangle", .03, 90); break;
     case "build": tone(330, .07, "square", .025); tone(495, .1, "square", .025, 0, .07); break;
@@ -916,7 +983,7 @@ function plantSapling(x, y) {
 
 /* ---------- drawing ---------- */
 function drawCastle() {
-  const c = ctx, { x, y, w, h } = CASTLE, hurt = S && S.hp / S.maxHp < .35;
+  const c = ctx, { x, y, w, h } = CASTLE, hurt = S && S.hp / S.maxHp <= DANGER;
   if (S && S.fort.moat) {  // water along the castle front with a plank bridge where the road crosses
     const mw = 10 + S.fort.moat * 4, mx = x - mw - 4;
     c.fillStyle = season.edge; c.beginPath(); c.roundRect(mx - 3, y + 26, mw + 6, h - 10, 8); c.fill();
@@ -952,6 +1019,22 @@ function drawCastle() {
   // gate
   c.fillStyle = "#4a3320"; c.beginPath(); c.moveTo(x + 30, y + h); c.lineTo(x + 30, y + 150); c.arc(x + 46, y + 150, 16, Math.PI, 0); c.lineTo(x + 62, y + h); c.fill();
   c.strokeStyle = "#2e2014"; c.lineWidth = 1.5; for (let i = 0; i < 4; i++) { c.beginPath(); c.moveTo(x + 34 + i * 8, y + 140); c.lineTo(x + 34 + i * 8, y + h); c.stroke(); }
+  if (hitFx.gate > 0) {  // the gate glows where the blow landed: warm for a graze, red once the walls are low
+    const a = Math.min(1, hitFx.gate / .3), rgb = hitFx.tier > 1 ? "255,84,58" : "255,170,100";
+    c.save(); c.globalCompositeOperation = "lighter";
+    c.fillStyle = `rgba(${rgb},${a * (hitFx.tier > 1 ? .75 : .55)})`;
+    c.beginPath(); c.moveTo(x + 30, y + h); c.lineTo(x + 30, y + 150); c.arc(x + 46, y + 150, 16, Math.PI, 0); c.lineTo(x + 62, y + h); c.fill();
+    const gr = c.createRadialGradient(x + 46, y + h - 18, 4, x + 46, y + h - 18, 40 + 16 * hitFx.tier);
+    gr.addColorStop(0, `rgba(${rgb},${a * .5})`); gr.addColorStop(1, `rgba(${rgb},0)`);
+    c.fillStyle = gr; c.fillRect(x - 40, y + 90, 170, h - 50);
+    c.restore();
+  }
+  if (hitFx.saved > 0) {  // second wind: a golden swell around the whole keep
+    const a = Math.min(1, hitFx.saved / .6), r = 70 + (1.4 - hitFx.saved) * 60;
+    const gr = c.createRadialGradient(x + w / 2, y + h / 2, 10, x + w / 2, y + h / 2, r);
+    gr.addColorStop(0, `rgba(255,226,140,${a * .45})`); gr.addColorStop(1, "rgba(255,226,140,0)");
+    c.save(); c.globalCompositeOperation = "lighter"; c.fillStyle = gr; c.fillRect(x + w / 2 - r, y + h / 2 - r, r * 2, r * 2); c.restore();
+  }
   // windows
   c.fillStyle = "#f3d77a"; c.fillRect(x + 80, y + 100, 7, 11); c.fillRect(x + 50, y + 92, 7, 11);
   if (season.night) { c.fillStyle = "rgba(243,215,122,.22)"; ell(c, x + 83, y + 105, 14, 14); ell(c, x + 53, y + 97, 14, 14); }
@@ -1882,11 +1965,13 @@ function update(dt) {
     [e.x, e.y] = posAt(e.path, e.d);
     if (Math.abs(e.x - px) > .01) e.face = e.x >= px ? 1 : -1;
     if (e.d >= e.path.len) {
-      e.dead = true; S.hp -= e.dmg; S.shake = reduceMotion ? 0 : .3; sfx("leak");
-      if (S.vs) S.vs.dread += Math.round(e.gold * 1.5);  // the Dark Lord feeds on every blow to the castle
+      const hpWas = S.hp, tier = hitTier(e.dmg, hpWas, hpWas - e.dmg, S.maxHp);
+      e.dead = true; S.hp -= e.dmg; S.hitTotal = (S.hitTotal || 0) + e.dmg;
+      castleHit(tier, true); sfx(tier === 3 ? "leakBig" : "leak");
+      if (S.vs) { const g = Math.round(e.gold * 1.5); S.vs.dread += g; S.hitDread = (S.hitDread || 0) + g; }  // the Dark Lord feeds on every blow to the castle
       S.texts.push({ x: CASTLE.x + 40, y: CASTLE.y + 40, txt: "-" + e.dmg, life: 1.2, col: "#ff9a86" });
       if (S.hp <= 0) {
-        if (perk("wind") && !S.windUsed) { S.windUsed = true; S.hp = Math.ceil(S.maxHp / 2); toast("Second wind! The castle springs back to half its hearts."); sfx("clear"); }
+        if (perk("wind") && !S.windUsed) { S.windUsed = true; S.hp = Math.ceil(S.maxHp / 2); toast("Second wind! The castle springs back to half its hearts."); sfx("clear"); hitFx.saved = 1.4; hitFx.gate = hitFx.edge = 0; }
         else { S.hp = 0; gameOver(); return; }
       }
     }
@@ -1927,7 +2012,6 @@ function update(dt) {
   S.fx = S.fx.filter(f => f.life > 0);
   for (const t of S.texts) { t.life -= dt; t.y -= 22 * dt; }
   S.texts = S.texts.filter(t => t.life > 0);
-  if (S.shake > 0) S.shake -= dt;
   if (S.phase === "wave" && !S.queue.length && !S.enemies.length) clearWave();
 }
 
@@ -1940,7 +2024,7 @@ function deadZone(type, x, y) {
 function render() {
   const sc = cv.width / W;
   ctx.setTransform(sc, 0, 0, sc, 0, 0);
-  if (S && S.shake > 0) ctx.translate((Math.random() - .5) * 6, (Math.random() - .5) * 6);
+  if (S && hitFx.shake > 0) { const m = HIT_AMP[hitFx.tier] * Math.min(1, hitFx.shake / .12); ctx.translate((Math.random() - .5) * m * 2, (Math.random() - .5) * m * 2); }
   ctx.drawImage(bg, 0, 0, W, H);
   if (fadeT > 0 && bgOld) { ctx.globalAlpha = Math.min(1, fadeT / 1.5); ctx.drawImage(bgOld, 0, 0, W, H); ctx.globalAlpha = 1; }
   // build spots + range ring
@@ -2004,6 +2088,11 @@ function render() {
     ctx.globalAlpha = 1;
   }
   drawAmbient();
+  if (S && hitFx.edge > 0) {  // a heavy blow: the edges of the board blush red for a moment
+    const a = Math.min(1, hitFx.edge / .45) * .5, g = ctx.createRadialGradient(W / 2, H / 2, H * .38, W / 2, H / 2, W * .62);
+    g.addColorStop(0, "rgba(226,70,50,0)"); g.addColorStop(1, `rgba(226,70,50,${a})`);
+    ctx.fillStyle = g; ctx.fillRect(-12, -12, W + 24, H + 24);
+  }
 }
 
 /* ---------- seasons in motion ---------- */
@@ -2055,11 +2144,13 @@ function frame(now) {
   let dt = Math.min(.05, (now - last) / 1000); last = now;
   if (NET.role === "guest") {  // the Dark Lord's screen: draw the Keeper's game, moving things along between updates
     if (S) guestTick(dt); else time += dt;
+    hitDecay(dt);
     checkSeason(); if (fadeT > 0) fadeT -= dt; ambient(dt); musicTick(); render(); guestHud();
     requestAnimationFrame(frame); return;
   }
   const running = S && !paused && $("startCard").hidden;
   if (running) { for (let i = 0; i < speed; i++) update(dt); } else time += dt;
+  hitDecay(dt);
   checkSeason();
   if (fadeT > 0) fadeT -= dt;
   ambient(dt);
@@ -2473,7 +2564,7 @@ function hudTick() {
   if (onStart) { if (btn.textContent !== label) btn.textContent = label; return; }
   if (key === hudCache) return; hudCache = key;
   if (S.gold >= 5000 && S.phase !== "over") unlock("rich");
-  $("hLevel").textContent = S.level; $("hGold").textContent = Math.floor(S.gold).toLocaleString(); $("hHearts").textContent = `${S.hp}/${S.maxHp}`;
+  $("hLevel").textContent = S.level; $("hGold").textContent = Math.floor(S.gold).toLocaleString(); $("hHearts").textContent = `${S.hp}/${S.maxHp}`; heartsAlert();
   btn.textContent = label; btn.disabled = S.phase !== "build" || !!(S.vs && S.vs.dl && S.vs.ready.k);
   refreshAfford();
 }
@@ -2506,7 +2597,13 @@ document.addEventListener("keydown", ev => {
   if (ev.key === "Escape") { sel = null; renderPanel(); }
   if ((ev.key === "f" || ev.key === "F") && !ev.ctrlKey && !ev.metaKey && !ev.altKey) setFull(!full);
 });
+function setBuzz(on) {
+  buzz = on; $("btnBuzz").textContent = `Buzz: ${on ? "on" : "off"}`; $("btnBuzz").classList.toggle("on", on);
+}
+$("btnBuzz").addEventListener("click", () => { setBuzz(!buzz); ls.set("ek_buzz", buzz); if (buzz) try { navigator.vibrate(HIT_BUZZ[1]); } catch {} });
 (function prefs() {
+  $("controls").classList.toggle("buzz", canBuzz);
+  if (ls.get("ek_buzz") === false) setBuzz(false);
   const a = ls.get("ek_auto"), s = ls.get("ek_sound");
   if (a === true) { auto = true; $("btnAuto").textContent = "Auto: on"; $("btnAuto").classList.add("on"); }
   if (s === false) { sound = false; $("btnSound").textContent = "Sound: off"; $("btnSound").classList.remove("on"); }
@@ -2522,7 +2619,7 @@ function readName() {
   ls.set("ek_name", playerName);
 }
 function showStart() {
-  $("startCard").hidden = false; $("overCard").hidden = true;
+  $("startCard").hidden = false; $("overCard").hidden = true; resetHits();
   $("pname").value = playerName;
   const c = $("btnContinue");
   if (savedGame && savedGame.level) { c.hidden = false; c.textContent = `Continue from level ${savedGame.level}` + (Number.isInteger(savedGame.rv) && savedGame.rv !== RULES_VERSION ? ` (rules v${savedGame.rv})` : ""); $("btnNew").classList.remove("primary"); }
@@ -3348,7 +3445,7 @@ function vsShowOver(head, note) {
 const r1 = v => Math.round(v * 10) / 10;
 function vsSnap() {
   return {
-    t: "snap", L: S.level, ph: S.phase, hp: S.hp, mh: S.maxHp, gold: Math.floor(S.gold), fort: S.fort, shake: S.shake > 0 ? 1 : 0,
+    t: "snap", L: S.level, ph: S.phase, hp: S.hp, mh: S.maxHp, gold: Math.floor(S.gold), fort: S.fort, hl: S.hitTotal || 0, hd: S.hitDread || 0,
     vs: { dread: Math.floor(S.vs.dread), army: S.vs.army, ready: S.vs.ready, spells: S.vs.spells, len: S.vs.len },
     tw: S.towers.map(t => [t.type, t.lvl, r1(t.x), r1(t.y), r1(t.ang || 0), r1(t.flash || 0), t.name || "", r1(t.hexT || 0)]),
     tr: S.trees.map(t => [t.id, t.x, t.y, r1(t.s), t.tone, t.max, t.hp, r1(t.fall || 0), t.dir, t.planted == null ? null : t.planted]),
@@ -3374,17 +3471,24 @@ function guestMsg(m) {
   }
   if (m.t !== "snap") return;
   const first = !S || !S.vsGuest;
-  const keepFx = S && S.vsGuest ? S.fx.filter(f => f.local) : [];
+  const keepFx = S && S.vsGuest ? S.fx.filter(f => f.local) : [], keepTx = S && S.vsGuest ? S.texts.filter(q => q.local) : [];
+  const was = S && S.vsGuest ? S : null;
   S = {
-    vsGuest: true, level: m.L, phase: m.ph, hp: m.hp, maxHp: m.mh, gold: m.gold, fort: m.fort, vs: m.vs, perks: {}, dyn: 0, shake: m.shake ? .05 : 0,
+    vsGuest: true, level: m.L, phase: m.ph, hp: m.hp, maxHp: m.mh, gold: m.gold, fort: m.fort, vs: m.vs, perks: {}, dyn: 0, hitTotal: m.hl || 0, hitDread: m.hd || 0,
     towers: m.tw.map(a => ({ type: a[0], lvl: a[1], x: a[2], y: a[3], ang: a[4], flash: a[5], name: a[6] || undefined, hexT: a[7] || 0 })),
     trees: m.tr.map(a => ({ id: a[0], x: a[1], y: a[2], s: a[3], tone: a[4], max: a[5], hp: a[6], fall: a[7], dir: a[8], planted: a[9], shake: 0 })),
     enemies: m.en.map(a => { const path = a[2] ? pathFor(a[2]) : ROAD, e = { k: a[0], d: a[1], path, hp: a[3], max: a[4], spd: a[5], slowA: a[6], slowT: a[7], burnT: a[8], face: a[9], t: a[10], v: a[11], v2: a[12], sz: a[13], col: a[14], r: a[15], boss: !!a[16], fly: !!a[2] }; [e.x, e.y] = posAt(path, e.d); return e; }),
     shots: m.sh.map(a => { const dx = a[3] - a[1], dy = a[4] - a[2], dd = Math.hypot(dx, dy) || 1; return { kind: a[0], x: a[1], y: a[2], tx: a[3], ty: a[4], spd: a[5], stage: a[6], trav: a[7], d0: a[8], vx: dx / dd, vy: dy / dd }; }),
-    fx: m.fx.concat(keepFx), texts: m.tx.map(a => ({ txt: a[0], x: a[1], y: a[2], life: a[3], col: a[4] })),
+    fx: m.fx.concat(keepFx), texts: m.tx.map(a => ({ txt: a[0], x: a[1], y: a[2], life: a[3], col: a[4] })).concat(keepTx),
     trees0: null, stats: {}, newBadges: [],
   };
+  if (was && S.hitTotal > was.hitTotal) {  // the Dark Lord's side of a castle hit: a reward, not an alarm
+    const lost = S.hitTotal - was.hitTotal, gain = S.hitDread - was.hitDread;
+    castleHit(hitTier(lost, S.hp + lost, S.hp, S.maxHp), false);
+    S.texts.push({ x: CASTLE.x - 60, y: CASTLE.y + 112, txt: gain > 0 ? `Your army got through! +${gain} dread` : "Your army got through!", life: 1.8, col: "#dcc0ff", local: true });
+  }
   if (first) {
+    resetHits();
     document.documentElement.classList.add("vs", "dl"); $("hGoldLbl").textContent = "Dread";
     modalDone = null; closeModal(); $("startCard").hidden = true; $("overCard").hidden = true;
     seasonI = seasonIdx(S.level); season = SEASONS[seasonI]; buildBg(); amb = []; fadeT = 0;
@@ -3410,7 +3514,7 @@ function guestTick(dt) {
 function guestHud() {
   if (!S || !S.vs) return;
   const V = S.vs, btn = $("btnWave");
-  $("hLevel").textContent = S.level; $("hGold").textContent = V.dread.toLocaleString(); $("hHearts").textContent = `${S.hp}/${S.maxHp}`;
+  $("hLevel").textContent = S.level; $("hGold").textContent = V.dread.toLocaleString(); $("hHearts").textContent = `${S.hp}/${S.maxHp}`; heartsAlert();
   const label = S.phase === "over" ? "Game over" : S.phase === "wave" ? `Level ${S.level} under way` : V.ready.d ? "Waiting for the Keeper…" : "Unleash the army";
   if (btn.textContent !== label) btn.textContent = label;
   btn.disabled = S.phase !== "build" || V.ready.d;
