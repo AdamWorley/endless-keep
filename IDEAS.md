@@ -10,6 +10,9 @@ Ticked items are in the game. Rough order within each section is by value for ef
 
 ## Gameplay
 - [x] **Trees as lookouts** — each grown tree near a tower gives it +5% range, up to +15%. Saplings count once they grow.
+- [x] **Seasons change the rules (rules v4)** — Spring: saplings grow twice as fast. Summer: no change. Autumn: chopped trees give 50% more gold. Winter: monsters on foot 15% slower, towers −10% range, Frost Spire chills last 50% longer. Night: towers −15% range unless lit. Up next warns a level ahead. Older saved games keep their old rules.
+- [x] **Lantern (rules v4)** — a cheap support post that doesn't attack. Towers in its light ignore darkness and fog, and monsters in it take +10% damage (+2% per upgrade, up to +30%). The brightest light wins; lights don't add up. Not needed for "Every Banner Flies".
+- [x] **Trolls a little easier (rules v4)** — health 6.5 → 6.2 and healing 2% → 1.5% a second. Players found them a wall from level 16, repairing the castle just to keep up. Bot tests put the ceiling at about the same place (123 → 125 levels on average), so it mostly helps the early encounters. Older saved games keep the old troll.
 - [ ] **Late-game variety** — elite monsters (gold outline + one trait: shielded, regenerating, swift, splits on death) and a level modifier every 5 levels ("Fog: −20% range", "Stampede: riders only", "Bounty: double gold").
 - [ ] **More bosses** — four exist (Jasmine the Witch joined at level 40), so they repeat every 40 levels.
 - [ ] **Tower specialisations at level 5** — pick one of two branches (Archer: Longbow or Volley; Catapult: Boulder stun or Fire pot burn).

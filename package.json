@@ -4,7 +4,9 @@
   "type": "module",
   "scripts": {
     "build": "sh pwa/build.sh && node pwa/check.mjs dist",
-    "dev": "npm run build && wrangler pages dev --port 8420"
+    "dev": "npm run build && wrangler pages dev --port 8420",
+    "bot:evolve": "node bot/evolve.mjs",
+    "bot:test": "node bot/test.mjs"
   },
   "devDependencies": {
     "wrangler": "^4.162.0"
