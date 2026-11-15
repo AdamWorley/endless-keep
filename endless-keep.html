@@ -1851,12 +1851,34 @@ function shapeWave(q, id, L) {
 }
 const curEv = () => (S && S.ev && S.ev.L === S.level) ? S.ev : null;
 const evOn = id => { const e = curEv(); return !!e && e.id === id && (EVENTS[id].kind !== "choice" || e.choice === "pay"); };
+// a toll or a wizard waiting for your answer: auto mode holds the next level until you've decided
+const evPending = () => { const e = curEv(); return !!e && EVENTS[e.id].kind === "choice" && !e.choice; };
+let evAsking = false;
 function chooseEvent(pay) {
   const e = curEv(); if (!e || e.choice || S.phase !== "build") return;
   const E = EVENTS[e.id];
   if (pay) { const c = E.cost(S.level); if (S.gold < c) { toast(`You need ${c - Math.floor(S.gold)} more gold.`); return; } S.gold -= c; sfx("coin"); }
   e.choice = pay ? "pay" : "refuse";
+  if (evAsking) closeModal();
+  if (auto) S.nextT = Math.max(S.nextT, 2);  // a moment to see what you chose before the level starts
   schedulePersist(); renderUpNext(); renderPanel(); updateHud();
+}
+function askEvent() {
+  const e = curEv(); if (!e || e.asked) return;
+  e.asked = true;  // asked once; if you close it, the choice waits in "Coming in level" and auto stays on hold
+  const E = EVENTS[e.id], L = S.level, c = E.cost(L), short = Math.ceil(c - S.gold);
+  sfx("wave");
+  openModal(card => {
+    card.append(el("h2", "", E.name), el("p", "", E.desc(L)));
+    const r = el("div", "row"), py = el("button", short > 0 ? "" : "primary", `${E.pay} · ${c} g`), no = el("button", short > 0 ? "primary" : "", E.refuse);
+    py.disabled = short > 0;
+    py.addEventListener("click", () => chooseEvent(true)); no.addEventListener("click", () => chooseEvent(false));
+    r.append(py, no); card.append(r);
+    if (short > 0) card.append(el("p", "fine", `You need ${short} more gold to pay.`));
+    card.append(el("p", "fine", `Auto will start level ${L} once you've decided.`));
+  }, () => { evAsking = false; });
+  evAsking = true;
+  if (short > 0) $("modalCard").querySelector(".row .primary").focus({ preventScroll: true });
 }
 function startWave() {
   if (!S || S.phase !== "build") return;
@@ -1951,7 +1973,7 @@ function update(dt) {
   if (!S || S.phase === "over") return;
   for (const t of S.trees) { if (t.shake > 0) t.shake -= dt; if (t.fall) t.fall += dt * 1.6; }
   if (S.trees.some(t => t.fall > 1.5)) S.trees = S.trees.filter(t => !(t.fall > 1.5));
-  if (S.phase === "build" && auto && !S.vs) { S.nextT -= dt; if (S.nextT <= 0) startWave(); }
+  if (S.phase === "build" && auto && !S.vs) { S.nextT = Math.max(0, S.nextT - dt); if (S.nextT <= 0) { if (!evPending()) startWave(); else if ($("modal").hidden && $("startCard").hidden && !paused) askEvent(); } }
   if (S.vs) for (const id in S.vs.spells) S.vs.spells[id] = Math.max(0, S.vs.spells[id] - dt);
   if (S.phase === "wave") {
     S.spawnT -= dt;
@@ -2574,7 +2596,7 @@ function hudTick() {
   const btn = waveBtn;
   let label;
   if (S.phase === "build") label = S.vs && S.vs.dl ? (S.vs.ready.k ? "Waiting for the Dark Lord…" : S.vs.ready.d ? `Start level ${S.level} (they're ready)` : `Ready for level ${S.level}`)
-    : auto ? `Start level ${S.level} (${Math.max(0, Math.ceil(S.nextT))})` : `Start level ${S.level}`;
+    : auto ? (evPending() && S.nextT <= 0 ? `Start level ${S.level} (choose first)` : `Start level ${S.level} (${Math.max(0, Math.ceil(S.nextT))})`) : `Start level ${S.level}`;
   else if (S.phase === "wave") label = `Level ${S.level} under way`;
   else label = "Game over";
   const key = [S.level, Math.floor(S.gold), S.hp, S.maxHp, label].join("|");
