@@ -422,7 +422,7 @@ button.versus:hover:not(:disabled) { border-color: var(--violet); }
 "use strict";
 // GAME_VERSION changes with any update. RULES_VERSION goes up ONLY when a balance change makes the game easier or
 // harder: each rules version gets its own leaderboard, so scores from different rules are never mixed.
-const GAME_VERSION = "1.3.0", RULES_VERSION = 3;   // v2: special dragon names give bonuses; v3: slower heirlooms, rebalanced towers, tougher monsters after level 50
+const GAME_VERSION = "1.3.0", RULES_VERSION = 3;   // v2: special dragon names give bonuses; v3: dragon names must be unique, slower heirlooms, rebalanced towers, tougher monsters after level 50
 const W = 960, H = 560;
 const $ = id => document.getElementById(id);
 const cv = $("board"), ctx = cv.getContext("2d");
@@ -589,10 +589,15 @@ function onDragonNamed(t) {
   if (!meta.names.includes(k)) { meta.names.push(k); saveMeta(); }
   if (Object.keys(SECRET_DRAGONS).every(id => meta.names.includes(id))) unlock("whisperer");
 }
-function suggestDragonName() {
-  const used = new Set((S ? S.towers : []).map(t => t.name).filter(Boolean));
-  const free = DRAGON_NAMES.filter(n => !used.has(n));
-  return (free.length ? free : DRAGON_NAMES)[Math.floor(Math.random() * (free.length || DRAGON_NAMES.length))];
+// every dragon needs its own name, so a special name's bonus only goes to one dragon.
+// Names match ignoring case, and special names also ignore spaces and symbols ("Freya!" is still Freya).
+const dragonNameKey = n => { const k = secretKey(n); return SECRET_DRAGONS[k] ? "#" + k : String(n || "").trim().toLowerCase(); };
+const dragonNameTaken = (n, self) => !!n && (S ? S.towers : []).some(t => t !== self && t.type === "dragon" && t.name && dragonNameKey(t.name) === dragonNameKey(n));
+function suggestDragonName(self) {
+  const free = DRAGON_NAMES.filter(n => !dragonNameTaken(n, self));
+  if (free.length) return free[Math.floor(Math.random() * free.length)];
+  const base = DRAGON_NAMES[Math.floor(Math.random() * DRAGON_NAMES.length)];
+  for (let i = 2; ; i++) if (!dragonNameTaken(`${base} ${i}`, self)) return `${base} ${i}`;
 }
 const cleanDragonName = v => Array.from(safeName(v)).slice(0, 14).join("").trim();  // dragons get the same name filter
 const dragonLabel = t => t.name || "Your dragon";
@@ -790,7 +795,7 @@ function restore(sv) {
     if (!t || !TOWERS[t[0]]) return;
     const [x, y] = t.length >= 5 ? [t[3], t[4]] : (SPOTS[i] || [-1, -1]);  // older saves used fixed circles
     if (x < 0) return;
-    S.towers.push({ type: t[0], lvl: int(t[1], 1, 999, 1), spent: int(t[2], 0, 1e9, 0), cd: 0, ang: 0, flash: 0, x, y, dmg: t[5] || 0, kills: t[6] || 0, slowed: t[7] || 0, name: t[0] === "dragon" ? (cleanDragonName(t[8]) || suggestDragonName()) : undefined });
+    S.towers.push({ type: t[0], lvl: int(t[1], 1, 999, 1), spent: int(t[2], 0, 1e9, 0), cd: 0, ang: 0, flash: 0, x, y, dmg: t[5] || 0, kills: t[6] || 0, slowed: t[7] || 0, name: t[0] === "dragon" ? (() => { const n = cleanDragonName(t[8]); return n && !dragonNameTaken(n) ? n : suggestDragonName(); })() : undefined });
   });
   S.stats = { ...S.stats, ...(sv.stats || {}) };
   S.rv = Number.isInteger(sv.rv) && sv.rv >= 1 && sv.rv <= 999 ? sv.rv : RULES_VERSION;  // a game keeps the rules it started under
@@ -2341,13 +2346,18 @@ function renderPanel() {
     const nf = el("div", "namefield"), lab = el("label", "", "Dragon's name"), r2 = el("div", "row2");
     const inp = document.createElement("input"); inp.id = "dragonName"; inp.maxLength = 14; inp.value = t.name || ""; inp.placeholder = "Name your dragon"; inp.autocomplete = "off";
     lab.htmlFor = "dragonName";
-    const commit = () => { const v = cleanDragonName(inp.value); if (v && v !== t.name) { t.name = v; schedulePersist(); toast(`Your dragon is now called ${v}.`); }
+    const commit = () => { const v = cleanDragonName(inp.value);
+      if (v && dragonNameTaken(v, t)) { t.name = saved; toast(`Another dragon is already called ${v}. Each dragon needs its own name.`); }
+      else if (v) { t.name = v; schedulePersist(); if (v !== saved) toast(`Your dragon is now called ${v}.`); }
+      else t.name = saved;
+      saved = t.name;
       if (dragonSecret(t) && t.spSeen !== secretKey(t.name)) { t.spSeen = secretKey(t.name); onDragonNamed(t); setTimeout(renderPanel, 0); } inp.value = t.name || ""; const h = p.querySelector("h3"); if (h) h.textContent = `${dragonLabel(t)} · ${dragonStage(t.lvl).name} · level ${t.lvl}`; };
-    inp.addEventListener("input", () => { const v = cleanDragonName(inp.value); if (v) t.name = v; });
+    let saved = t.name;
+    inp.addEventListener("input", () => { const v = cleanDragonName(inp.value); if (v && !dragonNameTaken(v, t)) t.name = v; });
     inp.addEventListener("change", commit);
     inp.addEventListener("keydown", ev => { if (ev.key === "Enter") { inp.blur(); } });
     const dice = el("button", "", "Suggest"); dice.type = "button"; dice.title = "Suggest a name";
-    dice.addEventListener("click", () => { inp.value = suggestDragonName(); commit(); });
+    dice.addEventListener("click", () => { inp.value = suggestDragonName(t); commit(); });
     r2.append(inp, dice); nf.append(lab, r2); p.append(nf);
   }
   const kv = el("dl", "kv");
