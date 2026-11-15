@@ -1,327 +1,471 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-14T17:35:05+00:00",
+  "generatedAt": "2026-11-15T11:51:16+00:00",
   "title": "Design System: Endless Keep",
   "extensions": {
     "colorMeta": {
-      "night-forest": {
+      "table-tan": {
         "role": "neutral",
-        "displayName": "Night Forest",
-        "canonical": "#141d19",
-        "oklch": "oklch(22.0% 0.015 166.0)",
+        "displayName": "Table Tan",
+        "canonical": "#c9a874",
+        "oklch": "oklch(74.9% 0.079 78.5)",
         "tonalRamp": [
-          "#080c0a",
-          "#212724",
-          "#3d4441",
-          "#5a645f",
-          "#7a8580",
-          "#9ea8a3",
-          "#c3cbc7",
-          "#e9f0ed"
+          "#150800",
+          "#391e00",
+          "#583c00",
+          "#795b28",
+          "#9c7d4a",
+          "#c09f6c",
+          "#dcc6a4",
+          "#f4ede3"
         ]
       },
-      "deep-moss": {
+      "table-edge": {
         "role": "neutral",
-        "displayName": "Deep Moss",
-        "canonical": "#1f2c26",
-        "oklch": "oklch(27.9% 0.021 164.9)",
+        "displayName": "Table Edge",
+        "canonical": "#8e6f42",
+        "oklch": "oklch(56.2% 0.073 75.6)",
         "tonalRamp": [
-          "#070d0a",
-          "#1f2723",
-          "#3b4540",
-          "#58655f",
-          "#77867f",
-          "#9ba9a2",
-          "#c1ccc7",
-          "#e7f1ec"
+          "#110a02",
+          "#312209",
+          "#553d17",
+          "#795b2e",
+          "#997d55",
+          "#b6a285",
+          "#d4c7b6",
+          "#f2eee8"
         ]
       },
-      "lichen-moss": {
+      "card-stock": {
         "role": "neutral",
-        "displayName": "Lichen Moss",
-        "canonical": "#2a3a32",
-        "oklch": "oklch(33.2% 0.025 163.0)",
+        "displayName": "Card Stock",
+        "canonical": "#f2ede3",
+        "oklch": "oklch(94.7% 0.014 84.6)",
         "tonalRamp": [
-          "#070d0a",
-          "#1e2723",
-          "#39453f",
-          "#56655e",
-          "#75877e",
-          "#99aaa1",
-          "#bfcdc6",
-          "#e6f2ec"
+          "#0e0b05",
+          "#28251d",
+          "#464239",
+          "#656158",
+          "#868279",
+          "#a9a49b",
+          "#cdc9bf",
+          "#f3eee4"
         ]
       },
-      "mossy-line": {
+      "card-pressed": {
         "role": "neutral",
-        "displayName": "Mossy Line",
-        "canonical": "#3a4f44",
-        "oklch": "oklch(40.6% 0.032 161.7)",
+        "displayName": "Pressed Card",
+        "canonical": "#e7dfcf",
+        "oklch": "oklch(90.6% 0.023 84.6)",
         "tonalRamp": [
-          "#060d09",
-          "#1d2822",
-          "#37463e",
-          "#54665c",
-          "#72897c",
-          "#97aba0",
-          "#bdcec4",
-          "#e4f3ea"
+          "#100a02",
+          "#2a2418",
+          "#484134",
+          "#676053",
+          "#898273",
+          "#aca495",
+          "#d0c8b9",
+          "#f2eee5"
         ]
       },
-      "old-parchment": {
+      "card-line": {
         "role": "neutral",
-        "displayName": "Old Parchment",
-        "canonical": "#f1e6c8",
-        "oklch": "oklch(92.6% 0.041 90.3)",
+        "displayName": "Card Line",
+        "canonical": "#d3c6ad",
+        "oklch": "oklch(83.1% 0.037 83.8)",
         "tonalRamp": [
-          "#0e0b03",
-          "#2a2517",
-          "#48422f",
-          "#69614a",
-          "#8c8267",
-          "#ada58c",
-          "#d0c9b4",
-          "#f5eedc"
+          "#120a00",
+          "#2e230f",
+          "#4b402b",
+          "#6b6049",
+          "#8d816a",
+          "#b0a48b",
+          "#d4c8af",
+          "#f2eee6"
         ]
       },
-      "faded-parchment": {
+      "well": {
         "role": "neutral",
-        "displayName": "Faded Parchment",
-        "canonical": "#b7ae93",
-        "oklch": "oklch(75.1% 0.039 91.8)",
+        "displayName": "Well",
+        "canonical": "#fbf8f2",
+        "oklch": "oklch(98.0% 0.009 84.6)",
         "tonalRamp": [
-          "#0e0b04",
-          "#292518",
-          "#474231",
-          "#68614b",
-          "#8b8268",
-          "#aca58e",
-          "#d0c9b5",
-          "#f4eede"
+          "#0d0b07",
+          "#272520",
+          "#44423d",
+          "#63615c",
+          "#85827d",
+          "#a7a59f",
+          "#ccc9c3",
+          "#f1eee8"
         ]
       },
-      "keep-gold": {
+      "lid-red": {
         "role": "primary",
-        "displayName": "Keep Gold",
+        "displayName": "Box-Lid Red",
+        "canonical": "#d63a2c",
+        "oklch": "oklch(58.2% 0.195 29.4)",
+        "tonalRamp": [
+          "#210000",
+          "#520000",
+          "#880000",
+          "#b61008",
+          "#da4a3a",
+          "#eb8474",
+          "#f7b7ac",
+          "#fee9e5"
+        ]
+      },
+      "lid-ink": {
+        "role": "primary",
+        "displayName": "Lid-Ink Red",
+        "canonical": "#b02a1e",
+        "oklch": "oklch(49.9% 0.172 29.6)",
+        "tonalRamp": [
+          "#1c0201",
+          "#480b06",
+          "#781a11",
+          "#ad291d",
+          "#c65e50",
+          "#db8e81",
+          "#ecbcb4",
+          "#faeae8"
+        ]
+      },
+      "tray-navy": {
+        "role": "primary",
+        "displayName": "Tray Navy",
+        "canonical": "#1f3b6e",
+        "oklch": "oklch(35.9% 0.095 261.3)",
+        "tonalRamp": [
+          "#030a1c",
+          "#112446",
+          "#244074",
+          "#426197",
+          "#6282bb",
+          "#8ba6d4",
+          "#bacae6",
+          "#eaeff8"
+        ]
+      },
+      "tray-navy-deep": {
+        "role": "primary",
+        "displayName": "Deep Tray Navy",
+        "canonical": "#142a52",
+        "oklch": "oklch(29.1% 0.078 261.3)",
+        "tonalRamp": [
+          "#030a1c",
+          "#102447",
+          "#2a416b",
+          "#48618e",
+          "#6883b2",
+          "#8ba6d5",
+          "#b9cae7",
+          "#e9eff8"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#1f1b16",
+        "oklch": "oklch(22.5% 0.011 73.3)",
+        "tonalRamp": [
+          "#0d0b08",
+          "#28241f",
+          "#46413c",
+          "#65605a",
+          "#87817b",
+          "#a9a49d",
+          "#ccc8c3",
+          "#efeeed"
+        ]
+      },
+      "ink-dim": {
+        "role": "neutral",
+        "displayName": "Dim Ink",
+        "canonical": "#5f5649",
+        "oklch": "oklch(45.8% 0.024 77.1)",
+        "tonalRamp": [
+          "#0d0b08",
+          "#29241e",
+          "#484137",
+          "#696053",
+          "#898175",
+          "#aaa49b",
+          "#ccc8c3",
+          "#efeeec"
+        ]
+      },
+      "move-gold": {
+        "role": "secondary",
+        "displayName": "Next-Move Gold",
         "canonical": "#e9b949",
         "oklch": "oklch(80.9% 0.138 85.2)",
         "tonalRamp": [
-          "#170700",
-          "#372000",
-          "#5a3c00",
-          "#805a00",
-          "#a77a00",
-          "#c79f43",
-          "#e7c57b",
-          "#ffebb0"
+          "#1e0200",
+          "#421800",
+          "#623700",
+          "#845800",
+          "#a87a00",
+          "#cc9d25",
+          "#ecc369",
+          "#faedd4"
         ]
       },
-      "keep-gold-deep": {
-        "role": "primary",
-        "displayName": "Keep Gold Deep",
+      "move-gold-deep": {
+        "role": "secondary",
+        "displayName": "Deep Gold",
         "canonical": "#b98a22",
         "oklch": "oklch(66.2% 0.126 82.0)",
         "tonalRamp": [
-          "#170700",
-          "#372000",
-          "#5a3b00",
-          "#805900",
-          "#a77901",
-          "#c79e50",
-          "#e7c483",
-          "#ffeab6"
+          "#160700",
+          "#3c1d00",
+          "#623700",
+          "#845800",
+          "#a87900",
+          "#c69f54",
+          "#ddc69c",
+          "#f5eee1"
         ]
       },
-      "keep-gold-bright": {
-        "role": "primary",
-        "displayName": "Keep Gold Bright",
+      "move-gold-bright": {
+        "role": "secondary",
+        "displayName": "Bright Gold",
         "canonical": "#f3c95e",
         "oklch": "oklch(85.2% 0.133 87.8)",
         "tonalRamp": [
-          "#160800",
-          "#352100",
-          "#583d00",
-          "#7d5c00",
-          "#a37c00",
-          "#c3a048",
-          "#e4c67e",
-          "#ffecb2"
+          "#200000",
+          "#3f1a00",
+          "#5f3a00",
+          "#815a00",
+          "#a47c00",
+          "#c89f2d",
+          "#edc458",
+          "#fbedcd"
         ]
       },
       "gold-ink": {
-        "role": "primary",
+        "role": "secondary",
         "displayName": "Gold Ink",
         "canonical": "#2a1d05",
         "oklch": "oklch(24.1% 0.043 80.2)",
         "tonalRamp": [
-          "#100a03",
-          "#2c2416",
-          "#4b402f",
-          "#6c5f49",
+          "#110a01",
+          "#30230a",
+          "#4e4027",
+          "#6e5f46",
           "#908066",
-          "#b1a38c",
-          "#d4c7b3",
-          "#f8eddc"
+          "#b3a387",
+          "#d3c8b4",
+          "#f2eee8"
         ]
       },
-      "hearth-ember": {
+      "gold-text": {
         "role": "secondary",
-        "displayName": "Hearth Ember",
-        "canonical": "#e2683e",
-        "oklch": "oklch(65.9% 0.163 39.1)",
+        "displayName": "Gold Text",
+        "canonical": "#855e00",
+        "oklch": "oklch(51.0% 0.105 80.3)",
         "tonalRamp": [
-          "#230000",
-          "#4a0900",
-          "#742300",
-          "#a13c16",
-          "#cf582e",
-          "#ee8460",
-          "#ffae8f",
-          "#ffd9bf"
+          "#120900",
+          "#332100",
+          "#583c00",
+          "#805900",
+          "#9d7d44",
+          "#b9a27a",
+          "#d5c7b0",
+          "#f2eee7"
         ]
       },
-      "ember-glow": {
-        "role": "secondary",
-        "displayName": "Ember Glow",
-        "canonical": "#ffc1a8",
-        "oklch": "oklch(86.1% 0.079 43.0)",
+      "danger": {
+        "role": "neutral",
+        "displayName": "Danger Red",
+        "canonical": "#b3301b",
+        "oklch": "oklch(51.0% 0.171 31.9)",
         "tonalRamp": [
-          "#180501",
-          "#381d11",
-          "#5c3728",
-          "#835441",
-          "#ab735c",
-          "#ca9883",
-          "#ebbeac",
-          "#ffe5d6"
+          "#1c0201",
+          "#480b03",
+          "#791a0a",
+          "#ad2a15",
+          "#c75f4c",
+          "#db8e7f",
+          "#ecbcb2",
+          "#faebe7"
+        ]
+      },
+      "danger-soft": {
+        "role": "neutral",
+        "displayName": "Danger Wash",
+        "canonical": "#f7d9cf",
+        "oklch": "oklch(90.7% 0.036 39.3)",
+        "tonalRamp": [
+          "#170602",
+          "#341f18",
+          "#533c34",
+          "#745b52",
+          "#967b72",
+          "#ba9e94",
+          "#dfc2b8",
+          "#fbeae5"
+        ]
+      },
+      "danger-light": {
+        "role": "neutral",
+        "displayName": "Danger Light",
+        "canonical": "#ffb8a6",
+        "oklch": "oklch(84.4% 0.087 34.7)",
+        "tonalRamp": [
+          "#240000",
+          "#460f03",
+          "#682e20",
+          "#8b4e3f",
+          "#b06f5f",
+          "#d59180",
+          "#fcb5a3",
+          "#ffe8e2"
+        ]
+      },
+      "good": {
+        "role": "neutral",
+        "displayName": "Good Green",
+        "canonical": "#3a7428",
+        "oklch": "oklch(50.2% 0.125 139.0)",
+        "tonalRamp": [
+          "#040f02",
+          "#122c0a",
+          "#244d17",
+          "#387126",
+          "#639156",
+          "#8fb086",
+          "#bcd0b7",
+          "#eaf1e9"
+        ]
+      },
+      "good-soft": {
+        "role": "neutral",
+        "displayName": "Good Wash",
+        "canonical": "#dcebcf",
+        "oklch": "oklch(92.1% 0.041 130.3)",
+        "tonalRamp": [
+          "#060e00",
+          "#1e2913",
+          "#3b4730",
+          "#59664e",
+          "#7a886e",
+          "#9dab90",
+          "#c0cfb4",
+          "#e9f2e0"
         ]
       },
       "heart-rose": {
-        "role": "secondary",
+        "role": "neutral",
         "displayName": "Heart Rose",
-        "canonical": "#f08a7a",
-        "oklch": "oklch(73.9% 0.127 29.9)",
+        "canonical": "#c2364a",
+        "oklch": "oklch(54.9% 0.176 17.3)",
         "tonalRamp": [
-          "#1f0000",
-          "#43120c",
-          "#6b2b22",
-          "#96453a",
-          "#c26254",
-          "#e18a7c",
-          "#ffb3a6",
-          "#ffdcd1"
+          "#1e0004",
+          "#4b0211",
+          "#7e0623",
+          "#af213b",
+          "#cd5560",
+          "#e1888c",
+          "#f0b9ba",
+          "#fbeaea"
+        ]
+      },
+      "wing-blue": {
+        "role": "neutral",
+        "displayName": "Wing Blue",
+        "canonical": "#4f7aa6",
+        "oklch": "oklch(56.7% 0.084 250.0)",
+        "tonalRamp": [
+          "#030c17",
+          "#10263d",
+          "#214467",
+          "#3a648f",
+          "#5f86ae",
+          "#8ca8c6",
+          "#bacbde",
+          "#eaeff5"
         ]
       },
       "frost": {
-        "role": "secondary",
+        "role": "neutral",
         "displayName": "Frost",
-        "canonical": "#94d6ea",
-        "oklch": "oklch(83.9% 0.072 218.8)",
+        "canonical": "#9edcf0",
+        "oklch": "oklch(85.9% 0.069 219.9)",
         "tonalRamp": [
-          "#000e15",
-          "#052a33",
-          "#1b4955",
-          "#336a79",
-          "#4d8d9f",
-          "#78afbf",
-          "#a4d2e0",
-          "#d0f6ff"
-        ]
-      },
-      "spring-leaf": {
-        "role": "secondary",
-        "displayName": "Spring Leaf",
-        "canonical": "#8cc06a",
-        "oklch": "oklch(75.1% 0.128 134.1)",
-        "tonalRamp": [
-          "#021000",
-          "#132d00",
-          "#2b4c10",
-          "#456f26",
-          "#61923e",
-          "#88b46c",
-          "#b0d799",
-          "#dafac7"
-        ]
-      },
-      "leaf-on": {
-        "role": "secondary",
-        "displayName": "Leaf On",
-        "canonical": "#3c5444",
-        "oklch": "oklch(42.1% 0.040 155.2)",
-        "tonalRamp": [
-          "#050e08",
-          "#1c2920",
-          "#36473b",
-          "#526759",
-          "#708a78",
-          "#95ac9c",
-          "#bbcfc1",
-          "#e3f3e8"
-        ]
-      },
-      "leaf-on-ink": {
-        "role": "secondary",
-        "displayName": "Leaf On Ink",
-        "canonical": "#e4f5d6",
-        "oklch": "oklch(94.9% 0.045 130.8)",
-        "tonalRamp": [
-          "#080d05",
-          "#20281a",
-          "#3c4633",
-          "#5a664f",
-          "#79886c",
-          "#9daa91",
-          "#c2ceb8",
-          "#e8f2e0"
+          "#000f1f",
+          "#002c3c",
+          "#014a5b",
+          "#2d6a7c",
+          "#508c9f",
+          "#73b0c3",
+          "#97d4e8",
+          "#def3fa"
         ]
       },
       "meadow": {
         "role": "neutral",
         "displayName": "Meadow",
-        "canonical": "#5e9444",
-        "oklch": "oklch(61.0% 0.126 136.5)",
+        "canonical": "#7db75a",
+        "oklch": "oklch(71.8% 0.139 134.9)",
         "tonalRamp": [
-          "#011000",
-          "#112d02",
-          "#294d15",
-          "#426f2b",
-          "#5e9344",
-          "#85b570",
-          "#aed79c",
-          "#d8fbc9"
+          "#001100",
+          "#003000",
+          "#1a5000",
+          "#3b710a",
+          "#5c9437",
+          "#7eb85c",
+          "#b3d6a0",
+          "#e8f3e2"
         ]
       },
       "dark-lord-violet": {
         "role": "tertiary",
         "displayName": "Dark Lord Violet",
+        "canonical": "#7a3fb5",
+        "oklch": "oklch(50.0% 0.180 303.5)",
+        "tonalRamp": [
+          "#10041d",
+          "#2f154a",
+          "#52287c",
+          "#773db1",
+          "#946ac7",
+          "#b295d9",
+          "#d1c0e9",
+          "#f1ecf9"
+        ]
+      },
+      "dark-lord-violet-light": {
+        "role": "tertiary",
+        "displayName": "Dark Lord Violet Light",
         "canonical": "#c58bff",
         "oklch": "oklch(73.9% 0.171 305.7)",
         "tonalRamp": [
-          "#140025",
-          "#32114c",
-          "#532a76",
-          "#7645a3",
-          "#9b62d1",
-          "#bb8bed",
-          "#ddb4ff",
-          "#ffdeff"
+          "#16002a",
+          "#3a0064",
+          "#591887",
+          "#793fac",
+          "#9c62d2",
+          "#bf85f9",
+          "#dab7ff",
+          "#f4e9ff"
         ]
       },
-      "dark-lord-edge": {
+      "dark-lord-violet-edge": {
         "role": "tertiary",
-        "displayName": "Dark Lord Edge",
+        "displayName": "Dark Lord Violet Edge",
         "canonical": "#7a4a9a",
         "oklch": "oklch(49.9% 0.132 310.2)",
         "tonalRamp": [
-          "#13021e",
-          "#311741",
-          "#523168",
-          "#754c91",
-          "#9a6abc",
-          "#bb91da",
-          "#dcb8f8",
-          "#ffe1ff"
+          "#100617",
+          "#2f1a3e",
+          "#523069",
+          "#784997",
+          "#9570b1",
+          "#b399c8",
+          "#d2c2df",
+          "#f1ecf5"
         ]
       },
       "dark-lord-night": {
@@ -330,14 +474,14 @@
         "canonical": "#2c2338",
         "oklch": "oklch(27.6% 0.040 303.6)",
         "tonalRamp": [
-          "#0d0912",
-          "#27222f",
-          "#453e4f",
-          "#655d72",
+          "#0d0913",
+          "#292034",
+          "#463d54",
+          "#665c74",
           "#877d96",
-          "#a9a0b7",
-          "#cdc5d9",
-          "#f2ebfc"
+          "#aa9fba",
+          "#ccc6d6",
+          "#efedf2"
         ]
       },
       "dark-lord-ink": {
@@ -346,320 +490,365 @@
         "canonical": "#e3d2ff",
         "oklch": "oklch(89.2% 0.064 302.3)",
         "tonalRamp": [
-          "#0e0816",
-          "#292035",
-          "#473c57",
-          "#675a7c",
-          "#897aa2",
-          "#ab9dc2",
-          "#cfc3e3",
-          "#f3e9ff"
-        ]
-      },
-      "wing-blue": {
-        "role": "tertiary",
-        "displayName": "Wing Blue",
-        "canonical": "#6c8fb0",
-        "oklch": "oklch(63.6% 0.063 247.4)",
-        "tonalRamp": [
-          "#020c17",
-          "#152737",
-          "#2d445a",
-          "#47647f",
-          "#6486a7",
-          "#8aa9c6",
-          "#b2cde6",
-          "#dbf2ff"
+          "#110321",
+          "#2b1c3e",
+          "#48395e",
+          "#68597f",
+          "#8979a2",
+          "#ac9cc7",
+          "#d1c0ec",
+          "#f2eaff"
         ]
       },
       "rarity-common": {
         "role": "tertiary",
-        "displayName": "Rarity Common",
-        "canonical": "#c9bf9f",
-        "oklch": "oklch(80.5% 0.045 92.7)",
+        "displayName": "Common",
+        "canonical": "#9a8a66",
+        "oklch": "oklch(63.9% 0.054 86.8)",
         "tonalRamp": [
-          "#0e0b03",
-          "#2a2515",
-          "#48422e",
-          "#696148",
-          "#8b8264",
-          "#ada58a",
-          "#d0c9b2",
-          "#f4eedb"
+          "#0f0a02",
+          "#2d240d",
+          "#4e401e",
+          "#6f5f3d",
+          "#90815d",
+          "#b0a488",
+          "#d0c8b8",
+          "#f1eee9"
         ]
       },
       "rarity-rare": {
         "role": "tertiary",
-        "displayName": "Rarity Rare",
-        "canonical": "#6fb6e0",
-        "oklch": "oklch(74.6% 0.094 235.9)",
+        "displayName": "Rare",
+        "canonical": "#2f86c2",
+        "oklch": "oklch(59.7% 0.122 243.2)",
         "tonalRamp": [
-          "#000d1b",
-          "#00293d",
-          "#144762",
-          "#2b6889",
-          "#448bb3",
-          "#72add1",
-          "#9fd1f0",
-          "#ccf5ff"
+          "#000c1c",
+          "#002748",
+          "#004679",
+          "#0067a1",
+          "#3689c4",
+          "#76abd6",
+          "#aecee8",
+          "#e6f0f8"
+        ]
+      },
+      "rarity-epic": {
+        "role": "tertiary",
+        "displayName": "Epic",
+        "canonical": "#8b4fd6",
+        "oklch": "oklch(56.5% 0.199 300.6)",
+        "tonalRamp": [
+          "#110223",
+          "#300c55",
+          "#531a8d",
+          "#7637be",
+          "#9562db",
+          "#b292e8",
+          "#d1bff3",
+          "#f1ebfc"
+        ]
+      },
+      "rarity-legendary": {
+        "role": "tertiary",
+        "displayName": "Legendary",
+        "canonical": "#d9a22a",
+        "oklch": "oklch(74.5% 0.142 81.7)",
+        "tonalRamp": [
+          "#1b0400",
+          "#451400",
+          "#663500",
+          "#895500",
+          "#ac7700",
+          "#d19b1e",
+          "#e7c483",
+          "#f8edda"
         ]
       }
     },
     "typographyMeta": {
       "display": {
         "displayName": "Display",
-        "purpose": "Card headings over the board."
+        "purpose": "Box-lid title and overlay-card headings, Uncial in white (lid) or lid-ink red (card)."
       },
       "headline": {
         "displayName": "Headline",
-        "purpose": "Game name in the top bar."
+        "purpose": "Bestiary entry names."
       },
       "title": {
         "displayName": "Title",
-        "purpose": "Panel, Bestiary, heirloom and event names."
+        "purpose": "Rule-card titles and heirloom names."
       },
       "body": {
         "displayName": "Body",
-        "purpose": "Rules text, card copy, hints."
+        "purpose": "Rules, hints and card copy."
       },
-      "body-strong": {
-        "displayName": "Body Strong",
-        "purpose": "Option names, button labels."
-      },
-      "stat": {
-        "displayName": "Stat",
-        "purpose": "HUD numbers, tabular."
-      },
-      "small": {
-        "displayName": "Small",
-        "purpose": "Descriptions, chips, fine print."
+      "body-small": {
+        "displayName": "Body Small",
+        "purpose": "Option descriptions, chips, notes, token names."
       },
       "label": {
         "displayName": "Label",
-        "purpose": "Uppercase captions, rarity names, tags."
+        "purpose": "Uppercase navy score-slot names, field labels and small section labels."
       },
-      "code": {
-        "displayName": "Code",
-        "purpose": "Two-player room codes only."
+      "score": {
+        "displayName": "Score",
+        "purpose": "Tabular numbers on the score track."
       }
     },
     "shadows": [
       {
-        "name": "board-lift",
-        "value": "0 10px 30px rgba(0,0,0,.35)",
-        "purpose": "The game board."
+        "name": "card-edge",
+        "value": "0 3px 0 #8e6f42, 0 8px 14px -6px rgba(74, 48, 16, .45)",
+        "purpose": "Every button and rule card at rest: tan thickness plus a cast shadow."
       },
       {
-        "name": "card-float",
-        "value": "0 12px 40px rgba(0,0,0,.45)",
-        "purpose": "Overlay and modal cards."
+        "name": "pressed",
+        "value": "0 1px 0 #8e6f42, 0 3px 6px -3px rgba(74, 48, 16, .4)",
+        "purpose": "A button while pressed, with translateY(2px)."
       },
       {
-        "name": "drag-lift",
-        "value": "drop-shadow(0 4px 6px rgba(0,0,0,.4))",
-        "purpose": "Defender being dragged (filter)."
+        "name": "pressed-on",
+        "value": "inset 0 2px 4px rgba(74, 48, 16, .3), 0 1px 0 #8e6f42",
+        "purpose": "Toggles that are on and the open More button, with translateY(2px)."
       },
       {
-        "name": "gold-glow",
-        "value": "0 0 12px rgba(233,185,73,.35)",
-        "purpose": "Highlighted button; 18px on Legendary heirlooms."
+        "name": "gold-edge",
+        "value": "0 3px 0 #b98a22, 0 8px 14px -6px rgba(74, 48, 16, .45)",
+        "purpose": "The next-move primary button."
+      },
+      {
+        "name": "overlay-card",
+        "value": "0 4px 0 #8e6f42, 0 18px 40px -8px rgba(40, 24, 6, .6)",
+        "purpose": "Cards over the board and in modals."
+      },
+      {
+        "name": "board-frame",
+        "value": "0 0 0 8px #f2ede3, 0 11px 0 6px #8e6f42, 0 22px 30px -6px rgba(74, 48, 16, .5)",
+        "purpose": "The printed board mounted in a card frame."
+      },
+      {
+        "name": "token",
+        "value": "0 3px 0 #b8ab92, 0 6px 8px -3px rgba(0, 0, 0, .5)",
+        "purpose": "A punch-out token resting in the tray."
+      },
+      {
+        "name": "token-lifted",
+        "value": "0 8px 0 #b8ab92, 0 14px 14px -4px rgba(0, 0, 0, .6)",
+        "purpose": "The picked-up token, with translateY(-5px) and a gold ring."
+      },
+      {
+        "name": "tray-well",
+        "value": "inset 0 3px 8px rgba(5, 15, 35, .55), 0 2px 0 #142a52",
+        "purpose": "The recessed navy token tray."
+      },
+      {
+        "name": "more-popover",
+        "value": "0 3px 0 #8e6f42, 0 14px 30px -8px rgba(60, 30, 5, .55)",
+        "purpose": "The More popover card under the controls row."
       }
     ],
     "motion": [
       {
-        "name": "heirloom-rise",
-        "value": "transform .15s",
-        "purpose": "Heirloom cards lift 3px on hover."
+        "name": "ease-card",
+        "value": "cubic-bezier(.16, 1, .3, 1)",
+        "purpose": "Pressing, lifting and setting down card."
       },
       {
-        "name": "reduced-motion",
-        "value": "prefers-reduced-motion: reduce",
-        "purpose": "Checked in script to calm canvas effects."
+        "name": "press",
+        "value": "120ms",
+        "purpose": "Button press transform and shadow."
+      },
+      {
+        "name": "token-lift",
+        "value": "180ms",
+        "purpose": "Token rising off the tray."
+      },
+      {
+        "name": "hearts-hit",
+        "value": "500ms / 800ms heavy",
+        "purpose": "Castle slot jolt on a hit; colour only under reduced motion."
       }
     ],
     "breakpoints": [
+      {
+        "name": "tiny",
+        "value": "420px"
+      },
       {
         "name": "phone",
         "value": "520px"
       },
       {
-        "name": "side-two-up",
-        "value": "620px"
+        "name": "short",
+        "value": "max-height 520px"
       },
       {
-        "name": "heirlooms-stack",
+        "name": "tray-heirlooms",
         "value": "640px"
       },
       {
-        "name": "controls-4col",
+        "name": "card-grows-board",
+        "value": "700px"
+      },
+      {
+        "name": "controls-fold",
         "value": "820px"
       },
       {
-        "name": "stack",
+        "name": "one-column",
         "value": "900px"
       },
       {
-        "name": "short-landscape",
-        "value": "max-height: 520px"
+        "name": "max-width",
+        "value": "1320px"
       }
     ]
   },
   "components": [
     {
-      "name": "Button",
+      "name": "Card Button",
       "kind": "button",
-      "refersTo": "button",
-      "description": "Default quiet control on Lichen Moss.",
-      "html": "<button class=\"ds-btn\">Pause</button>",
-      "css": ":host{--night:#141d19;--moss:#1f2c26;--moss-2:#2a3a32;--line:#3a4f44;--parch:#f1e6c8;--parch-dim:#b7ae93;--gold:#e9b949;--gold-deep:#b98a22;--ember:#e2683e;--frost:#94d6ea;--leaf:#8cc06a;--font-display:\"Uncial Antiqua\",\"Palatino Linotype\",Georgia,serif;--font-body:\"Alegreya Sans\",\"Trebuchet MS\",system-ui,sans-serif} .ds-btn{font:700 16px/1.45 var(--font-body);cursor:pointer;border-radius:10px;border:1px solid var(--line);background:var(--moss-2);color:var(--parch);padding:7px 12px;touch-action:manipulation} .ds-btn:hover:not(:disabled){border-color:var(--parch-dim)} .ds-btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px} .ds-btn:disabled{opacity:.45;cursor:not-allowed} "
+      "refersTo": "button-card",
+      "description": "The default piece: printed card over a tan edge that pushes down when pressed.",
+      "html": "<button class=\"ds-btn\">Speed 2×</button>",
+      "css": ".ds-btn { font: 800 16px/1.45 var(--font-body); border: 0; border-radius: 6px; padding: 8px 12px; cursor: pointer; background: var(--card); color: var(--navy); box-shadow: 0 3px 0 var(--table-deep), 0 8px 14px -6px rgba(74, 48, 16, .45); transition: transform .12s cubic-bezier(.16, 1, .3, 1), box-shadow .12s cubic-bezier(.16, 1, .3, 1), background-color .15s; } .ds-btn:hover:not(:disabled) { background: #fff; } .ds-btn:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 var(--table-deep), 0 3px 6px -3px rgba(74, 48, 16, .4); } .ds-btn:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; } "
     },
     {
-      "name": "Primary Button",
+      "name": "Primary Button (next move)",
       "kind": "button",
       "refersTo": "button-primary",
-      "description": "The one solid-gold next action (Start level, New game, Resume).",
+      "description": "Gold, only for the one next move; reverts to plain card when something else is next.",
       "html": "<button class=\"ds-btn ds-btn-primary\">Start level 1</button>",
-      "css": ":host{--night:#141d19;--moss:#1f2c26;--moss-2:#2a3a32;--line:#3a4f44;--parch:#f1e6c8;--parch-dim:#b7ae93;--gold:#e9b949;--gold-deep:#b98a22;--ember:#e2683e;--frost:#94d6ea;--leaf:#8cc06a;--font-display:\"Uncial Antiqua\",\"Palatino Linotype\",Georgia,serif;--font-body:\"Alegreya Sans\",\"Trebuchet MS\",system-ui,sans-serif} .ds-btn{font:700 16px/1.45 var(--font-body);cursor:pointer;border-radius:10px;border:1px solid var(--line);background:var(--moss-2);color:var(--parch);padding:7px 12px;touch-action:manipulation} .ds-btn:hover:not(:disabled){border-color:var(--parch-dim)} .ds-btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px} .ds-btn:disabled{opacity:.45;cursor:not-allowed} .ds-btn-primary{background:var(--gold);color:#2a1d05;border-color:var(--gold-deep)} .ds-btn-primary:hover:not(:disabled){background:#f3c95e;border-color:var(--gold-deep)}"
+      "css": ".ds-btn { font: 800 16px/1.45 var(--font-body); border: 0; border-radius: 6px; padding: 8px 12px; cursor: pointer; background: var(--card); color: var(--navy); box-shadow: 0 3px 0 var(--table-deep), 0 8px 14px -6px rgba(74, 48, 16, .45); transition: transform .12s cubic-bezier(.16, 1, .3, 1), box-shadow .12s cubic-bezier(.16, 1, .3, 1), background-color .15s; } .ds-btn:hover:not(:disabled) { background: #fff; } .ds-btn:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 var(--table-deep), 0 3px 6px -3px rgba(74, 48, 16, .4); } .ds-btn:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; } .ds-btn-primary { background: var(--gold); color: var(--gold-ink); box-shadow: 0 3px 0 var(--gold-deep), 0 8px 14px -6px rgba(74, 48, 16, .45); } .ds-btn-primary:hover:not(:disabled) { background: var(--gold-bright); }"
     },
     {
       "name": "Toggle Button (on)",
       "kind": "button",
-      "refersTo": "button-on",
-      "description": "Sound, Music and Auto when switched on.",
-      "html": "<button class=\"ds-btn ds-btn-on\">Sound: on</button>",
-      "css": ":host{--night:#141d19;--moss:#1f2c26;--moss-2:#2a3a32;--line:#3a4f44;--parch:#f1e6c8;--parch-dim:#b7ae93;--gold:#e9b949;--gold-deep:#b98a22;--ember:#e2683e;--frost:#94d6ea;--leaf:#8cc06a;--font-display:\"Uncial Antiqua\",\"Palatino Linotype\",Georgia,serif;--font-body:\"Alegreya Sans\",\"Trebuchet MS\",system-ui,sans-serif} .ds-btn{font:700 16px/1.45 var(--font-body);cursor:pointer;border-radius:10px;border:1px solid var(--line);background:var(--moss-2);color:var(--parch);padding:7px 12px;touch-action:manipulation} .ds-btn:hover:not(:disabled){border-color:var(--parch-dim)} .ds-btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px} .ds-btn:disabled{opacity:.45;cursor:not-allowed} .ds-btn-on{background:#3c5444;border-color:var(--leaf);color:#e4f5d6}"
+      "refersTo": "button-card-on",
+      "description": "On means pressed down: pressed card with navy ink and an inner shadow. No green state.",
+      "html": "<button class=\"ds-btn ds-btn-on\" aria-pressed=\"true\">Sound: on</button>",
+      "css": ".ds-btn { font: 800 16px/1.45 var(--font-body); border: 0; border-radius: 6px; padding: 8px 12px; cursor: pointer; background: var(--card); color: var(--navy); box-shadow: 0 3px 0 var(--table-deep), 0 8px 14px -6px rgba(74, 48, 16, .45); transition: transform .12s cubic-bezier(.16, 1, .3, 1), box-shadow .12s cubic-bezier(.16, 1, .3, 1), background-color .15s; } .ds-btn:hover:not(:disabled) { background: #fff; } .ds-btn:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 var(--table-deep), 0 3px 6px -3px rgba(74, 48, 16, .4); } .ds-btn:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; } .ds-btn-on { background: var(--card-2); color: var(--navy); transform: translateY(2px); box-shadow: inset 0 2px 4px rgba(74, 48, 16, .3), 0 1px 0 var(--table-deep); } .ds-btn-on:hover:not(:disabled) { background: #ece5d6; }"
+    },
+    {
+      "name": "Disabled Button",
+      "kind": "button",
+      "refersTo": "button-card-disabled",
+      "description": "A neutral pressed card, including a disabled primary.",
+      "html": "<button class=\"ds-btn\" disabled>Level 12 under way</button>",
+      "css": ".ds-btn { font: 800 16px/1.45 var(--font-body); border: 0; border-radius: 6px; padding: 8px 12px; cursor: pointer; background: var(--card); color: var(--navy); box-shadow: 0 3px 0 var(--table-deep), 0 8px 14px -6px rgba(74, 48, 16, .45); transition: transform .12s cubic-bezier(.16, 1, .3, 1), box-shadow .12s cubic-bezier(.16, 1, .3, 1), background-color .15s; } .ds-btn:hover:not(:disabled) { background: #fff; } .ds-btn:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 var(--table-deep), 0 3px 6px -3px rgba(74, 48, 16, .4); } .ds-btn:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; } .ds-btn:disabled { cursor: not-allowed; background: var(--card-2); color: color-mix(in srgb, var(--ink-dim) 85%, var(--card-2)); transform: translateY(2px); box-shadow: 0 1px 0 var(--table-deep); }"
     },
     {
       "name": "Versus Button",
       "kind": "button",
       "refersTo": "button-versus",
-      "description": "Full-width two-player entry in the Dark Lord's violet.",
-      "html": "<button class=\"ds-btn ds-btn-versus\">Two players online: Keeper vs Dark Lord</button>",
-      "css": ":host{--night:#141d19;--moss:#1f2c26;--moss-2:#2a3a32;--line:#3a4f44;--parch:#f1e6c8;--parch-dim:#b7ae93;--gold:#e9b949;--gold-deep:#b98a22;--ember:#e2683e;--frost:#94d6ea;--leaf:#8cc06a;--font-display:\"Uncial Antiqua\",\"Palatino Linotype\",Georgia,serif;--font-body:\"Alegreya Sans\",\"Trebuchet MS\",system-ui,sans-serif} .ds-btn{font:700 16px/1.45 var(--font-body);cursor:pointer;border-radius:10px;border:1px solid var(--line);background:var(--moss-2);color:var(--parch);padding:7px 12px;touch-action:manipulation} .ds-btn:hover:not(:disabled){border-color:var(--parch-dim)} .ds-btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px} .ds-btn:disabled{opacity:.45;cursor:not-allowed} .ds-btn-versus{width:100%;padding:10px 14px;border-color:#7a4a9a;background:#2c2338;color:#e3d2ff} .ds-btn-versus:hover:not(:disabled){border-color:#c58bff}"
+      "description": "Two-player entry; violet belongs to the Dark Lord.",
+      "html": "<button class=\"ds-btn ds-btn-versus\">Keeper vs Dark Lord</button>",
+      "css": ".ds-btn { font: 800 16px/1.45 var(--font-body); border: 0; border-radius: 6px; padding: 8px 12px; cursor: pointer; background: var(--card); color: var(--navy); box-shadow: 0 3px 0 var(--table-deep), 0 8px 14px -6px rgba(74, 48, 16, .45); transition: transform .12s cubic-bezier(.16, 1, .3, 1), box-shadow .12s cubic-bezier(.16, 1, .3, 1), background-color .15s; } .ds-btn:hover:not(:disabled) { background: #fff; } .ds-btn:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 var(--table-deep), 0 3px 6px -3px rgba(74, 48, 16, .4); } .ds-btn:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; } .ds-btn-versus { width: 100%; padding: 11px 14px; background: var(--violet-night); color: var(--violet-ink); box-shadow: 0 3px 0 #120d18, 0 8px 14px -6px rgba(40, 20, 50, .5); } .ds-btn-versus:hover:not(:disabled) { background: #3a2e4a; }"
+    },
+    {
+      "name": "Box Lid with Score Track",
+      "kind": "nav",
+      "refersTo": "box-lid",
+      "description": "The red lid with navy rim, Uncial title and three score slots.",
+      "html": "<header class=\"ds-lid\"><h1>Endless Keep</h1><div class=\"ds-stat\"><span>Level</span><b>4</b></div><div class=\"ds-stat\"><span>Gold</span><b class=\"g\">125</b></div><div class=\"ds-stat\"><span>Castle</span><b class=\"h\">18/20</b></div></header>",
+      "css": ".ds-lid { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 6px; background: var(--lid); border-radius: 10px; border-bottom: 6px solid var(--navy); padding: 12px 16px 14px; box-shadow: 0 10px 18px -10px rgba(74, 48, 16, .55); font-family: var(--font-body); } .ds-lid h1 { font: 400 1.9rem/1 var(--font-display); color: #fff; text-shadow: 2px 2px 0 var(--navy); margin: 0 12px 0 0; } .ds-stat { display: flex; align-items: baseline; gap: 8px; background: var(--card); border: 2px solid var(--navy); border-radius: 6px; padding: 4px 10px; font-variant-numeric: tabular-nums; } .ds-stat span { font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: var(--navy); } .ds-stat b { font-size: 1.15rem; font-weight: 800; color: var(--ink); } .ds-stat b.g { color: var(--gold-text); } .ds-stat b.h { color: var(--rose); }"
+    },
+    {
+      "name": "Rule Card",
+      "kind": "card",
+      "refersTo": "rule-card",
+      "description": "Card-stock panel beside or under the board, Uncial title in lid-ink red.",
+      "html": "<section class=\"ds-panel\"><h3>Up next</h3><p>Level 5 brings goblins and a troll.</p></section>",
+      "css": ".ds-panel { background: var(--card); border-radius: 8px; padding: 14px 16px 16px; display: grid; gap: 10px; box-shadow: 0 3px 0 var(--table-deep), 0 8px 14px -6px rgba(74, 48, 16, .45); font: 400 16px/1.45 var(--font-body); color: var(--ink); } .ds-panel h3 { margin: 0; font: 400 1.15rem/1.15 var(--font-display); color: var(--lid-ink); } .ds-panel p { margin: 0; color: var(--ink-dim); font-size: .95rem; }"
     },
     {
       "name": "Name Field",
       "kind": "input",
-      "refersTo": "input",
-      "description": "Night Forest well with an uppercase caption.",
-      "html": "<div class=\"ds-field\"><label for=\"ds-n\">Your name for the leaderboard</label><input id=\"ds-n\" placeholder=\"e.g. Queen of the Keep\"></div>",
-      "css": ":host{--night:#141d19;--moss:#1f2c26;--moss-2:#2a3a32;--line:#3a4f44;--parch:#f1e6c8;--parch-dim:#b7ae93;--gold:#e9b949;--gold-deep:#b98a22;--ember:#e2683e;--frost:#94d6ea;--leaf:#8cc06a;--font-display:\"Uncial Antiqua\",\"Palatino Linotype\",Georgia,serif;--font-body:\"Alegreya Sans\",\"Trebuchet MS\",system-ui,sans-serif} .ds-field{display:grid;gap:4px;font-family:var(--font-body)} .ds-field label{font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--parch-dim)} .ds-field input{font:inherit;font-size:1.05rem;padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--night);color:var(--parch)} .ds-field input:focus-visible{outline:2px solid var(--gold);outline-offset:2px}"
-    },
-    {
-      "name": "HUD Stats",
-      "kind": "nav",
-      "refersTo": "stat",
-      "description": "Top-bar stat pills with tabular numbers.",
-      "html": "<div class=\"ds-hud\"><div class=\"ds-stat\"><span>Level</span><b>12</b></div><div class=\"ds-stat ds-gold\"><span>Gold</span><b>340</b></div><div class=\"ds-stat ds-hearts\"><span>Castle</span><b>18/20</b></div></div>",
-      "css": ":host{--night:#141d19;--moss:#1f2c26;--moss-2:#2a3a32;--line:#3a4f44;--parch:#f1e6c8;--parch-dim:#b7ae93;--gold:#e9b949;--gold-deep:#b98a22;--ember:#e2683e;--frost:#94d6ea;--leaf:#8cc06a;--font-display:\"Uncial Antiqua\",\"Palatino Linotype\",Georgia,serif;--font-body:\"Alegreya Sans\",\"Trebuchet MS\",system-ui,sans-serif} .ds-hud{display:flex;flex-wrap:wrap;gap:8px;font-family:var(--font-body);color:var(--parch)} .ds-stat{display:flex;align-items:baseline;gap:6px;background:var(--moss);border:1px solid var(--line);border-radius:10px;padding:5px 12px;font-variant-numeric:tabular-nums} .ds-stat b{font-size:1.15rem;font-weight:800} .ds-stat span{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--parch-dim)} .ds-gold b{color:var(--gold)} .ds-hearts b{color:#f08a7a}"
+      "refersTo": "text-field",
+      "description": "Well inset with a die-cut card-line border; focus turns it navy.",
+      "html": "<label class=\"ds-field\"><span>Your name</span><input value=\"Keeper\"></label>",
+      "css": ".ds-field { display: grid; gap: 4px; font-family: var(--font-body); } .ds-field span { font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: var(--navy); } .ds-field input { font: inherit; font-size: 1.05rem; padding: 9px 12px; border-radius: 6px; border: 2px solid var(--card-line); background: var(--well); color: var(--ink); } .ds-field input:focus-visible { border-color: var(--navy); outline: 2px solid var(--navy); outline-offset: 2px; }"
     },
     {
       "name": "Monster Chips",
       "kind": "chip",
       "refersTo": "chip",
-      "description": "Up next pills; boss and flying variants.",
-      "html": "<div class=\"ds-chips\"><span class=\"ds-chip\">Goblins ×12</span><span class=\"ds-chip ds-fly\">Cave bats ×4</span><span class=\"ds-chip ds-boss\">Troll king</span></div>",
-      "css": ":host{--night:#141d19;--moss:#1f2c26;--moss-2:#2a3a32;--line:#3a4f44;--parch:#f1e6c8;--parch-dim:#b7ae93;--gold:#e9b949;--gold-deep:#b98a22;--ember:#e2683e;--frost:#94d6ea;--leaf:#8cc06a;--font-display:\"Uncial Antiqua\",\"Palatino Linotype\",Georgia,serif;--font-body:\"Alegreya Sans\",\"Trebuchet MS\",system-ui,sans-serif} .ds-chips{display:flex;flex-wrap:wrap;gap:6px;font-family:var(--font-body);color:var(--parch)} .ds-chip{display:inline-flex;align-items:center;font-size:.82rem;padding:2px 10px;border-radius:999px;background:var(--moss-2);border:1px solid var(--line);cursor:pointer} .ds-chip:hover{border-color:var(--gold)} .ds-boss{border-color:var(--ember);color:#ffc1a8} .ds-fly{border-color:#6c8fb0}"
+      "description": "Up-next pills; boss and flying variants take a state border.",
+      "html": "<div class=\"ds-chips\"><span class=\"ds-chip\">Goblin ×6</span><span class=\"ds-chip fly\">Bat ×3</span><span class=\"ds-chip boss\">Troll king</span></div>",
+      "css": ".ds-chips { display: flex; flex-wrap: wrap; gap: 6px; font-family: var(--font-body); } .ds-chip { display: inline-flex; align-items: center; font-size: .82rem; font-weight: 700; padding: 2px 10px; border-radius: 999px; background: var(--well); border: 2px solid var(--card-line); color: var(--ink); } .ds-chip.fly { border-color: var(--wing); } .ds-chip.boss { border-color: var(--danger); color: var(--danger); }"
     },
     {
-      "name": "Panel",
-      "kind": "card",
-      "refersTo": "panel",
-      "description": "Sidebar container: flat Deep Moss, uncial gold title.",
-      "html": "<section class=\"ds-panel\"><h3>Up next</h3><p>Drag a defender from the bar under the map onto open grass.</p></section>",
-      "css": ":host{--night:#141d19;--moss:#1f2c26;--moss-2:#2a3a32;--line:#3a4f44;--parch:#f1e6c8;--parch-dim:#b7ae93;--gold:#e9b949;--gold-deep:#b98a22;--ember:#e2683e;--frost:#94d6ea;--leaf:#8cc06a;--font-display:\"Uncial Antiqua\",\"Palatino Linotype\",Georgia,serif;--font-body:\"Alegreya Sans\",\"Trebuchet MS\",system-ui,sans-serif} .ds-panel{background:var(--moss);border:1px solid var(--line);border-radius:14px;padding:14px;display:grid;gap:10px;font-family:var(--font-body);color:var(--parch)} .ds-panel h3{margin:0;font-family:var(--font-display);font-weight:400;font-size:1.15rem;color:var(--gold)} .ds-panel p{margin:0;color:var(--parch-dim);font-size:.95rem}"
-    },
-    {
-      "name": "Overlay Card",
-      "kind": "card",
-      "refersTo": "card",
-      "description": "Card floating over the board with the Card float shadow.",
-      "html": "<div class=\"ds-card\"><h2>Paused</h2><p>The goblins are waiting politely.</p><button class=\"ds-cbtn\">Resume</button></div>",
-      "css": ":host{--night:#141d19;--moss:#1f2c26;--moss-2:#2a3a32;--line:#3a4f44;--parch:#f1e6c8;--parch-dim:#b7ae93;--gold:#e9b949;--gold-deep:#b98a22;--ember:#e2683e;--frost:#94d6ea;--leaf:#8cc06a;--font-display:\"Uncial Antiqua\",\"Palatino Linotype\",Georgia,serif;--font-body:\"Alegreya Sans\",\"Trebuchet MS\",system-ui,sans-serif} .ds-card{background:var(--moss);border:1px solid var(--line);border-radius:14px;padding:20px 22px;display:grid;gap:12px;max-width:440px;box-shadow:0 12px 40px rgba(0,0,0,.45);font-family:var(--font-body)} .ds-card h2{margin:0;font-family:var(--font-display);font-weight:400;color:var(--gold);font-size:1.9rem;line-height:1.1} .ds-card p{margin:0;color:var(--parch-dim)} .ds-cbtn{font:700 16px var(--font-body);border-radius:10px;padding:10px 14px;background:var(--gold);color:#2a1d05;border:1px solid var(--gold-deep);cursor:pointer} .ds-cbtn:hover{background:#f3c95e} .ds-cbtn:focus-visible{outline:2px solid var(--gold);outline-offset:2px}"
-    },
-    {
-      "name": "Heirloom Card",
+      "name": "Token Tray",
       "kind": "custom",
-      "refersTo": "heirloom",
-      "description": "Rarity-tinted pick card; rises on hover, Legendary glows.",
-      "html": "<button class=\"ds-heir\" style=\"--rc:#e9b949\"><span class=\"ds-rr\">Legendary</span><span class=\"ds-bn\">Crown of the keep</span><span class=\"ds-bd\">Every tower deals +10% damage, and the castle mends 1 heart after each level.</span></button>",
-      "css": ":host{--night:#141d19;--moss:#1f2c26;--moss-2:#2a3a32;--line:#3a4f44;--parch:#f1e6c8;--parch-dim:#b7ae93;--gold:#e9b949;--gold-deep:#b98a22;--ember:#e2683e;--frost:#94d6ea;--leaf:#8cc06a;--font-display:\"Uncial Antiqua\",\"Palatino Linotype\",Georgia,serif;--font-body:\"Alegreya Sans\",\"Trebuchet MS\",system-ui,sans-serif} .ds-heir{display:grid;gap:6px;text-align:left;padding:14px;max-width:240px;border-radius:10px;border:2px solid var(--rc);background:linear-gradient(180deg,color-mix(in srgb,var(--rc) 20%,var(--moss-2)),var(--moss-2) 70%);box-shadow:0 0 18px rgba(233,185,73,.35);font-family:var(--font-body);color:var(--parch);cursor:pointer;transition:transform .15s} .ds-heir:hover{transform:translateY(-3px)} .ds-heir:focus-visible{outline:2px solid var(--gold);outline-offset:2px} .ds-rr{font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;color:var(--rc);font-weight:800} .ds-bn{font-family:var(--font-display);font-size:1.2rem;line-height:1.15} .ds-bd{font-size:.92rem}"
+      "refersTo": "token-tray",
+      "description": "Navy tray of punch-out tokens; the picked-up token rises with a gold ring.",
+      "html": "<div class=\"ds-tray\"><button class=\"ds-tile\"><i></i><b>Archer</b><em>40</em></button><button class=\"ds-tile active\"><i></i><b>Cannon</b><em>90</em></button><button class=\"ds-tile\"><i></i><b>Frost</b><em>70</em></button></div>",
+      "css": ".ds-tray { display: grid; grid-template-columns: repeat(3, 72px); gap: 6px; background: var(--navy); border-radius: 10px; padding: 12px 8px 10px; box-shadow: inset 0 3px 8px rgba(5, 15, 35, .55), 0 2px 0 var(--navy-deep); font-family: var(--font-body); } .ds-tile { display: grid; justify-items: center; background: transparent; border: 0; cursor: grab; color: #fff; } .ds-tile i { width: 54px; height: 54px; margin-bottom: 7px; border-radius: 50%; background: var(--card); outline: 2px dashed color-mix(in srgb, var(--card) 45%, var(--navy)); outline-offset: 3px; box-shadow: 0 3px 0 #b8ab92, 0 6px 8px -3px rgba(0, 0, 0, .5); transition: transform .18s cubic-bezier(.16, 1, .3, 1), box-shadow .18s cubic-bezier(.16, 1, .3, 1); } .ds-tile:hover i { transform: translateY(-2px); } .ds-tile b { font-size: .82rem; font-weight: 800; } .ds-tile em { font-style: normal; font-size: .82rem; font-weight: 800; color: var(--gold-bright); } .ds-tile.active i { transform: translateY(-5px); outline: 3px solid var(--gold); outline-offset: 2px; box-shadow: 0 8px 0 #b8ab92, 0 14px 14px -4px rgba(0, 0, 0, .6); } .ds-tile.active b { color: var(--gold-bright); } .ds-tile:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }"
     }
   ],
   "narrative": {
-    "northStar": "Storybook at Dusk",
-    "overview": "**Creative North Star: \"Storybook at Dusk\"**\n\nEndless Keep is a painted meadow seen through a window of dark forest. The game board is the bright page of a storybook: seasonal grass, a sandy road, flowers, ponds and a blue-roofed castle, all drawn on canvas. Around it the interface is dusk: deep moss-green panels, parchment-coloured text and a little lamplit gold. The contrast is the system. The board holds the saturated colour and the life; the frame stays quiet and dark so the eye goes back to the meadow.\n\nThe interface is a **quiet frame**. Panels, stats and buttons sit in tonal greens, separated by thin mossy borders rather than shadows. They light up only for two things: the next action you should take (solid gold) and rewards (gold glow, rarity colours). Display type is an uncial storybook hand, Uncial Antiqua, used only for names and headings. Everything you actually read or tap is set in the warm, friendly humanist sans Alegreya Sans, with tabular figures wherever numbers change.\n\nDensity is moderate and touch-first. Controls are compact but thumb-sized, the layout reflows from a board-plus-sidebar on desktop to a stacked column on phones, and a full-screen mode fits the board to the viewport in either orientation. The current implementation is a single dark theme, set with `color-scheme: dark`.",
+    "northStar": "The Family Board Game",
+    "overview": "**Creative North Star: \"The Family Board Game\"**\n\nEndless Keep is a boxed board game opened on the kitchen table. The page ground is the box insert's warm cardboard tan. Every surface on it is a piece of card stock with a die-cut edge that shows its thickness. The header is the red box lid with a navy rim, and it carries the title and a score track. The board is printed, with the road ruled into spaces like a track. The player's defenders are round punch-out tokens lying in a navy plastic tray. Rule cards stand beside the board on wide screens and stack under it on phones.\n\nThe system is light, tactile and plainly printed. Ink is navy, titles are Uncial in lid red, and body text is a friendly humanist sans. Depth comes from physical thickness: pieces show an edge and cast a soft shadow, and pressing one pushes it down onto the table. Colour is sparse and means something. Gold marks the next move and nothing else, violet belongs to the Dark Lord, and danger red, rose and green carry game state.\n\nThe interface is the box the game came in, and the board leads. It is a family game first, for one thumb on a phone, so pieces are big, labels are short, and nothing moves or resizes when a label changes.",
     "keyCharacteristics": [
-      "A bright painted board inside a dark, calm forest-green frame.",
-      "Gold is rare and means \"act now\" or \"this is special\".",
-      "Uncial display type for names and headings only; humanist sans for everything else.",
-      "Flat tonal panels with thin borders; shadows only on things that float.",
-      "Fixed-size controls whose labels change but whose positions never do.",
-      "Colour-coded families: ember for danger and bosses, frost for tower roles, leaf for good things, violet for the Dark Lord."
+      "Cardboard tan table, card-stock pieces, red box lid with a navy rim, navy token tray.",
+      "Depth is card thickness: a tan edge under the piece plus a blurred cast shadow.",
+      "Gold appears only on the next move.",
+      "Navy ink, Uncial titles in lid red, Alegreya Sans for everything else.",
+      "Light only. Night is a season on the board, never a page theme."
     ],
     "rules": [
       {
-        "name": "The Gold Means Act Rule",
-        "body": "Solid Keep Gold is reserved for the single main next action on a screen and for top rewards (Legendary heirlooms, first place, highlighted buttons). Don't use it as decoration or for a second competing button. Gold headings are the one standing exception, because they label rather than ask.",
+        "name": "The Next Move Rule",
+        "body": "Gold is only ever the next move. The waiting Start button is gold. When a pause or game-over card covers the board, Start prints as plain pressed card. New game is gold only when there is nothing to continue; when Continue shows, New game is plain card. A disabled primary is neutral pressed card. Choosing owed heirlooms is a next move, so that button takes a gold edge and glow while picks are waiting. Legendary rarity is a colour, never a glow.",
         "section": "colors"
       },
       {
-        "name": "The Dark Lord Owns Violet Rule",
-        "body": "The violet family belongs to the Dark Lord, two-player mode and Epic heirlooms, and nothing else. A violet element anywhere else reads as \"the enemy's\".",
+        "name": "The Dark Lord's Colour Rule",
+        "body": "Violet belongs to the Dark Lord, two-player mode and Epic heirlooms. Nothing else is violet.",
         "section": "colors"
       },
       {
-        "name": "The Board Carries the Colour Rule",
-        "body": "Saturated colour lives on the canvas board (grass, flowers, monsters, seasons). The interface stays in moss and parchment, adding colour only as small semantic accents (borders, numbers, tags).",
+        "name": "The Board-Only Night Rule",
+        "body": "The page is light only (`color-scheme: light`). The night season darkens the printed board; the box, cards and tray never change.",
         "section": "colors"
       },
       {
-        "name": "The Uncial Names Things Rule",
-        "body": "The display font is only for names and headings. Never set a sentence, a number, a button label or anything the player must parse quickly in Uncial Antiqua.",
+        "name": "The Printed Title Rule",
+        "body": "Uncial is for names: the game, cards, beasts, heirlooms and events. It never sets a sentence, a button or a number.",
         "section": "typography"
       },
       {
-        "name": "The Numbers Hold Still Rule",
-        "body": "Every number that changes during play (gold, level, hearts, costs, scores, stats) uses tabular figures, and the HUD numbers have minimum widths.",
+        "name": "The Steady Numbers Rule",
+        "body": "Every changing number uses tabular figures and a reserved minimum width, so the score track never shifts as values change.",
         "section": "typography"
       },
       {
-        "name": "The Buttons Never Move Rule",
-        "body": "The top control grid is a fixed size. Labels change (\"Sound: off\", \"Level 12 under way\") but no button ever moves, resizes or reflows. New controls must fit the grid or go elsewhere.",
-        "section": "layout"
-      },
-      {
-        "name": "The Thumb First Rule",
-        "body": "Every layout is checked at phone width and phone landscape height first. The board always stays fully visible at its true aspect ratio.",
-        "section": "layout"
-      },
-      {
-        "name": "The Flat Until It Floats Rule",
-        "body": "Panels, stats, chips and buttons never get drop shadows. Add a shadow only to something that floats over other content; otherwise separate with tone and a border.",
+        "name": "The Cardboard Rule",
+        "body": "Every raised piece shows its thickness as a tan edge plus a blurred shadow. A new surface that floats without an edge, or glows, is not from this box.",
         "section": "elevation"
       },
       {
-        "name": "The Glow Is a Reward Rule",
-        "body": "Gold glow is for the special few (a highlighted next step, a Legendary heirloom), never for ordinary hover or focus.",
+        "name": "The Press Down Rule",
+        "body": "On means pushed down. Toggles that are on are pressed card with navy ink; there is no green or coloured \"on\" state.",
         "section": "elevation"
       }
     ],
     "dos": [
-      "Do keep saturated colour on the canvas board, and keep the interface in Night Forest, Deep Moss and Lichen Moss with Parchment text.",
-      "Do give each screen or group at most one solid Keep Gold primary button, the next thing to do.",
-      "Do use the existing semantic families: Hearth Ember for danger and bosses, Frost for tower roles and info, Spring Leaf for gains and good events, and Dark Lord Violet only for the Dark Lord, two-player mode and Epic.",
-      "Do set names and headings in Uncial Antiqua at weight 400, and everything else in Alegreya Sans with tabular figures for changing numbers.",
-      "Do separate surfaces with a one-step tonal lift and a 1px Mossy Line border, and keep shadows for things that float.",
-      "Do use the 2px Keep Gold focus outline (2px offset) on every interactive element.",
-      "Do check every change at phone width, in phone landscape (520px tall or less) and in full-screen mode."
+      "Do give every raised piece the card edge: a tan edge under it plus a blurred warm shadow, and press it 2px down on press.",
+      "Do keep gold for the single next move, and turn it back to plain card the moment something else is the next move.",
+      "Do show \"on\" as pressed card with navy ink.",
+      "Do set titles in Uncial in lid-ink red on card, and everything else in Alegreya Sans.",
+      "Do use tabular figures and reserved widths for every number that changes.",
+      "Do keep the controls under the board and fold extras under More at 820px wide or 520px tall.",
+      "Do keep violet for the Dark Lord, two-player mode and Epic."
     ],
     "donts": [
-      "Don't move, resize or reflow the top control grid when a label or state changes.",
-      "Don't use violet for anything but the Dark Lord, two-player mode and Epic heirlooms.",
-      "Don't use solid gold as decoration or for two competing buttons, or use gold glow for ordinary hover states.",
-      "Don't put drop shadows on panels, buttons, chips or stats.",
-      "Don't set body text, numbers or button labels in the uncial display font.",
-      "Don't load images or new external assets for the interface. Art is drawn on canvas, and the only outside resource is the two Google Fonts."
+      "Don't add a dark page theme; night belongs to the board only.",
+      "Don't use gold for selection, decoration or rarity glow.",
+      "Don't use green or another colour for a toggle that is on.",
+      "Don't float a surface without its cardboard edge, or use cool grey shadows.",
+      "Don't let a label change move or resize a button.",
+      "Don't bring back the moss, parchment-on-dark or stone of a fantasy-RPG frame."
     ]
   }
 }

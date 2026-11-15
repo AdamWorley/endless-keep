@@ -1,3 +1,18 @@
 {
-  "buildPath": "code"
+  "buildPath": "code",
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "gradient-text",
+        "value": "*",
+        "files": [
+          "endless-keep.html"
+        ],
+        "createdAt": "2026-11-15T12:12:44.393Z",
+        "reason": "user requested a stylised metallic gold title (2026-11-15 session); gradient is the cartoon-gold banding on header h1 only"
+      }
+    ]
+  }
 }
