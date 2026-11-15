@@ -2774,14 +2774,18 @@ function renderPanel() {
   const t = sel.t;
   if (!S.towers.includes(t)) { sel = null; renderPanel(); return; }
   const d = TOWERS[t.type], st = tStats(t), nx = tStats({ type: t.type, lvl: t.lvl + 1, x: t.x, y: t.y, name: t.name });
-  p.append(el("h3", "", t.type === "dragon" ? `${dragonLabel(t)} · ${dragonStage(t.lvl).name} · level ${t.lvl}` : `${d.name} · level ${t.lvl}`));
+  const title = el("h3", "", t.type === "dragon" ? `${dragonLabel(t)} · ${dragonStage(t.lvl).name} · level ${t.lvl}` : `${d.name} · level ${t.lvl}`);
+  p.append(title);
   { const bw = el("p", "best"); bw.append(el("b", "", "Best against: "), document.createTextNode(d.best)); p.append(bw); }
   { const sp = dragonSecret(t); if (sp) { const sw = el("p", "best"); sw.append(el("b", "", "A special name! "), document.createTextNode(sp.msg)); p.append(sw); } }
   if (t.type !== "lantern") { const n = lookoutTrees(t).length;
     p.append(el("p", "hint", n ? `Tree lookout: +${n * 5}% range from ${n} nearby tree${n === 1 ? "" : "s"}${n < TREE_MAX ? ` (up to +${TREE_MAX * 5}%)` : " (the most it can get)"}.` : `No trees nearby. Each grown tree close to a tower gives it +5% range, up to +${TREE_MAX * 5}%.`));
     const lit = lightAt(t.x, t.y), fog = evOn("fog") || vsOn("fog"), dark = sRule("gloom"), snow = sRule("sight");
-    if (lit && (dark || fog)) p.append(el("p", "hint", `A Lantern lights this tower, so it sees through the ${dark && fog ? "darkness and fog" : dark ? "darkness" : "fog"} at full range.`));
-    else if (dark) p.append(el("p", "hint", `Night: darkness cuts this tower's range by ${Math.round((1 - dark) * 100)}%. Build a Lantern nearby to light it up.`));
+    if (lit) {  // what the light adds: more damage to monsters in it, and full range in the dark or fog
+      const lb = glowBonus(lit);
+      p.append(el("p", "hint", `A Lantern lights this tower: monsters in its light take +${Math.round(lb * 100)}% damage (${Math.round(st.dmg)} → ${Math.round(st.dmg * (1 + lb))} a hit)` +
+        (dark || fog ? `, and the tower sees through the ${dark && fog ? "darkness and fog" : dark ? "darkness" : "fog"} at full range.` : ".")));
+    } else if (dark) p.append(el("p", "hint", `Night: darkness cuts this tower's range by ${Math.round((1 - dark) * 100)}%. Build a Lantern nearby to light it up.`));
     if (snow) p.append(el("p", "hint", `Winter: falling snow cuts range by ${Math.round((1 - snow) * 100)}%.`)); }
   if (t.type === "dragon") {
     const nf = el("div", "namefield"), lab = el("label", "", "Dragon's name"), r2 = el("div", "row2");
@@ -2812,6 +2816,7 @@ function renderPanel() {
     kv.append(el("dt", "", "Extra damage given"), el("dd", "", fmt(t.dmg || 0)));
   } else {
   row("Damage", Math.round(st.dmg), Math.round(nx.dmg));
+  { const lt = lightAt(t.x, t.y); if (lt) { const lb = glowBonus(lt); row("In Lantern light", Math.round(st.dmg * (1 + lb)), Math.round(nx.dmg * (1 + lb))); } }
   row("Range", Math.round(st.range), Math.round(nx.range));
   row("Shots/sec", st.rate.toFixed(2), nx.rate.toFixed(2));
   if (st.slow) row("Slow", Math.round(st.slow * 100) + "%", Math.round(nx.slow * 100) + "%");
@@ -2821,7 +2826,7 @@ function renderPanel() {
   if (t.type === "dragon") { const nx2 = DRAGON_STAGES.find(z => z.upto >= t.lvl + 1 && z !== dragonStage(t.lvl)); if (nx2) kv.append(el("dt", "", "Grows up"), el("dd", "", `${nx2.name} at level ${DRAGON_STAGES[DRAGON_STAGES.indexOf(nx2) - 1].upto + 1}`)); }
   p.append(kv);
   const opts = el("div", "opts");
-  opts.append(costBtn(`Upgrade · ${upCost(t)} gold`, upCost(t), () => {
+  opts.append(costBtn(`Upgrade · ${upCost(t)} gold`, upCost(t), ev => {
     const c = upCost(t); if (S.gold < c) return; S.gold -= c; t.spent += c;
     const before = t.type === "dragon" && dragonStage(t.lvl);
     t.lvl++; sfx("up");
@@ -2829,7 +2834,10 @@ function renderPanel() {
     if (t.type === "dragon" && t.lvl >= 10) unlock("greatwyrm");
     if (t.lvl >= 10) unlock("toplevel");
     schedulePersist(); renderPanel(); updateHud();
+    // keep the keyboard on the button, so upgrading again is one more press
+    if (ev && ev.detail === 0) { const again = $("selPanel").querySelector("button[data-up]"); if (again) again.focus(); }
   }, "primary"));
+  opts.lastChild.dataset.up = "1";
   const refund = Math.floor(t.spent * .7);
   const sell = el("button", "", `Sell for ${refund} gold`);
   // selling asks once more first: a stray tap shouldn't cost a tower
@@ -2844,7 +2852,7 @@ function renderPanel() {
     confirmRow.append(el("p", "fine", `Sell this ${TOWERS[t.type].name}? You get back ${refund} of the ${t.spent} gold spent on it.`), yes, no);
     sell.replaceWith(confirmRow); no.focus();
   });
-  opts.append(sell); p.append(opts);
+  opts.append(sell); title.after(opts);
 }
 function refreshAfford() {
   updatePalette();
@@ -2864,10 +2872,13 @@ function beastBounds(key, def) {
     const d = g.getImageData(0, 0, n, n).data; let x0 = n, y0 = n, x1 = -1, y1 = -1;
     for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (d[(y * n + x) * 4 + 3] > 16) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
     if (x1 >= x0) {
-      // and how far it reaches from its middle, for round frames
-      const cx = (x0 + x1 + 1) / 2, cy = (y0 + y1 + 1) / 2; let r2 = 0;
+      // the middle is where the drawing's weight sits (the body, mostly), so an axe or a club sticking out doesn't
+      // push the monster off-centre; then how far it reaches from there, across, down and all round
+      let sx = 0, sy = 0, sw = 0;
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const a = d[(y * n + x) * 4 + 3]; if (a > 16) { sx += (x + .5) * a; sy += (y + .5) * a; sw += a; } }
+      const cx = sx / sw, cy = sy / sw; let r2 = 0;
       for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (d[(y * n + x) * 4 + 3] > 16) r2 = Math.max(r2, (x + .5 - cx) ** 2 + (y + .5 - cy) ** 2);
-      box = { x0: (x0 - n / 2) / sc, y0: (y0 - n / 2) / sc, x1: (x1 + 1 - n / 2) / sc, y1: (y1 + 1 - n / 2) / sc, rad: (Math.sqrt(r2) + 1) / sc };
+      box = { cx: (cx - n / 2) / sc, cy: (cy - n / 2) / sc, hw: Math.max(cx - x0, x1 + 1 - cx) / sc, hh: Math.max(cy - y0, y1 + 1 - cy) / sc, rad: (Math.sqrt(r2) + 1) / sc };
     }
   } catch {}
   return (beastBox[id] = box);
@@ -2876,9 +2887,9 @@ function enemyIcon(k, boss, px = 52, hidden = false, round = false) {
   const def = boss || ENEMIES[k], r = def.r, key = boss ? boss.key : k;
   const c = document.createElement("canvas"); c.width = px; c.height = px;
   const g = c.getContext("2d"), b = beastBounds(key, def);
-  if (b) {  // fit the whole drawing in the square (or the circle, for a round frame), with a small margin, centred
-    const s = round ? px * .43 / b.rad : px * .9 / Math.max(b.x1 - b.x0, b.y1 - b.y0);
-    g.translate(px / 2 - (b.x0 + b.x1) / 2 * s, px / 2 - (b.y0 + b.y1) / 2 * s); g.scale(s, s);
+  if (b) {  // centred on the body, with all of the drawing inside the square (or the circle, for a round frame)
+    const s = round ? px * .43 / b.rad : px * .45 / Math.max(b.hw, b.hh);
+    g.translate(px / 2 - b.cx * s, px / 2 - b.cy * s); g.scale(s, s);
   } else {
     const ext = def.fly ? r * 2.5 : boss ? r * 2 : def.rider ? r * 1.7 : r * 1.55, u = px / 52;
     g.translate(26 * u, 29 * u); g.scale(24 * u / ext, 24 * u / ext);
