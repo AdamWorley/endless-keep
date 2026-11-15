@@ -6,7 +6,7 @@
   "workers_dev": true,
   "vars": {
     // only these pages may submit scores (anyone may read the board)
-    "ALLOWED_ORIGINS": "https://adamworley.github.io,http://localhost:8420"
+    "ALLOWED_ORIGINS": "https://endless-keep.pages.dev,https://adamworley.github.io,http://localhost:8420"
   },
   "d1_databases": [
     { "binding": "DB", "database_name": "endless-keep-leaderboard", "database_id": "c698067c-5de7-4811-8732-34cf760820e5" }
@@ -16,7 +16,7 @@
   // Previews don't get the production secrets, so they run with no HASH_SALT and no Turnstile check.
   "previews": {
     "vars": {
-      "ALLOWED_ORIGINS": "https://adamworley.github.io,http://localhost:8420"
+      "ALLOWED_ORIGINS": "https://endless-keep.pages.dev,https://adamworley.github.io,http://localhost:8420"
     },
     "d1_databases": [
       { "binding": "DB", "database_name": "endless-keep-leaderboard-preview", "database_id": "04d26651-df0b-48ee-88de-6fcf648d00fe" }

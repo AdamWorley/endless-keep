@@ -1,0 +1,12 @@
+// The game: a Cloudflare Pages project serving dist/ (built by `npm run build`). No server code.
+// Deployed by Pages' Git integration (this repo, root directory "/", build command `npm run build`, output `dist`):
+//   push to main -> production at endless-keep.pages.dev
+//   other branches -> a preview at <branch>.endless-keep.pages.dev
+// Custom domains are added in the dashboard (Pages project -> Custom domains), not here.
+// The leaderboard is a separate Worker with its own config in leaderboard/.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "endless-keep",
+  "compatibility_date": "2026-11-01",
+  "pages_build_output_dir": "./dist"
+}

@@ -24,7 +24,7 @@ The combination is the point; no one feature is the hook:
 
 ## Operating Context
 
-- Played at https://adamworley.github.io/endless-keep/, installed as a fullscreen PWA, or opened as a Claude artifact. The artifact copy has its own Hall of Heroes, stored in the artifact's database.
+- Played at https://endless-keep.pages.dev/, installed as a fullscreen PWA, or opened as a Claude artifact. The artifact copy has its own Hall of Heroes, stored in the artifact's database.
 - Sessions are short and interruptible. Players move saved games and heirlooms between devices, and between the app and the Claude page, with export/import codes.
 - Players often run at 3× speed and often play with sound off, so moment-to-moment events are easy to miss.
 - Two-player matches use a 5-letter code (PeerJS matchmaking, then a direct connection) and last 10, 20 or 30 levels.

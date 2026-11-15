@@ -4,7 +4,7 @@ A tower defence game where you hold a castle against endless waves of goblins, t
 towers, plant trees, fortify the keep, and see how far you get. Heirlooms carry over between games, a Bestiary
 records every monster you've met, and two players can face off online as the Keeper and the Dark Lord.
 
-**Play:** <https://adamworley.github.io/endless-keep/>. It installs to a phone or desktop home screen and works offline.
+**Play:** <https://endless-keep.pages.dev/>. It installs to a phone or desktop home screen and works offline.
 
 ## What's in this repo
 
@@ -13,14 +13,16 @@ records every monster you've met, and two players can face off online as the Kee
 | `endless-keep.html` | The whole game: one file with HTML, CSS and JavaScript and no dependencies. It's a body-only page so it can also run as a Claude artifact. |
 | `pwa/` | Turns the game into an installable app: `build.sh` wraps the page in a full document with the manifest, icons and offline service worker, writing to `dist/`. `check.mjs` sanity-checks a build. `serve.py` serves `dist/` locally. |
 | `leaderboard/` | The shared Hall of Heroes: a small Cloudflare Worker with a D1 (SQLite) database. See [`leaderboard/README.md`](leaderboard/README.md). |
-| `.github/workflows/` | `pages.yml` builds and publishes the game; `leaderboard.yml` tests the server. |
+| `wrangler.jsonc`, `package.json` | The Cloudflare Pages project that serves the built game from `dist/` (static files only, no server code). |
+| `.github/workflows/` | `game.yml` checks the game builds; `leaderboard.yml` tests the server. Cloudflare does the deploying. |
 | `IDEAS.md` | The ideas backlog: ticked items are in the game. |
 
 ## Running it locally
 
 ```sh
-sh pwa/build.sh            # builds dist/
-python3 pwa/serve.py 8420  # then open http://localhost:8420
+npm install                # once, for wrangler
+npm run build              # builds dist/ and checks it
+python3 pwa/serve.py 8420  # then open http://localhost:8420 (or: npm run dev)
 ```
 
 Opening `endless-keep.html` directly in a browser also works for a quick look, without the install and offline parts.
@@ -33,13 +35,31 @@ To try the leaderboard locally, run `npx wrangler dev --port 8788` in `leaderboa
 
 Pushing to `main` deploys everything:
 
-- **The game**: GitHub Actions builds `dist/`, checks it, and publishes it to GitHub Pages. Installed copies pick up
-  the new version the next time they're opened online.
+- **The game**: Cloudflare Pages (Git integration, connected to this repo) runs `npm run build` and publishes `dist/`.
+  Other branches get a preview at `<branch>.endless-keep.pages.dev`. GitHub Actions (`game.yml`) checks the build too.
+  Installed copies pick up the new version the next time they're opened online.
 - **The leaderboard**: GitHub Actions runs its tests, and Cloudflare (Workers Builds, connected to this repo)
   deploys it from `leaderboard/`. Its secrets live in Cloudflare, not GitHub: `HASH_SALT`, plus `TURNSTILE_SECRET` if
   the bot check is on.
 - **The Claude artifact copy** isn't part of the pipeline and is republished by hand. It has its own Hall of Heroes,
   stored in the artifact's database.
+
+### One-time Cloudflare setup for the game
+
+1. **Workers & Pages → Create → Pages → Connect to Git**, pick this repo:
+   - Project name `endless-keep` (matches `wrangler.jsonc`), production branch `main`, root directory `/`.
+   - Framework preset None, build command `npm run build`, build output directory `dist`.
+   - Settings → Builds → Build watch paths: include `endless-keep.html`, `pwa/*`, `wrangler.jsonc`, `package*.json`
+     so leaderboard-only changes don't redeploy the game (and set the leaderboard Worker's watch paths to `leaderboard/*`).
+2. **Turnstile → the Endless Keep widget → Hostnames**: add `endless-keep.pages.dev` (and the custom domain later),
+   or new runs can't get a leaderboard ticket.
+
+If Cloudflare gives the project a different `*.pages.dev` address (names are global), update it here, in
+`ALLOWED_ORIGINS` in `leaderboard/wrangler.jsonc` and in `endless-keep.html`.
+
+**Custom domain:** Pages project → Custom domains → add the hostname (a subdomain of a zone in this account gets its
+DNS record automatically). Then add that origin to `ALLOWED_ORIGINS` in `leaderboard/wrangler.jsonc` (both blocks) and
+to the Turnstile widget's hostnames. Players' saves are per-address, so they move with Export / import.
 
 ## Versions
 

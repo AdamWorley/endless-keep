@@ -33,6 +33,8 @@ HEAD
 } > "$OUT/index.html"
 cp manifest.webmanifest sw.js icon.svg icon-192.png icon-512.png apple-touch-icon.png "$OUT/"
 # bump the cache name so installed copies pick up the new build
-# (written via a temp file so it works with both macOS and Linux sed; CI passes BUILD_ID, locally it's the time)
-sed "s/endless-keep-v1/endless-keep-${BUILD_ID:-$(date +%Y%m%d%H%M%S)}/" sw.js > "$OUT/sw.js"
+# (BUILD_ID if given, else the UTC time plus, on Cloudflare Pages, the commit; works with macOS and Linux sed)
+SHA=$(printf '%s' "${CF_PAGES_COMMIT_SHA:-}" | cut -c1-7)
+BUILD_ID=${BUILD_ID:-$(date -u +%Y%m%d%H%M%S)${SHA:+-$SHA}}
+sed "s/endless-keep-v1/endless-keep-$BUILD_ID/" sw.js > "$OUT/sw.js"
 echo "Built $OUT — serve it over https (or http://localhost) and the browser will offer to install it."
