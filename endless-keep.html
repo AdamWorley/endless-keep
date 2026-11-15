@@ -411,6 +411,18 @@ button.versus:hover:not(:disabled) { background: #3a2e4a; }
 .tile.summon .tc { color: var(--violet); }
 .keys { font-size: .82rem; color: var(--fg-dim); margin: 0; }
 @media (hover: none) and (pointer: coarse) { .keys .keyhelp { display: none; } }
+button.mapbtn { width: 100%; margin: 0 0 10px; padding: 9px 12px; font-size: .95rem; }
+.maplist { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 8px; }
+.maplist li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px; background: var(--well); box-shadow: var(--well-deboss); }
+.maplist li.on { outline: 2px solid var(--gold); }
+.maplist .mn { flex: 1 1 160px; min-width: 0; }
+.maplist .mn b { display: block; }
+.maplist .mn small { color: var(--fg-dim); }
+.maplist button { padding: 6px 12px; }
+canvas.mapedit { display: block; width: 100%; height: auto; aspect-ratio: 960 / 560; border-radius: 8px; touch-action: none; cursor: crosshair; box-shadow: var(--well-deboss); }
+canvas.mapedit:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.mapstatus { min-height: 2.6em; margin: 8px 0; }
+.mapstatus.bad { color: var(--ember); font-weight: 700; }
 .row.trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .row.trio button { padding: 9px 6px; font-size: .95rem; line-height: 1.2; }
 @media (max-width: 520px) { .row.trio { grid-template-columns: repeat(2, minmax(0, 1fr)); } .row.trio #btnHeirlooms { grid-column: 1 / -1; } }
@@ -477,6 +489,7 @@ button.versus:hover:not(:disabled) { background: #3a2e4a; }
             <button id="btnContinue" class="primary" hidden>Continue</button>
             <button id="btnNew" class="primary">New game</button>
           </div>
+          <button id="btnMaps" class="mapbtn">Map: Meadow road · change</button>
           <div class="row trio">
             <button id="btnHeirlooms">Heirlooms</button>
             <button id="btnTransfer">Export / import</button>
@@ -677,9 +690,114 @@ function distSeg(px, py, s) {
   let t = l2 ? ((px - s.x1) * dx + (py - s.y1) * dy) / l2 : 0; t = Math.max(0, Math.min(1, t));
   return Math.hypot(px - (s.x1 + dx * t), py - (s.y1 + dy * t));
 }
-const ROAD = mkPath([[-40, 120], [220, 120], [220, 420], [480, 420], [480, 160], [720, 160], [720, 400], [862, 400]]);
-const distRoad = (x, y) => Math.min(...ROAD.segs.map(s => distSeg(x, y, s)));
-const CASTLE = { x: 836, y: 270, w: 124, h: 200 };
+// the board is a grid of 40-wide squares, 24 across and 14 down. Everything sits on it: the road runs through the
+// middle of a line of squares and is one square wide, and a tower, sapling or wild tree fills one square.
+// Square centres fall at 20, 60, 100 and so on.
+const CELL = 40;
+const snapAxis = (v, max) => Math.min(Math.floor((max - 1) / CELL), Math.max(0, Math.floor(v / CELL))) * CELL + CELL / 2;
+const gridSnap = (x, y) => [snapAxis(x, W), snapAxis(y, H)];
+const COLS = W / CELL, ROWS = H / CELL;   // 24 x 14
+const CASTLE = { x: 840, y: 250, w: 120, h: 200 };   // the last three columns; the road reaches the gate at GATE_Y
+const GATE_Y = 380;   // where the road meets the castle gate
+
+/* ---------- maps ----------
+   A map is the set of road squares, as [column, row] pairs. The castle always stands on the right, with its gate
+   reached from the square in front of it (GATE). Every road square on the edge of the board is a way in; each
+   route from a way in to the gate is a path monsters walk, and they take turns between the paths. Roads are one
+   square wide (no 2x2 blocks of road), which also keeps the number of routes small. */
+const GATE = [20, 9];
+const MAX_ROUTES = 6;
+const cellXY = ([c, r]) => [c * CELL + CELL / 2, r * CELL + CELL / 2];
+const cellKey = (c, r) => c + "," + r;
+const inCastle = (c, r) => c >= 20 && r >= 5;   // the castle and the ground in front of it
+const onPond = (c, r) => { const [x, y] = cellXY([c, r]); return ((x - 400) / 82) ** 2 + ((y - 80) / 44) ** 2 < 1; };
+const roadAllowed = (c, r) => c >= 0 && r >= 0 && c < COLS && r < ROWS && !inCastle(c, r) && !onPond(c, r);
+// the squares along a line of straight road pieces
+function cellsAlong(pts) {
+  const out = [], seen = new Set();
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [x1, y1] = pts[i], [x2, y2] = pts[i + 1], n = Math.round(Math.hypot(x2 - x1, y2 - y1) / CELL);
+    for (let k = 0; k <= n; k++) {
+      const c = Math.floor((x1 + (x2 - x1) * k / n) / CELL), r = Math.floor((y1 + (y2 - y1) * k / n) / CELL), key = cellKey(c, r);
+      if (roadAllowed(c, r) && !seen.has(key)) { seen.add(key); out.push([c, r]); }
+    }
+  }
+  return out;
+}
+const DEFAULT_MAP = { id: "meadow", name: "Meadow road", road: cellsAlong([[20, 140], [220, 140], [220, 420], [500, 420], [500, 140], [740, 140], [740, 380], [780, 380]]) };
+// where a way in starts, just off the board: straight on from the road if that leaves the board, else over the nearest edge
+function entryOut([c, r], from) {
+  const [x, y] = cellXY([c, r]), off = (a, b) => a < 0 || b < 0 || a >= COLS || b >= ROWS;
+  if (from) { const dc = c - from[0], dr = r - from[1]; if (off(c + dc, r + dr)) return [x + dc * 60, y + dr * 60]; }
+  return c === 0 ? [-40, y] : r === 0 ? [x, -40] : r === ROWS - 1 ? [x, H + 40] : [W + 40, y];
+}
+// reads a map: its routes (as walking paths), the road pieces to draw, and what's wrong with it, if anything
+function readMap(road) {
+  const set = new Set(), cells = [];
+  const add = ([c, r]) => { const k = cellKey(c, r); if (!set.has(k)) { set.add(k); cells.push([c, r]); } };
+  for (const q of road || []) if (Array.isArray(q) && Number.isInteger(q[0]) && Number.isInteger(q[1]) && roadAllowed(q[0], q[1])) add(q);
+  add(GATE);
+  const has = (c, r) => set.has(cellKey(c, r));
+  const problems = [];
+  if (cells.some(([c, r]) => has(c + 1, r) && has(c, r + 1) && has(c + 1, r + 1))) problems.push("Roads are one square wide: no 2 × 2 blocks of road.");
+  const edge = ([c, r]) => c === 0 || r === 0 || r === ROWS - 1 || c === COLS - 1;
+  const nbrs = ([c, r]) => [[c + 1, r], [c - 1, r], [c, r + 1], [c, r - 1]].filter(n => has(...n));
+  // a way in is a road that ends at the edge of the board (a road running along the edge isn't a hundred ways in)
+  const entries = cells.filter(q => edge(q) && nbrs(q).length === 1 && !(q[0] === GATE[0] && q[1] === GATE[1]));
+  const isEntry = q => entries.some(e => e[0] === q[0] && e[1] === q[1]);
+  const routes = [], key = cellKey(...GATE);
+  if (!problems.length) {
+    let steps = 0;
+    for (const e of entries) {   // every simple route from this way in to the gate
+      const seen = new Set([cellKey(...e)]), path = [e];
+      const walk = ([c, r]) => {
+        if (++steps > 50000 || routes.length > 40) return;
+        if (cellKey(c, r) === key) { routes.push(path.slice()); return; }
+        for (const [dc, dr] of [[1, 0], [0, 1], [0, -1], [-1, 0]]) {
+          const n = [c + dc, r + dr], k = cellKey(...n);
+          if (has(...n) && !seen.has(k)) { seen.add(k); path.push(n); walk(n); path.pop(); seen.delete(k); }
+        }
+      };
+      walk(e);
+    }
+    if (!routes.length) problems.push("No road joins the edge of the map to the castle gate.");
+  }
+  routes.sort((a, b) => a.length - b.length);
+  const extra = Math.max(0, routes.length - MAX_ROUTES);
+  // a route becomes a walking path: in from off the board, along the squares (corners only), and up to the gate
+  const paths = routes.slice(0, MAX_ROUTES).map(rt => {
+    const pts = [entryOut(rt[0], rt[1])];
+    rt.forEach((q, i) => {
+      const nx = rt[i + 1], pv = rt[i - 1];
+      if (!pv || !nx || (nx[0] - q[0]) !== (q[0] - pv[0]) || (nx[1] - q[1]) !== (q[1] - pv[1])) pts.push(cellXY(q));
+    });
+    pts.push([CASTLE.x + 20, GATE_Y]);
+    return mkPath(pts);
+  });
+  // road pieces to draw: a piece joins each pair of neighbouring squares, and each way in runs off the board
+  const segs = [];
+  for (const [c, r] of cells) {
+    const [x, y] = cellXY([c, r]); let n = 0;
+    if (has(c + 1, r)) { segs.push([x, y, x + CELL, y]); n++; }
+    if (has(c, r + 1)) { segs.push([x, y, x, y + CELL]); n++; }
+    n += has(c - 1, r) + has(c, r - 1);
+    if (isEntry([c, r])) { const [ox, oy] = entryOut([c, r], nbrs([c, r])[0]); segs.push([x, y, ox, oy]); n++; }
+    if (!n) segs.push([x, y, x, y]);
+  }
+  const [gx, gy] = cellXY(GATE); segs.push([gx, gy, CASTLE.x + 20, gy]);
+  return { cells, set, paths, segs, entries, problems, extra };
+}
+let MAP = DEFAULT_MAP, MAPINFO = readMap(DEFAULT_MAP.road), ROADS = MAPINFO.paths, ROAD = ROADS[0];
+let ROADSEGS = MAPINFO.segs.map(([x1, y1, x2, y2]) => ({ x1, y1, x2, y2 }));
+function setMap(m) {
+  const info = m && readMap(m.road);
+  if (!info || info.problems.length) m = DEFAULT_MAP;
+  MAP = m; MAPINFO = info && !info.problems.length ? info : readMap(DEFAULT_MAP.road);
+  ROADS = MAPINFO.paths; ROAD = ROADS[0];
+  ROADSEGS = MAPINFO.segs.map(([x1, y1, x2, y2]) => ({ x1, y1, x2, y2 }));
+}
+const distRoad = (x, y) => Math.min(...ROADSEGS.map(s => distSeg(x, y, s)));
+const onRoad = (x, y) => MAPINFO.set.has(cellKey(Math.floor(x / CELL), Math.floor(y / CELL)));
 const SPOTS = [[110, 50], [110, 195], [140, 330], [140, 480], [300, 200], [300, 330], [400, 260], [350, 500], [560, 80], [580, 240], [620, 330], [640, 480], [800, 80], [790, 250]];
 
 const TOWERS = {
@@ -946,18 +1064,32 @@ function newRun() {
 }
 function makeSave() {
   return { v: 1, level: S.level, gold: Math.floor(S.gold), hp: S.hp, maxHp: S.maxHp, walls: S.walls, treasury: S.treasury, fort: S.fort,
-           dragon: S.dragon, cleared: TREES.filter(t => !S.trees.some(x => x.id === t.id && !x.fall)).map(t => t.id), towers: S.towers.map(t => [t.type, t.lvl, t.spent, Math.round(t.x), Math.round(t.y), Math.round(t.dmg || 0), t.kills || 0, t.slowed || 0, t.name || ""]), planted: S.trees.filter(t => t.planted != null && !t.fall).map(t => [t.x, t.y, t.planted, t.tone, Math.max(0, t.max - t.hp), t.boost || 0]), stats: S.stats, rv: S.rv, perks: S.perks, dyn: S.dyn || 0, windUsed: !!S.windUsed, plan: S.plan, planL: S.planL, ev: S.ev || null, lbt: S.lbt || null, name: playerName, savedAt: Date.now() };
+           dragon: S.dragon, cleared: TREES.filter(t => !S.trees.some(x => x.id === t.id && !x.fall)).map(t => t.id), towers: S.towers.map(t => [t.type, t.lvl, t.spent, Math.round(t.x), Math.round(t.y), Math.round(t.dmg || 0), t.kills || 0, t.slowed || 0, t.name || ""]), planted: S.trees.filter(t => t.planted != null && !t.fall).map(t => [t.x, t.y, t.planted, t.tone, Math.max(0, t.max - t.hp), t.boost || 0]), stats: S.stats, rv: S.rv, perks: S.perks, dyn: S.dyn || 0, windUsed: !!S.windUsed, plan: S.plan, planL: S.planL, grid: CELL, map: S.map || null, ev: S.ev || null, lbt: S.lbt || null, name: playerName, savedAt: Date.now() };
 }
 function restore(sv) {
-  newRun();
+  const m = sv.map && Array.isArray(sv.map.road) ? { name: String(sv.map.name || "Your map").slice(0, 30), road: sv.map.road.slice(0, COLS * ROWS) } : null;
+  setMap(m); newRun(); if (MAP !== DEFAULT_MAP) S.map = { name: MAP.name, road: MAP.road };
   const int = (v, lo, hi, d) => v != null && v !== "" && Number.isFinite(+v) ? Math.max(lo, Math.min(hi, Math.floor(+v))) : d, f = sv.fort || {};
   const maxHp = int(sv.maxHp, 1, 1e6, 20);
   Object.assign(S, { level: int(sv.level, 1, 5000, 1), gold: int(sv.gold, 0, 1e9, 0), hp: int(sv.hp, 1, maxHp, maxHp), maxHp, walls: int(sv.walls, 0, 1e3, 0), treasury: int(sv.treasury, 0, 1e3, 0), dragon: !!sv.dragon,
                      fort: { archers: int(f.archers, 0, FORT.archers.max, 0), moat: int(f.moat, 0, FORT.moat.max, 0), masons: int(f.masons, 0, FORT.masons.max, 0) } });
+  // saves from before the 40-wide grid had towers in 42-wide cells around a different road: each moves to the
+  // nearest free square, and if there's none close by its gold comes back
+  const moved = sv.grid !== CELL;
+  const freeSquare = (x, y) => {
+    const [gx, gy] = gridSnap(x, y), ok = (a, b) => !groundBlock(a, b) && !S.towers.some(t => t.x === a && t.y === b);
+    let best = null, bd = 1e9;
+    for (let dx = -3; dx <= 3; dx++) for (let dy = -3; dy <= 3; dy++) {
+      const a = gx + dx * CELL, b = gy + dy * CELL, d = Math.hypot(a - x, b - y);
+      if (d < bd && a > 0 && a < W && b > 0 && b < H && ok(a, b)) { best = [a, b]; bd = d; }
+    }
+    return best;
+  };
   (sv.towers || []).forEach((t, i) => {
     if (!t || !TOWERS[t[0]]) return;
-    const [x, y] = t.length >= 5 ? [t[3], t[4]] : (SPOTS[i] || [-1, -1]);  // older saves used fixed circles
+    let [x, y] = t.length >= 5 ? [t[3], t[4]] : (SPOTS[i] || [-1, -1]);  // older saves used fixed circles
     if (x < 0) return;
+    if (moved) { const sq = freeSquare(x, y); if (!sq) { S.gold += int(t[2], 0, 1e9, 0); return; } [x, y] = sq; }
     S.towers.push({ type: t[0], lvl: int(t[1], 1, 999, 1), spent: int(t[2], 0, 1e9, 0), cd: 0, ang: 0, flash: 0, x, y, dmg: t[5] || 0, kills: t[6] || 0, slowed: t[7] || 0, name: t[0] === "dragon" ? (() => { const n = cleanDragonName(t[8]); return n && !dragonNameTaken(n) ? n : suggestDragonName(); })() : undefined });
   });
   S.stats = { ...S.stats, ...(sv.stats || {}) };
@@ -968,6 +1100,7 @@ function restore(sv) {
   const gone = new Set(sv.cleared || []);
   S.trees = S.trees.filter(tr => !gone.has(tr.id) && !S.towers.some(t => Math.hypot(t.x - tr.x, t.y - tr.y) < 34));
   (sv.planted || []).forEach(([x, y, planted, tone, chopped, boost]) => {
+    if (moved) { const sq = freeSquare(x, y); if (!sq || S.trees.some(o => o.x === sq[0] && o.y === sq[1])) return; [x, y] = sq; }
     const t = { id: 1000 + (S.nextTree = (S.nextTree || 0) + 1), x, y, tone: tone ? 1 : 0, planted, boost: Math.max(0, Math.min(999, Math.floor(+boost || 0))), shake: 0, fall: 0, dir: 1 };
     growTree(t); if (t.max) t.hp = Math.max(1, t.max - (chopped || 0)); S.trees.push(t);
   });
@@ -1105,16 +1238,16 @@ function buildBg() {
   if (Z.frozen) { g.strokeStyle = "rgba(255,255,255,.8)"; g.lineWidth = 1; g.beginPath(); g.moveTo(370, 78); g.lineTo(392, 86); g.lineTo(404, 79); g.moveTo(392, 86); g.lineTo(398, 96); g.moveTo(410, 70); g.lineTo(428, 76); g.stroke(); }
   if (Z.moon) { g.fillStyle = "rgba(255,248,210,.85)"; ell(g, 414, 84, 9, 4); g.fillStyle = "rgba(255,248,210,.25)"; ell(g, 414, 84, 20, 7); }
   // road
-  g.lineJoin = "round"; g.lineCap = "round";
-  const road = () => { g.beginPath(); ROAD.pts.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); };
+  g.lineJoin = "miter"; g.lineCap = "square";   // square ends: each piece of road fills its squares, corners included
+  const road = () => { g.beginPath(); for (const [x1, y1, x2, y2] of MAPINFO.segs) { g.moveTo(x1, y1); g.lineTo(x2 === x1 && y2 === y1 ? x2 + .01 : x2, y2); } };
   // the sandy road, painted with a bold ink outline and a soft shadow so it sits on the board like printed art
-  road(); g.strokeStyle = "rgba(20,15,5,.22)"; g.lineWidth = 60; g.save(); g.translate(0, 4); g.stroke(); g.restore();
-  road(); g.strokeStyle = Z.ink; g.lineWidth = 58; g.stroke();
-  road(); g.strokeStyle = Z.edge; g.lineWidth = 52; g.stroke();
-  road(); g.strokeStyle = Z.road; g.lineWidth = 44; g.stroke();
-  road(); g.strokeStyle = "rgba(255,240,200,.28)"; g.lineWidth = 30; g.save(); g.translate(-2, -3); g.stroke(); g.restore();
-  road(); g.strokeStyle = "rgba(170,130,80,.35)"; g.lineWidth = 16; g.setLineDash([2, 14]); g.stroke(); g.setLineDash([]);
-  for (let i = 0; i < 180; i++) { const d = r() * ROAD.len, [x, y] = posAt(ROAD, d); g.fillStyle = r() < .5 ? "rgba(120,90,55,.45)" : "rgba(240,220,170,.6)"; ell(g, x + (r() - .5) * 34, y + (r() - .5) * 34, 1.5 + r() * 2, 1 + r() * 1.5); }
+  road(); g.strokeStyle = "rgba(20,15,5,.22)"; g.lineWidth = CELL + 2; g.save(); g.translate(0, 4); g.stroke(); g.restore();
+  road(); g.strokeStyle = Z.ink; g.lineWidth = CELL; g.stroke();
+  road(); g.strokeStyle = Z.edge; g.lineWidth = CELL - 5; g.stroke();
+  road(); g.strokeStyle = Z.road; g.lineWidth = CELL - 10; g.stroke();
+  road(); g.strokeStyle = "rgba(255,240,200,.28)"; g.lineWidth = CELL - 20; g.save(); g.translate(-2, -3); g.stroke(); g.restore();
+  road(); g.strokeStyle = "rgba(170,130,80,.35)"; g.lineWidth = 10; g.setLineDash([2, 14]); g.stroke(); g.setLineDash([]);
+  for (let i = 0; i < 180; i++) { const q = MAPINFO.cells[(r() * MAPINFO.cells.length) | 0], [x, y] = cellXY(q); g.fillStyle = r() < .5 ? "rgba(120,90,55,.45)" : "rgba(240,220,170,.6)"; ell(g, x + (r() - .5) * 26, y + (r() - .5) * 26, 1.5 + r() * 2, 1 + r() * 1.5); }
   if (Z.snow) { road(); g.strokeStyle = "rgba(255,255,255,.35)"; g.lineWidth = 6; g.setLineDash([18, 30]); g.stroke(); g.setLineDash([]); }
   // flowers
   for (let i = 0; i < Z.nflowers; i++) { const x = r() * W, y = r() * H, c = Z.flowers[(r() * Z.flowers.length) | 0]; if (distRoad(x, y) < 34 || (x > 820 && y > 250)) continue; g.fillStyle = c; ell(g, x, y, Z.amb === "leaves" ? 2.6 : 1.8, Z.amb === "leaves" ? 1.5 : 1.8); }
@@ -1138,9 +1271,12 @@ const TREES = (() => {
     const s = .8 + r() * .5;
     out.push({ id: out.length, x: Math.round(x), y: Math.round(y), s, tone: r() < .5 ? 0 : 1, max: s > 1.1 ? 6 : 4 });
   }
-  return out;
+  // each moves to the middle of its square (ids stay the same, so saves still know which were cleared); one tree a square
+  const used = new Set();
+  return out.map(t => { const [x, y] = gridSnap(t.x, t.y); return { ...t, x, y }; })
+    .filter(t => { const k = t.x + "," + t.y; if (used.has(k) || groundBlock(t.x, t.y)) return false; used.add(k); return true; });
 })();
-const freshTrees = () => TREES.map(t => ({ ...t, hp: t.max, shake: 0, fall: 0, dir: 1 }));
+const freshTrees = () => TREES.filter(t => !groundBlock(t.x, t.y)).map(t => ({ ...t, hp: t.max, shake: 0, fall: 0, dir: 1 }));
 // a woodcutter clears a tree at once and sells the firewood, keeping a share as their fee (smaller with Lumber rights)
 const cutterFee = () => Math.max(.1, .5 - .08 * perk("lumber"));
 const cutterPay = t => Math.round(woodValue(t) * (1 - cutterFee()));
@@ -1180,8 +1316,8 @@ function drawCastle() {
     c.fillStyle = season.edge; c.beginPath(); c.roundRect(mx - 3, y + 26, mw + 6, h - 10, 8); c.fill();
     c.fillStyle = season.frozen ? "#cfe8f1" : season.pond; c.beginPath(); c.roundRect(mx, y + 29, mw, h - 16, 6); c.fill();
     c.fillStyle = "rgba(255,255,255,.3)"; c.fillRect(mx + 2, y + 50 + Math.sin(time * 1.5) * 4, 2, 18); c.fillRect(mx + mw - 5, y + 150 + Math.cos(time * 1.3) * 4, 2, 14);
-    c.fillStyle = "#7a5532"; c.fillRect(mx - 5, 400 - 21, mw + 10, 42);
-    c.strokeStyle = "#5e4026"; c.lineWidth = 1.5; for (let i = 1; i < 6; i++) { c.beginPath(); c.moveTo(mx - 5, 379 + i * 7); c.lineTo(mx + mw + 5, 379 + i * 7); c.stroke(); }
+    c.fillStyle = "#7a5532"; c.fillRect(mx - 5, GATE_Y - CELL / 2, mw + 10, CELL);
+    c.strokeStyle = "#5e4026"; c.lineWidth = 1.5; for (let i = 1; i < 6; i++) { c.beginPath(); c.moveTo(mx - 5, GATE_Y - CELL / 2 + i * 7); c.lineTo(mx + mw + 5, GATE_Y - CELL / 2 + i * 7); c.stroke(); }
   }
   c.fillStyle = "rgba(0,0,0,.25)"; ell(c, x + w / 2, y + h + 2, w / 2 + 10, 12);
   const stone = "#c3bba8", shade = "#958d7c", dark = "#6e675a";
@@ -1268,23 +1404,18 @@ function drawGhost(x, y, ok, strong) {
 // what the ground itself rules out, whatever has been built or planted
 function groundBlock(x, y) {
   if (x < 22 || x > W - 22 || y < 44 || y > H - 12) return "edge";
-  if (distRoad(x, y) < 46) return "road";
+  if (onRoad(x, y)) return "road";
   if (x > CASTLE.x - 30 && y > CASTLE.y - 50) return "castle";
   if (((x - 400) / 82) ** 2 + ((y - 80) / 44) ** 2 < 1) return "pond";
   return "";
 }
 function canBuild(x, y) {
   const g = groundBlock(x, y); if (g) return g;
-  if (S && S.towers.some(t => Math.hypot(t.x - x, t.y - y) < 42)) return "tower";
+  if (S && S.towers.some(t => Math.hypot(t.x - x, t.y - y) < CELL - 2)) return "tower";
   if (S && S.trees.some(t => !t.fall && Math.hypot(t.x - x, t.y - y) < 30)) return "tree";
   return "";
 }
 
-// towers and saplings snap to a square grid of 42-wide cells, exactly the gap two towers need,
-// so a tower can sit in every cell and they pack side by side. Cell centres fall at 21, 63, 105 and so on.
-const CELL = 42;
-const snapAxis = (v, max) => Math.min(Math.floor((max - 1) / CELL), Math.max(0, Math.floor(v / CELL))) * CELL + CELL / 2;
-const gridSnap = (x, y) => [snapAxis(x, W), snapAxis(y, H)];
 function cellShape(p, x, y, inset = 0) { p.rect(x - CELL / 2 + inset, y - CELL / 2 + inset, CELL - 2 * inset, CELL - 2 * inset); }
 // the grid across the whole map, printed faintly on the board and brightened while you place something
 let gridPath = null;
@@ -1951,8 +2082,8 @@ function spawn(item) {
   else { d = { ...foeDef(item.k), k: item.k }; }
   if (!S.vsGuest && !meta.seen[d.k]) { meta.seen[d.k] = 1; beastDirty = true; }
   const L = S.level, base = 18;
-  let path = ROAD;
-  if (d.fly) { const sy = 60 + Math.random() * 440; path = mkPath([[-40, sy], [CASTLE.x + 20, 380 + (Math.random() - .5) * 60]]); }
+  let path = ROADS[(S.spawnN = (S.spawnN || 0) + 1) % ROADS.length];   // monsters on foot take turns between the paths
+  if (d.fly) { const sy = 60 + Math.random() * 440; path = mkPath([[-40, sy], [CASTLE.x + 20, CASTLE.y + 110 + (Math.random() - .5) * 60]]); }
   const hp = base * d.hp * hpScale(L), cols = VCOLS[d.k];
   const e = { v: Math.random(), v2: Math.random(), sz: d.boss ? 1 : .93 + Math.random() * .14, k: d.k, path, d: 0, x: -40, y: 0, hp, max: hp, spd: d.spd * (1 + Math.min(.35, L * .004)) * (0.92 + Math.random() * .16),
               armor: d.armor, gold: d.gold, fly: !!d.fly, r: d.r, col: cols ? cols[(Math.random() * cols.length) | 0] : d.col, dmg: d.dmg, regen: d.regen || 0, boss: !!d.boss, hex: d.hex || 0, hexCd: 0,
@@ -2963,6 +3094,8 @@ function readName() {
 }
 function showStart() {
   $("startCard").hidden = false; $("overCard").hidden = true; resetHits();
+  const cm = chosenMap(); $("btnMaps").textContent = `Map: ${cm.name} · change`;
+  if (!S || S.phase === "over" || S.vs || S.vsGuest || !S.towers.length) { if (MAP !== cm) { setMap(cm); buildBg(); } }   // the board behind shows the map you'll play
   $("pname").value = playerName;
   const c = $("btnContinue");
   if (savedGame && savedGame.level) { c.hidden = false; c.textContent = `Continue from level ${savedGame.level}` + (Number.isInteger(savedGame.rv) && savedGame.rv !== RULES_VERSION ? ` (rules v${savedGame.rv})` : ""); $("btnNew").classList.remove("primary"); }
@@ -3280,8 +3413,8 @@ function saveMeta() {
 function begin(sv) {
   audio(); readName();
   if (sv) restore(sv);
-  else {  // a fresh game: bring in every heirloom you own
-    newRun(); S.perks = { ...meta.perks }; S.dyn = meta.dynasty;
+  else {  // a fresh game on the chosen map: bring in every heirloom you own
+    setMap(chosenMap()); newRun(); if (MAP !== DEFAULT_MAP) S.map = { name: MAP.name, road: MAP.road }; S.perks = { ...meta.perks }; S.dyn = meta.dynasty;
     S.gold += 25 * perk("purse"); S.maxHp += 2 * perk("stones"); S.hp = S.maxHp;
     S.treasury = perk("mint"); S.fort.archers = perk("sentries"); S.fort.moat = perk("moat");
   }
@@ -3294,6 +3427,131 @@ function begin(sv) {
   toast(sv ? `Welcome back. Level ${S.level} is next.` : "Drag defenders from the bar under the map onto the grass, then start level 1.");
 }
 $("btnNew").addEventListener("click", () => begin(null));
+$("btnMaps").addEventListener("click", () => openMaps());
+
+/* ---------- your maps ---------- */
+// kept on this device: [{ id, name, road: [[column, row], ...] }]
+function loadMaps() {
+  const v = ls.get("ek_maps");
+  return Array.isArray(v) ? v.filter(m => m && typeof m.id === "string" && Array.isArray(m.road)).slice(0, 20)
+    .map(m => ({ id: m.id.slice(0, 20), name: String(m.name || "Your map").slice(0, 30), road: m.road.filter(q => Array.isArray(q) && Number.isInteger(q[0]) && Number.isInteger(q[1])).slice(0, COLS * ROWS) })) : [];
+}
+function chosenMap() { const id = ls.get("ek_map"); return (id && loadMaps().find(m => m.id === id)) || DEFAULT_MAP; }
+const routeWord = n => `${n} path${n === 1 ? "" : "s"} to the castle`;
+function openMaps() {
+  openModal(card => {
+    card.append(el("h2", "", "Maps"), el("p", "", "Pick the map for your next new game, or build your own. A saved game carries on with the map it started on."),
+      el("p", "fine", "Games on your own maps don't go on the shared leaderboard or count as a personal best, so scores stay fair."));
+    const list = el("ul", "maplist"), cur = chosenMap();
+    const row = (m, own) => {
+      const li = el("li", m.id === cur.id ? "on" : ""), info = readMap(m.road), n = el("div", "mn");
+      n.append(el("b", "", m.name), el("small", "", own ? routeWord(info.paths.length) : "The standard map. Scores go on the leaderboard."));
+      const pick = el("button", m.id === cur.id ? "primary" : "", m.id === cur.id ? "Chosen" : "Play this");
+      pick.setAttribute("aria-pressed", m.id === cur.id ? "true" : "false");
+      pick.addEventListener("click", () => { ls.set("ek_map", m.id); openMaps(); });
+      li.append(n, pick);
+      if (own) {
+        const ed = el("button", "", "Edit"), del = el("button", "", "Delete");
+        ed.addEventListener("click", () => openMapEditor(m));
+        del.addEventListener("click", () => {
+          if (del.dataset.sure !== "1") { del.dataset.sure = "1"; del.textContent = "Delete it?"; return; }
+          ls.set("ek_maps", loadMaps().filter(x => x.id !== m.id)); if (ls.get("ek_map") === m.id) ls.del("ek_map"); openMaps();
+        });
+        li.append(ed, del);
+      } else { const cp = el("button", "", "Copy and edit"); cp.addEventListener("click", () => openMapEditor({ name: "My meadow", road: m.road })); li.append(cp); }
+      return li;
+    };
+    list.append(row(DEFAULT_MAP, false)); loadMaps().forEach(m => list.append(row(m, true)));
+    const r1 = el("div", "row"), make = el("button", "primary", "Build a new map"), close = el("button", "", "Close");
+    make.addEventListener("click", () => openMapEditor(null)); close.addEventListener("click", closeModal);
+    r1.append(make, close); card.append(list, r1);
+  });
+}
+// the builder: tap or drag across squares to lay road, tap road to lift it. The castle always stands on the right.
+function openMapEditor(orig) {
+  let road = orig ? orig.road.map(q => q.slice()) : [], name = orig ? orig.name : "", cursor = [10, 7];
+  const editing = orig && orig.id;
+  openModal(card => {
+    card.append(el("h2", "", editing ? "Edit map" : "Map builder"));
+    card.append(el("p", "fine", "Tap or drag across squares to lay road; tap road to lift it. A road that ends at the edge of the board is a way in, and the road must reach the castle gate from the left. Roads are one square wide. Monsters on foot take turns between the paths, so two paths each get half of them."));
+    const lab = el("label", "", "Name"), inp = document.createElement("input");
+    inp.id = "mapName"; lab.htmlFor = "mapName"; inp.maxLength = 30; inp.value = name; inp.placeholder = "e.g. The long way round";
+    const cv = document.createElement("canvas"); cv.className = "mapedit"; cv.width = W; cv.height = H; cv.tabIndex = 0;
+    cv.setAttribute("role", "application"); cv.setAttribute("aria-label", "Map grid. Arrow keys move, Space or Enter lays or lifts road.");
+    const status = el("p", "mapstatus"); status.setAttribute("aria-live", "polite");
+    const r1 = el("div", "row"), clear = el("button", "", "Clear"), std = el("button", "", "Start from Meadow road");
+    const r2 = el("div", "row"), save = el("button", "primary", "Save map"), back = el("button", "", "Back");
+    r1.append(clear, std); r2.append(save, back);
+    card.append(lab, inp, cv, status, r1, r2);
+    const g = cv.getContext("2d"), Z = SEASONS[0];
+    let note = "";
+    const has = (c, rw) => road.some(q => q[0] === c && q[1] === rw);
+    const draw = () => {
+      const info = readMap(road);
+      g.fillStyle = Z.grass[0]; g.fillRect(0, 0, W, H);
+      g.strokeStyle = "rgba(51,38,26,.22)"; g.lineWidth = 1; g.stroke(gridCells());
+      // pond and castle ground: no road
+      g.fillStyle = Z.rim; ell(g, 400, 80, 64, 28); g.fillStyle = Z.pond; ell(g, 400, 80, 58, 24);
+      g.fillStyle = "rgba(51,38,26,.18)"; g.fillRect(800, 200, 160, 360);
+      g.fillStyle = "#c3bba8"; g.fillRect(CASTLE.x + 10, CASTLE.y, CASTLE.w - 20, CASTLE.h); g.fillStyle = "#4a3320"; g.fillRect(CASTLE.x + 10, GATE_Y - 16, 22, 32);
+      g.fillStyle = "#3d5fa8"; tri(g, CASTLE.x + 4, CASTLE.y + 4, CASTLE.x + CASTLE.w - 4, CASTLE.y + 4, CASTLE.x + CASTLE.w / 2, CASTLE.y - 34);
+      g.fillStyle = Z.ink; g.font = "700 18px system-ui, sans-serif"; g.textAlign = "center"; g.fillText("Castle", CASTLE.x + CASTLE.w / 2, CASTLE.y + 70);
+      // the road, drawn as in the game
+      g.lineJoin = "miter"; g.lineCap = "square";
+      const pass = (col, w) => { g.strokeStyle = col; g.lineWidth = w; g.beginPath(); for (const [x1, y1, x2, y2] of info.segs) { g.moveTo(x1, y1); g.lineTo(x2 === x1 && y2 === y1 ? x2 + .01 : x2, y2); } g.stroke(); };
+      pass(Z.ink, CELL); pass(Z.edge, CELL - 5); pass(Z.road, CELL - 10);
+      // each path in its own colour, so you can see where monsters will walk
+      const cols = ["#b5332a", "#2a62b5", "#7a3fb5", "#1f7a4a", "#b5772a", "#2a9bb5"];
+      info.paths.forEach((p, i) => {
+        g.strokeStyle = cols[i % cols.length]; g.lineWidth = 4; g.lineCap = "round"; g.lineJoin = "round"; g.setLineDash([10, 8]);
+        const o = (i - (info.paths.length - 1) / 2) * 5;
+        g.beginPath(); p.pts.forEach(([x, y], k) => k ? g.lineTo(x + o, y + o) : g.moveTo(x + o, y + o)); g.stroke(); g.setLineDash([]);
+      });
+      // the keyboard cursor
+      if (document.activeElement === cv) { g.strokeStyle = "#e9b949"; g.lineWidth = 3; g.strokeRect(cursor[0] * CELL + 2, cursor[1] * CELL + 2, CELL - 4, CELL - 4); }
+      const bad = info.problems.length;
+      status.className = "mapstatus" + (bad ? " bad" : "");
+      status.textContent = note || (bad ? info.problems[0] : `${routeWord(info.paths.length)}${info.paths.length > 1 ? ", shown in different colours. Monsters on foot share them out evenly." : "."}` + (info.extra ? ` Only the ${MAX_ROUTES} shortest are used.` : ""));
+      save.disabled = !!bad;
+      note = "";
+    };
+    const toggle = (c, rw, mode) => {
+      if (c === GATE[0] && rw === GATE[1]) { note = "The square in front of the gate is always road."; return; }
+      if (!roadAllowed(c, rw)) { note = inCastle(c, rw) ? "That's the castle's ground: no road there." : "No road through the pond."; return; }
+      const on = has(c, rw);
+      if (mode === "add" && !on) road.push([c, rw]);
+      if (mode === "lift" && on) road = road.filter(q => !(q[0] === c && q[1] === rw));
+    };
+    const cellAt = ev => { const b = cv.getBoundingClientRect(); return [Math.floor((ev.clientX - b.left) / b.width * COLS), Math.floor((ev.clientY - b.top) / b.height * ROWS)]; };
+    let mode = null, lastCell = "";
+    cv.addEventListener("pointerdown", ev => {
+      const [c, rw] = cellAt(ev); mode = has(c, rw) ? "lift" : "add"; lastCell = cellKey(c, rw);
+      cv.setPointerCapture(ev.pointerId); toggle(c, rw, mode); draw();
+    });
+    cv.addEventListener("pointermove", ev => {
+      if (!mode) return; const [c, rw] = cellAt(ev), k = cellKey(c, rw);
+      if (k !== lastCell) { lastCell = k; toggle(c, rw, mode); draw(); }
+    });
+    const up = () => { mode = null; }; cv.addEventListener("pointerup", up); cv.addEventListener("pointercancel", up);
+    cv.addEventListener("keydown", ev => {
+      const mv = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[ev.key];
+      if (mv) { cursor = [Math.max(0, Math.min(COLS - 1, cursor[0] + mv[0])), Math.max(0, Math.min(ROWS - 1, cursor[1] + mv[1]))]; ev.preventDefault(); draw(); }
+      else if (ev.key === " " || ev.key === "Enter") { ev.preventDefault(); toggle(cursor[0], cursor[1], has(...cursor) ? "lift" : "add"); draw(); }
+    });
+    cv.addEventListener("focus", draw); cv.addEventListener("blur", draw);
+    clear.addEventListener("click", () => { road = []; draw(); });
+    std.addEventListener("click", () => { road = DEFAULT_MAP.road.map(q => q.slice()); draw(); });
+    back.addEventListener("click", () => openMaps());
+    save.addEventListener("click", () => {
+      if (readMap(road).problems.length) return;
+      const maps = loadMaps(), m = { id: editing ? orig.id : "m" + Date.now().toString(36), name: inp.value.trim().slice(0, 30) || "My map", road };
+      const i = maps.findIndex(x => x.id === m.id);
+      if (i >= 0) maps[i] = m; else { if (maps.length >= 20) { status.className = "mapstatus bad"; status.textContent = "You have 20 maps already. Delete one first."; return; } maps.push(m); }
+      ls.set("ek_maps", maps); ls.set("ek_map", m.id); openMaps();
+    });
+    draw();
+  });
+}
 $("btnContinue").addEventListener("click", () => begin(savedGame));
 $("btnAgain").addEventListener("click", () => {
   if (S && (S.vs || S.vsGuest)) { netClose(); $("overCard").querySelector("h2").textContent = "The keep has fallen"; newRun(); renderPalette(); }  // a two-player game never touched your own save
@@ -3331,7 +3589,7 @@ let viewV = RULES_VERSION, apiVersions = [];
 function savePlayer(level, badge) {
   const name = playerName || "Player", { k, src, cur } = myEntry(), rv = (S && S.rv) || RULES_VERSION;
   const sc = cur && cur.scores && typeof cur.scores === "object" ? cur.scores : {};
-  const oldBest = (sc[rv] && sc[rv].best) || 0, best = Math.max(oldBest, level || 0);
+  const oldBest = (sc[rv] && sc[rv].best) || 0, best = Math.max(oldBest, S && S.map ? 0 : level || 0);   // a game on your own map isn't a personal best
   const had = (cur && Array.isArray(cur.badges)) ? cur.badges : [];
   const badges = badge && !had.includes(badge) ? [...had, badge] : had;
   if (cur && best === oldBest && badges.length === had.length) return;
@@ -3341,7 +3599,7 @@ function savePlayer(level, badge) {
   if (cloudOn()) { myScoreDoc = { players }; enqueue(() => db.doc("scores/" + uid).set({ players })); renderAch(); }
   else { ls.set("ek_scores", players); renderBoard(); }
   // the shared board takes the level this run has reached (it keeps the best), with the run's ticket
-  if (LB_URL && S && !S.vs && !S.vsGuest && S.level > 1) submitScore(S.level - 1, badges, rv);
+  if (LB_URL && S && !S.vs && !S.vsGuest && !S.map && S.level > 1) submitScore(S.level - 1, badges, rv);
 }
 const ACH = [
   { id: "lv10",       name: "Seasoned Defender",   desc: "Reach level 10" },
@@ -3546,7 +3804,7 @@ function humanCheck() {
 // reached faster than the game allows. A run without one (offline at the start, or an old save) asks when it next can.
 let lbRunAsk = null;
 function lbStartRun() {
-  if (!LB_URL || !S || S.vs || S.vsGuest || S.lbt) return Promise.resolve();
+  if (!LB_URL || !S || S.vs || S.vsGuest || S.map || S.lbt) return Promise.resolve();
   if (lbRunAsk && lbRunAsk.run === S) return lbRunAsk.p;
   const run = S, p = (async () => {
     try {
@@ -3738,7 +3996,7 @@ function joinSetup() {
 /* ----- Keeper (host) side ----- */
 function vsBegin(len) {
   audio(); readName();
-  newRun(); S.perks = {}; S.dyn = 0;
+  setMap(DEFAULT_MAP); newRun(); S.perks = {}; S.dyn = 0;
   S.vs = { len, dl: true, dread: vsBudget(1), army: {}, ready: { k: false, d: false }, spells: { swift: 0, armor: 0, fog: 0 }, revealed: null };
   auto = false; $("btnAuto").textContent = "Auto: off"; $("btnAuto").classList.remove("on");
   document.documentElement.classList.add("vs");
@@ -3807,7 +4065,7 @@ function vsSnap() {
     vs: { dread: Math.floor(S.vs.dread), army: S.vs.army, ready: S.vs.ready, spells: S.vs.spells, len: S.vs.len },
     tw: S.towers.map(t => [t.type, t.lvl, r1(t.x), r1(t.y), r1(t.ang || 0), r1(t.flash || 0), t.name || "", r1(t.hexT || 0)]),
     tr: S.trees.map(t => [t.id, t.x, t.y, r1(t.s), t.tone, t.max, t.hp, r1(t.fall || 0), t.dir, t.planted == null ? null : t.planted]),
-    en: S.enemies.filter(e => !e.dead).map(e => [e.k, r1(e.d), e.fly ? e.path.pts : 0, Math.round(e.hp), Math.round(e.max), r1(e.spd), r1(e.slowA), r1(e.slowT), r1(e.burnT), e.face, r1(e.t), r1(e.v), r1(e.v2), r1(e.sz || 1), e.col, e.r, e.boss ? 1 : 0]),
+    en: S.enemies.filter(e => !e.dead).map(e => [e.k, r1(e.d), e.path !== ROAD ? e.path.pts : 0, Math.round(e.hp), Math.round(e.max), r1(e.spd), r1(e.slowA), r1(e.slowT), r1(e.burnT), e.face, r1(e.t), r1(e.v), r1(e.v2), r1(e.sz || 1), e.col, e.r, e.boss ? 1 : 0]),
     sh: S.shots.map(q => [q.kind, r1(q.x), r1(q.y), r1(q.tx), r1(q.ty), q.spd, q.stage || 0, r1(q.trav), r1(q.d0)]),
     fx: S.fx.filter(f => f.ring || f.bolt).concat(S.fx.filter(f => !f.ring && !f.bolt).slice(-40)).map(f => ({ ...f, x: r1(f.x), y: r1(f.y) })),
     tx: S.texts.slice(-16).map(q => [q.txt, r1(q.x), r1(q.y), r1(q.life), q.col]),
@@ -3829,6 +4087,7 @@ function guestMsg(m) {
   }
   if (m.t !== "snap") return;
   const first = !S || !S.vsGuest;
+  if (first) setMap(DEFAULT_MAP);
   const keepFx = S && S.vsGuest ? S.fx.filter(f => f.local) : [], keepTx = S && S.vsGuest ? S.texts.filter(q => q.local) : [];
   const was = S && S.vsGuest ? S : null;
   S = {
