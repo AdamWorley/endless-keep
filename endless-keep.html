@@ -958,7 +958,10 @@ function tStats(t) {
   };
 }
 const upCost = t => Math.round(upBase(t.type) * 0.75 * Math.pow(1.55, t.lvl - 1) * (1 - .05 * perk("masonry")));
-const tCost = k => Math.round(TOWERS[k].cost * (1 - .05 * perk("quarter")));
+// rules v5: each tower of a kind already on the map makes the next one of that kind 6% dearer (the 11th archer
+// costs 64 instead of 40), so a carpet of one kind costs more than a mix, and upgrading becomes the cheaper way to grow
+const CROWD = .06;
+const tCost = k => Math.round(TOWERS[k].cost * (1 - .05 * perk("quarter")) * (rules5() && S ? 1 + CROWD * S.towers.filter(t => t.type === k).length : 1));
 const dragonAt = () => perk("egg") ? 5 : 10;
 // why a defender can't be built yet: tag for the bar, words for the panel. Lanterns came with rules v4, so older saved games don't get them
 // rules v5: Lanterns unlock on the first night level (41), when you first need them
@@ -3054,7 +3057,9 @@ function renderPanel() {
     tx.append(el("h3", "", d.name), el("p", "hint", d.desc)); head.append(towerIcon(k), tx); p.append(head);
     const bw = el("p", "best"); bw.append(el("b", "", "Best against: "), document.createTextNode(d.best)); p.append(bw);
     const kv = el("dl", "kv"), add = (a, b) => kv.append(el("dt", "", a), el("dd", "", String(b)));
-    add("Cost", tCost(k) + " gold");
+    { const n = rules5() ? S.towers.filter(t => t.type === k).length : 0;
+      add("Cost", tCost(k) + " gold" + (n ? ` (+${Math.round(CROWD * n * 100)}%: ${n} already built)` : "")); }
+    if (rules5()) kv.append(el("dt", "", "Each one built"), el("dd", "", `Makes the next ${Math.round(CROWD * 100)}% dearer`));
     if (k === "lantern") { add("Light reach", d.range); add("Extra damage in its light", "+" + Math.round(glowBonus({ lvl: 1 }) * 100) + "%"); }
     else if (!d.dmg) { add("Damage", "None"); add("Range", d.range); add("Blasts/sec", d.rate.toFixed(1)); add("Chills a group", d.splash ? "Yes" : "No"); add("Reaches flying", d.air ? "Yes" : "No"); }
     else { add("Damage", d.dmg); add("Range", d.range); add("Shots/sec", d.rate.toFixed(1));
