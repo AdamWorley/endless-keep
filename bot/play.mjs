@@ -29,7 +29,7 @@ export function playGame(genome, { seed = 1, maxLevel = 150, dt = 1 / 30, ban = 
   const lvlByType = Object.fromEntries(TYPES.map(t => [t, S.towers.filter(x => x.type === t).reduce((a, x) => a + x.lvl, 0)]));
   return {
     seed, held, won: S.phase !== "over", steps, gold: Math.round(S.gold), hp: S.hp, maxHp: S.maxHp,
-    towers: byType, towerLevels: lvlByType, fort: { ...S.fort }, walls: S.walls, treasury: S.treasury,
+    towers: byType, towerLevels: lvlByType, fort: { ...S.fort }, walls: S.walls, treasury: S.treasury, scav: S.scav || 0,
     killedBy: S.phase === "over" ? lastLeaker(S) : null, kills: S.stats.kills, levels: trace || rec ? levels : undefined,
     frames: rec ? rec.done() : undefined, map: rec && G.MAP !== G.DEFAULT_MAP ? G.MAP.road : null,
   };

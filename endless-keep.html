@@ -1113,6 +1113,11 @@ const wallCost = () => Math.round(80 * Math.pow(1.6, S.walls));
 // which paid less as waves got shorter and more when frost dragged them out)
 const treasCost = () => Math.round(100 * Math.pow(1.6, S.treasury));
 const treasPay = (n = S.treasury, L = S.level) => Math.round(n * 18 * goldScale(L));
+// rules v5: the treasury stops at level 8. Beyond that a level cost more than it could ever pay back
+// (level 9 is ~6900 gold for under 100 more a level), so it was only a trap
+const TREAS_MAX = 8, treasMax = () => rules5() ? TREAS_MAX : Infinity;
+// rules v5: scavengers pick over the fallen, +5% gold from every monster defeated per level, up to 5 levels
+const SCAV = { max: 5, pct: .05, cost: n => Math.round(150 * Math.pow(1.75, n)) };
 // fortifications bought at the castle
 const FORT = {
   // castle archers level n shoot like a level n + 3 Archer Tower (same heirloom bonuses, same armour weakness) with a
@@ -1162,13 +1167,13 @@ let playerName = (ls.get("ek_name") || "").toString().slice(0, 16);
 let time = 0;
 function newRun() {
   fish = null; fishL = 0; goo = [];
-  S = { rv: RULES_VERSION, level: 1, gold: 180, hp: 30, maxHp: 30, walls: 0, treasury: 0, dragon: false, fort: { archers: 0, mages: 0, moat: 0, masons: 0 },
+  S = { rv: RULES_VERSION, level: 1, gold: 180, hp: 30, maxHp: 30, walls: 0, treasury: 0, scav: 0, dragon: false, fort: { archers: 0, mages: 0, moat: 0, masons: 0 },
         towers: [], trees: freshTrees(), enemies: [], shots: [], fx: [], texts: [],
         phase: "build", queue: [], spawnT: 0, nextT: 6, income: 0, shake: 0, waveHp: 20, newBadges: [],
         stats: { kills: 0, gold: 0, bosses: 0, chopped: 0, built: 0, slowed: 0, grown: 0, events: 0 } };
 }
 function makeSave() {
-  return { v: 1, level: S.level, gold: Math.floor(S.gold), hp: S.hp, maxHp: S.maxHp, walls: S.walls, treasury: S.treasury, fort: S.fort,
+  return { v: 1, level: S.level, gold: Math.floor(S.gold), hp: S.hp, maxHp: S.maxHp, walls: S.walls, treasury: S.treasury, scav: S.scav || 0, fort: S.fort,
            dragon: S.dragon, cleared: TREES.filter(t => !S.trees.some(x => x.id === t.id && !x.fall)).map(t => t.id), towers: S.towers.map(t => [t.type, t.lvl, t.spent, Math.round(t.x), Math.round(t.y), Math.round(t.dmg || 0), t.kills || 0, t.slowed || 0, t.name || ""]), planted: S.trees.filter(t => t.planted != null && !t.fall).map(t => [t.x, t.y, t.planted, t.tone, Math.max(0, t.max - t.hp), t.boost || 0]), stats: S.stats, rv: S.rv, perks: S.perks, dyn: S.dyn || 0, windUsed: !!S.windUsed, wish: S.wish || null, plan: S.plan, planL: S.planL, grid: CELL, map: S.map || null, ev: S.ev || null, lbt: S.lbt || null, name: playerName, savedAt: Date.now() };
 }
 function restore(sv) {
@@ -1176,7 +1181,7 @@ function restore(sv) {
   setMap(m); newRun(); if (MAP !== DEFAULT_MAP) S.map = { name: MAP.name, road: MAP.road };
   const int = (v, lo, hi, d) => v != null && v !== "" && Number.isFinite(+v) ? Math.max(lo, Math.min(hi, Math.floor(+v))) : d, f = sv.fort || {};
   const maxHp = int(sv.maxHp, 1, 1e6, 20);
-  Object.assign(S, { level: int(sv.level, 1, 5000, 1), gold: int(sv.gold, 0, 1e9, 0), hp: int(sv.hp, 1, maxHp, maxHp), maxHp, walls: int(sv.walls, 0, 1e3, 0), treasury: int(sv.treasury, 0, 1e3, 0), dragon: !!sv.dragon,
+  Object.assign(S, { level: int(sv.level, 1, 5000, 1), gold: int(sv.gold, 0, 1e9, 0), hp: int(sv.hp, 1, maxHp, maxHp), maxHp, walls: int(sv.walls, 0, 1e3, 0), treasury: int(sv.treasury, 0, 1e3, 0), scav: int(sv.scav, 0, SCAV.max, 0), dragon: !!sv.dragon,
                      fort: { archers: int(f.archers, 0, FORT.archers.max, 0), mages: int(f.mages, 0, FORT.mages.max, 0), moat: int(f.moat, 0, FORT.moat.max, 0), masons: int(f.masons, 0, FORT.masons.max, 0) } });
   // saves from before the 40-wide grid had towers in 42-wide cells around a different road: each moves to the
   // nearest free square, and if there's none close by its gold comes back
@@ -2375,7 +2380,7 @@ function hurt(e, amt, magic, src, armorMul = 1) {
 function earn(g) { S.gold += g; S.stats.gold += g; }
 function kill(e, src) {
   e.dead = true;
-  const g = Math.max(1, Math.round(e.gold * goldScale(S.level) * (1 + .04 * perk("bounty") + .1 * perk("chest") + .05 * dyn()) * (evOn("goldrush") ? 2 : 1) * ((dragonSecret(src) || {}).gold || 1)));
+  const g = Math.max(1, Math.round(e.gold * goldScale(S.level) * (1 + .04 * perk("bounty") + .1 * perk("chest") + .05 * dyn() + SCAV.pct * (S.scav || 0)) * (evOn("goldrush") ? 2 : 1) * ((dragonSecret(src) || {}).gold || 1)));
   earn(g); S.stats.kills++;
   if (e.split) burst(e);
   const bk = e.k === "slimelet" ? "slime" : e.k;
@@ -2969,6 +2974,7 @@ function renderPanel() {
     const kv = el("dl", "kv");
     kv.append(el("dt", "", "Hearts"), el("dd", "", `${S.hp} / ${S.maxHp}`),
               el("dt", "", "Treasury"), el("dd", "", S.treasury ? `+${treasPay()} gold a level` : "None yet"));
+    if (S.scav) kv.append(el("dt", "", "Scavengers"), el("dd", "", `+${Math.round(S.scav * SCAV.pct * 100)}% gold a kill`));
     p.append(kv);
     // one row per upgrade: name, price, and a line saying what it does now and next
     const row = (name, cost, desc, maxed, buy) => {
@@ -2986,8 +2992,16 @@ function renderPanel() {
       const f = FORT[k], n = S.fort[k] || 0, maxed = n >= f.max;
       walls.append(row(n ? `${f.name} · level ${n}` : f.name, f.cost(n), f.desc(maxed ? n : n || 0), maxed, () => { S.fort[k]++; if (S.fort.moat >= FORT.moat.max && S.fort.masons >= FORT.masons.max) unlock("fortress"); }));
     }
+    const tMax = S.treasury >= treasMax();
     econ.append(row(S.treasury ? `Treasury · level ${S.treasury}` : "Open a treasury", treasCost(),
-      `Pays ${S.treasury ? `${treasPay()} → ${treasPay(S.treasury + 1)}` : treasPay(1)} gold every time you clear a level.`, false, () => { S.treasury++; }));
+      tMax ? `Pays ${treasPay()} gold every time you clear a level. As big as it gets.` :
+      `Pays ${S.treasury ? `${treasPay()} → ${treasPay(S.treasury + 1)}` : treasPay(1)} gold every time you clear a level.`, tMax, () => { S.treasury++; }));
+    if (rules5()) {
+      const n = S.scav || 0, pc = k => Math.round(k * SCAV.pct * 100);
+      econ.append(row(n ? `Scavengers · level ${n}` : "Hire scavengers", SCAV.cost(n),
+        n >= SCAV.max ? `+${pc(n)}% gold from every monster defeated. As many as you can use.` :
+        `They pick over the fallen: +${pc(n)}% → +${pc(n + 1)}% gold from every monster defeated.`, n >= SCAV.max, () => { S.scav = n + 1; }));
+    }
     p.append(el("h4", "", "Fortify"), walls, el("h4", "", "Economy"), econ);
     return;
   }

@@ -132,8 +132,14 @@ export function buildPhase(G, P, M) {
   // economy: the treasury if it pays back in time, then saplings; whatever the economy can't use goes to towers
   {
     const gain = G.treasPay(S.treasury + 1, L) - G.treasPay(S.treasury, L), c = G.treasCost();
-    const worth = gain > 0 && c / gain <= P.treasuryPayback;
+    const worth = gain > 0 && c / gain <= P.treasuryPayback && S.treasury < G.treasMax();
     if (worth && pot.economy >= c && S.gold >= c) { spend("economy", () => { S.gold -= c; S.treasury++; }); }
+    // scavengers (rules v5): same payback rule, guessing a level's kill gold from the game's takings so far
+    const SC = G.SCAV, n = S.scav || 0;
+    if (SC && G.treasMax() !== Infinity && n < SC.max) {
+      const sc = SC.cost(n), perLevel = S.stats.gold / Math.max(1, L - 1) * .8, sgain = perLevel * SC.pct / (1 + SC.pct * n);
+      if (sgain > 0 && sc / sgain <= P.treasuryPayback && pot.economy >= sc && S.gold >= sc) spend("economy", () => { S.gold -= sc; S.scav = n + 1; });
+    }
     const growing = S.trees.filter(t => t.planted != null && !t.fall).length;
     let want = Math.max(0, P.saplings - growing);
     for (const i of M.map.spare) {

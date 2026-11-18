@@ -18,6 +18,7 @@ globalThis.__EK = {
   TOWERS, TORDER, ENEMIES, ROAD, posAt, distRoad, CELL, W, H, CASTLE, dragonAt, bossFor, planFor, goldScale,
   RULES_VERSION, GAME_VERSION, get MAP() { return MAP; }, DEFAULT_MAP,
   snapState: typeof snapState === "function" ? snapState : null,   // older copies of the game (EK_GAME) may not have it
+  treasMax: typeof treasMax === "function" ? treasMax : () => Infinity, SCAV: typeof SCAV === "object" ? SCAV : null,
 };
 `;
 
