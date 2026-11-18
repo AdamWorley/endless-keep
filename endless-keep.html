@@ -1028,16 +1028,37 @@ const ENEMIES = {
 const foeFrom = k => ENEMIES[k].rv && !rules5() ? Infinity : ENEMIES[k].from;
 const foeDef = k => k === "troll" && !newRules() ? { ...ENEMIES.troll, hp: 6.5, regen: .02 } : ENEMIES[k];
 const BOSSES = [
-  { key: "trollking", name: "Troll King",   hp: 26, spd: 22, armor: .25, gold: 150, r: 24, col: "#56707f", dmg: 6 },
-  { key: "bigdragon", name: "Elder Dragon", hp: 21, spd: 26, armor: .2,  gold: 200, r: 26, col: "#b8402c", dmg: 6, fly: true },
-  { key: "wyrm",      name: "Bone Wyrm",    hp: 32, spd: 20, armor: .45, gold: 250, r: 24, col: "#e6dfcc", dmg: 6 },
+  // again (rules v5): from the second time round (level 60 on) each boss comes back as a second form with one new
+  // trick, and brings an escort of its own kind that grows every time round (see bossItems)
+  { key: "trollking", name: "Troll King",   hp: 26, spd: 22, armor: .25, gold: 150, r: 24, col: "#56707f", dmg: 6,
+    again: { name: "Iron Troll King", armor: .45, regen: .01, escort: "troll", aura: "#b9c9d4", desc: "He comes back in iron plate that turns arrows and boulders, and his wounds close as you watch. A troll guard marches ahead of him." } },
+  { key: "bigdragon", name: "Elder Dragon", hp: 21, spd: 26, armor: .2,  gold: 200, r: 26, col: "#b8402c", dmg: 6, fly: true,
+    again: { name: "The Elder Dragons", named: true, pair: true, hpMul: .6, escort: "wyvern", aura: "#ff9a5a", desc: "She comes back with her mate: two Elder Dragons at once, each a little smaller than she was alone. Wyverns fly ahead of them." } },
+  { key: "wyrm",      name: "Bone Wyrm",    hp: 32, spd: 20, armor: .45, gold: 250, r: 24, col: "#e6dfcc", dmg: 6,
+    again: { name: "Undying Wyrm", rise: .5, escort: "knight", aura: "#7ef0ff", desc: "Knock it down and it pulls itself back together once, at half health. Skeleton knights march ahead of it." } },
   // flies on a broomstick and hexes whichever tower hurts her (it stops firing for 2 seconds), one tower every 1.5 seconds
-  { key: "jasmine",   name: "Jasmine the Witch", hp: 18, spd: 24, armor: .1, gold: 300, r: 24, col: "#4a3a63", dmg: 6, fly: true, hex: 1.5, named: true },
+  { key: "jasmine",   name: "Jasmine the Witch", hp: 18, spd: 24, armor: .1, gold: 300, r: 24, col: "#4a3a63", dmg: 6, fly: true, hex: 1.5, named: true,
+    again: { name: "Jasmine, Queen of Hexes", hex: .75, escort: "bat", aura: "#c9a8ff", desc: "She hexes a tower twice as often, and a cloud of bats flies ahead of her broomstick." } },
   // rules v5, level 50: a great cube of jelly that bursts into four slimes, each of which bursts into 8-12 slimelets
-  { key: "slimecube", name: "Slime Cube",   hp: 22, spd: 20, armor: 0,   gold: 200, r: 24, col: "#6cc35a", dmg: 6, regen: .01, split: { k: "slime", n: 4 }, rv: 5 },
+  { key: "slimecube", name: "Slime Cube",   hp: 22, spd: 20, armor: 0,   gold: 200, r: 24, col: "#6cc35a", dmg: 6, regen: .01, split: { k: "slime", n: 4 }, rv: 5,
+    again: { name: "Great Slime Cube", split: { k: "slime", n: 6 }, escort: "slime", aura: "#b6ef9a", desc: "Even bigger inside, it bursts into six slimes instead of four. Slimes ooze ahead of it." } },
 ];
 const bossList = () => rules5() ? BOSSES : BOSSES.filter(b => !b.rv);
-const bossFor = L => { const b = bossList(); return b[(L / 10 - 1) % b.length]; };
+// how many times round the bosses have already been by level L (0 the first time, 1 from level 60…)
+const bossRound = L => Math.floor((L / 10 - 1) / bossList().length);
+const bossFor = L => {
+  const list = bossList(), b = list[(L / 10 - 1) % list.length], back = rules5() && b.again ? bossRound(L) : 0;
+  return back ? { ...b, ...b.again, back, first: b } : b;
+};
+const bossAura = k => ((BOSSES.find(b => b.key === k) || {}).again || {}).aura;
+// what a boss level adds to the end of its wave: a returning boss's escort (2 more each time round, up to 12), then
+// the boss itself (two of them for a pair)
+function bossItems(L) {
+  const b = bossFor(L), q = [];
+  if (b.back && b.escort) for (let i = 0; i < Math.min(12, 2 * b.back + 2); i++) q.push({ k: b.escort, gap: .45 });
+  for (let i = 0; i < (b.pair ? 2 : 1); i++) q.push({ k: "boss", gap: b.pair && !i ? 1.4 : 2.5 });
+  return q;
+}
 // the bestiary's words for each monster: a line of flavour and how to beat it
 const LORE = {
   goblin:    { lore: "Small, green and endlessly confident. Goblins come in noisy mobs and fear nothing, mostly because they haven't noticed it yet.",
@@ -1120,7 +1141,7 @@ function makeWave(L) {
     if (i % 4 === 0) k = pick();  // small groups of the same kind
     q.push({ k, gap: ENEMIES[k].fly ? gap * 1.2 : gap });
   }
-  if (boss) q.push({ k: "boss", gap: 2.5 });
+  if (boss) q.push(...bossItems(L));
   return q;
 }
 
@@ -2169,6 +2190,11 @@ function drawEnemy(e) {
   const bob = e.fly ? Math.sin(t * 5) * 3 : -Math.abs(Math.sin(t * 9)) * 2.5;
   const x = e.x, y = e.y + bob - (e.fly ? 22 : 0);
   c.fillStyle = e.fly ? "rgba(0,0,0,.15)" : "rgba(0,0,0,.25)"; ell(c, e.x, e.y + r * .6, r * .9, r * .35);
+  if (e.back) {   // a returning boss glows in its own colour
+    const col = bossAura(e.k) || "#ffffff", p = Math.sin(time * 4);
+    c.save(); c.globalAlpha = .28 + p * .08; c.fillStyle = col; ell(c, e.x, e.y + r * .6, r * 1.5, r * .6);
+    c.globalAlpha = .75; c.strokeStyle = col; c.lineWidth = 2; c.beginPath(); c.ellipse(x, y, r + 7 + p * 2, r + 7 + p * 2, 0, 0, Math.PI * 2); c.stroke(); c.restore();
+  }
   c.save(); c.translate(x, y); c.scale(e.face * (e.sz || 1), e.sz || 1);
   enemyBody(c, e);
   c.restore();
@@ -2230,10 +2256,10 @@ function spawn(item) {
   S.enemies.push(makeFoe(d, path, L));
 }
 function makeFoe(d, path, L) {
-  const base = 18, hp = base * d.hp * hpScale(L), cols = VCOLS[d.k];
+  const base = 18, hp = base * d.hp * hpScale(L) * (d.hpMul || 1), cols = VCOLS[d.k];
   const e = { v: Math.random(), v2: Math.random(), sz: d.boss ? 1 : .93 + Math.random() * .14, k: d.k, path, d: 0, x: -40, y: 0, hp, max: hp, spd: d.spd * (1 + Math.min(.35, L * .004)) * (0.92 + Math.random() * .16),
               armor: d.armor, gold: d.gold, fly: !!d.fly, r: d.r, col: cols ? cols[(Math.random() * cols.length) | 0] : d.col, dmg: d.dmg, regen: d.regen || 0, boss: !!d.boss, hex: d.hex || 0, hexCd: 0,
-              slowT: 0, slowA: 0, burnT: 0, burnDps: 0, t: Math.random() * 6, face: 1, dead: false, split: d.split || null };
+              slowT: 0, slowA: 0, burnT: 0, burnDps: 0, t: Math.random() * 6, face: 1, dead: false, split: d.split || null, rise: d.rise || 0, back: d.back || 0 };
   if (evOn("swift")) e.spd *= 1.2;
   if (evOn("ironclad")) e.armor = Math.min(.75, e.armor + .25);
   [e.x, e.y] = posAt(path, 0);
@@ -2266,6 +2292,12 @@ function hurt(e, amt, magic, src, armorMul = 1) {
     S.texts.push({ x: src.x, y: src.y - 50, txt: "Hexed!", life: 1, col: "#c9a8ff" });
     for (let i = 0; i < 8; i++) { const a = Math.random() * 6.28; S.fx.push({ x: src.x, y: src.y - 30, vx: Math.cos(a) * 40, vy: Math.sin(a) * 40 - 20, life: .5, max: .5, col: "rgba(201,168,255,.9)", r: 2.2 }); }
   }
+  if (e.hp <= 1e-9 && e.rise) {   // the Undying Wyrm: down once, but not out
+    e.hp = e.max * e.rise; e.rise = 0; e.burnT = 0;
+    S.texts.push({ x: e.x, y: e.y - 40, txt: "It pulls itself back together!", life: 1.6, col: "#7ef0ff" }); sfx("boss");
+    for (let i = 0; i < 18; i++) { const a = Math.random() * 6.28, sp = 40 + Math.random() * 60; S.fx.push({ x: e.x, y: e.y - 6, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 20, life: .6, max: .6, col: "rgba(126,240,255,.9)", r: 2.6 }); }
+    return;
+  }
   if (e.hp <= 1e-9) { if (src) src.kills = (src.kills || 0) + 1; kill(e, src); }
 }
 function earn(g) { S.gold += g; S.stats.gold += g; }
@@ -2279,7 +2311,11 @@ function kill(e, src) {
   S.texts.push({ x: e.x, y: e.y - (e.fly ? 30 : 12), txt: "+" + g, life: 1, col: "#ffe08a" });
   for (let i = 0; i < (e.boss ? 30 : 8); i++) { const a = Math.random() * 6.28, sp = 30 + Math.random() * (e.boss ? 120 : 60); S.fx.push({ x: e.x, y: e.y - (e.fly ? 22 : 0), vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 20, life: .6, max: .6, col: e.boss ? "#ffd25e" : "rgba(240,235,220,.9)", r: e.boss ? 3.5 : 2.5, g: 60 }); }
   sfx("coin");
-  if (e.boss) { toast(`${bossFor(S.level).name} defeated!`); sfx("clear"); S.stats.bosses++; unlock(e.k); }
+  if (e.boss) {
+    const twin = S.enemies.some(o => o.boss && !o.dead) || (S.born || []).some(o => o.boss), b = bossFor(S.level);
+    if (twin) { toast("One Elder Dragon down, one to go!"); sfx("clear"); }
+    else { toast(`${b.name} defeated!`); sfx("clear"); S.stats.bosses++; unlock(e.k); }
+  }
 }
 function target(t, st) {
   const tx = t.x, ty = t.y; let best = null, bp = -1;
@@ -2427,7 +2463,7 @@ function startWave() {
     else for (let i = 0; i < n; i++) S.queue.splice((Math.random() * S.queue.length) | 0, 0, { ...base[(Math.random() * base.length) | 0] });
   }
   if (ev && !ev.choice) ev.choice = "refuse";
-  if (S.level % 10 === 0) { sfx("boss"); toast(`Boss level! ${bossFor(S.level).named ? "" : "The "}${bossFor(S.level).name} approaches.`); }
+  if (S.level % 10 === 0) { sfx("boss"); const b = bossFor(S.level); toast(`Boss level! ${b.named ? "" : "The "}${b.name} ${b.pair ? "approach" : "approaches"}${b.back && b.escort ? `, with ${ENEMIES[b.escort].name.toLowerCase()} ahead` : ""}.`); }
   else { sfx("wave"); if (ev) toast(`${EVENTS[ev.id].name}! ${EVENTS[ev.id].kind === "choice" ? (ev.choice === "pay" ? "Paid." : "Refused.") : EVENTS[ev.id].desc(S.level)}`); }
   updateHud(); renderUpNext();
 }
@@ -3409,6 +3445,7 @@ function beastPage(k, atLevel) {
   box.append(kv);
   const tips = el("ul", "tips");
   if (lore.tip) tips.append(el("li", "", lore.tip));
+  if (boss && d.again && rules5()) { const li = el("li"); li.append(el("b", "", `Comes back as ${d.again.name}`), document.createTextNode(` from level ${first + 10 * BOSSES.length}: ${d.again.desc}`)); tips.append(li); }
   else if (d.fly) tips.append(el("li", "", "It flies over everything, so Catapults can't hit it."));
   if (!lore.tip && d.armor >= .3) tips.append(el("li", "", "Mage Towers, Frost Spires and the Dragon Roost ignore armour."));
   box.append(tips);
@@ -4234,7 +4271,7 @@ function vsArmyQueue() {
   for (const k in S.vs.army) { const n = S.vs.army[k]; for (let i = 0; i < n; i += 4) groups.push(Array(Math.min(4, n - i)).fill(k)); }
   groups.sort(() => Math.random() - .5);
   const q = groups.flat().map(k => ({ k, gap: ENEMIES[k].fly ? gap * 1.2 : gap }));
-  if (L % 10 === 0) q.push({ k: "boss", gap: 2.5 });
+  if (L % 10 === 0) q.push(...bossItems(L));
   S.vs.revealed = { ...S.vs.army }; S.vs.army = {};
   return q;
 }
@@ -4290,7 +4327,7 @@ function snapState() {
     L: S.level, ph: S.phase, hp: S.hp, mh: S.maxHp, gold: Math.floor(S.gold), fort: S.fort, hl: S.hitTotal || 0, hd: S.hitDread || 0,
     tw: S.towers.map(t => [t.type, t.lvl, r1(t.x), r1(t.y), r1(t.ang || 0), r1(t.flash || 0), t.name || "", r1(t.hexT || 0)]),
     tr: S.trees.map(t => [t.id, t.x, t.y, r1(t.s), t.tone, t.max, t.hp, r1(t.fall || 0), t.dir, t.planted == null ? null : t.planted]),
-    en: S.enemies.filter(e => !e.dead).map(e => [e.k, r1(e.d), e.path !== ROAD ? e.path.pts : 0, Math.round(e.hp), Math.round(e.max), r1(e.spd), r1(e.slowA), r1(e.slowT), r1(e.burnT), e.face, r1(e.t), r1(e.v), r1(e.v2), r1(e.sz || 1), e.col, e.r, e.boss ? 1 : 0]),
+    en: S.enemies.filter(e => !e.dead).map(e => [e.k, r1(e.d), e.path !== ROAD ? e.path.pts : 0, Math.round(e.hp), Math.round(e.max), r1(e.spd), r1(e.slowA), r1(e.slowT), r1(e.burnT), e.face, r1(e.t), r1(e.v), r1(e.v2), r1(e.sz || 1), e.col, e.r, e.boss ? 1 : 0, e.back || 0]),
     sh: S.shots.map(q => [q.kind, r1(q.x), r1(q.y), r1(q.tx), r1(q.ty), q.spd, q.stage || 0, r1(q.trav), r1(q.d0)]),
     fx: S.fx.filter(f => f.ring || f.bolt).concat(S.fx.filter(f => !f.ring && !f.bolt).slice(-40)).map(f => ({ ...f, x: r1(f.x), y: r1(f.y) })),
     tx: S.texts.slice(-16).map(q => [q.txt, r1(q.x), r1(q.y), r1(q.life), q.col]),
@@ -4337,7 +4374,7 @@ function stateFromSnap(m, keepFx = [], keepTx = []) {
     vsGuest: true, level: m.L, phase: m.ph, hp: m.hp, maxHp: m.mh, gold: m.gold, fort: m.fort, perks: {}, dyn: 0, hitTotal: m.hl || 0, hitDread: m.hd || 0,
     towers: m.tw.map(a => ({ type: a[0], lvl: a[1], x: a[2], y: a[3], ang: a[4], flash: a[5], name: a[6] || undefined, hexT: a[7] || 0 })),
     trees: m.tr.map(a => ({ id: a[0], x: a[1], y: a[2], s: a[3], tone: a[4], max: a[5], hp: a[6], fall: a[7], dir: a[8], planted: a[9], shake: 0 })),
-    enemies: m.en.map(a => { const path = a[2] ? pathFor(a[2]) : ROAD, e = { k: a[0], d: a[1], path, hp: a[3], max: a[4], spd: a[5], slowA: a[6], slowT: a[7], burnT: a[8], face: a[9], t: a[10], v: a[11], v2: a[12], sz: a[13], col: a[14], r: a[15], boss: !!a[16], fly: !!a[2] }; [e.x, e.y] = posAt(path, e.d); return e; }),
+    enemies: m.en.map(a => { const path = a[2] ? pathFor(a[2]) : ROAD, e = { k: a[0], d: a[1], path, hp: a[3], max: a[4], spd: a[5], slowA: a[6], slowT: a[7], burnT: a[8], face: a[9], t: a[10], v: a[11], v2: a[12], sz: a[13], col: a[14], r: a[15], boss: !!a[16], back: a[17] || 0, fly: !!a[2] }; [e.x, e.y] = posAt(path, e.d); return e; }),
     shots: m.sh.map(a => { const dx = a[3] - a[1], dy = a[4] - a[2], dd = Math.hypot(dx, dy) || 1; return { kind: a[0], x: a[1], y: a[2], tx: a[3], ty: a[4], spd: a[5], stage: a[6], trav: a[7], d0: a[8], vx: dx / dd, vy: dy / dd }; }),
     fx: m.fx.concat(keepFx), texts: m.tx.map(a => ({ txt: a[0], x: a[1], y: a[2], life: a[3], col: a[4] })).concat(keepTx),
     trees0: null, stats: {}, newBadges: [],
@@ -4392,7 +4429,7 @@ function renderDL() {
       else {
         const ul = el("ul", "army"); let tot = 0;
         ids.forEach(k => { const n = V.army[k]; tot += n; const li = el("li"), minus = el("button", "", "−"); minus.disabled = V.ready.d; minus.setAttribute("aria-label", `Remove one ${ENEMIES[k].name}`); minus.addEventListener("click", () => vsSend({ t: "army", k, n: -1 })); li.append(enemyIcon(k), el("span", "", ENEMIES[k].name), el("b", "", "× " + n), minus); ul.append(li); });
-        p.append(ul, el("p", "hint", `${tot} monster${tot === 1 ? "" : "s"}${S.level % 10 === 0 ? `, plus the ${bossFor(S.level).name} for free` : ""}. The Keeper can't see them until they march.`));
+        p.append(ul, el("p", "hint", `${tot} monster${tot === 1 ? "" : "s"}${S.level % 10 === 0 ? `, plus ${bossFor(S.level).named ? "" : "the "}${bossFor(S.level).name} for free` : ""}. The Keeper can't see them until they march.`));
       }
       const go = el("button", "primary", V.ready.d ? "Waiting for the Keeper…" : "Unleash the army"); go.disabled = V.ready.d;
       go.addEventListener("click", () => vsSend({ t: "ready" })); p.append(go);
