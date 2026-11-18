@@ -981,7 +981,7 @@ const TYPE_PERK = { archer: "arrows", mage: "arcane", catapult: "boulders", drag
 // heirlooms active in the current game (copied from your collection when a new game starts, and kept in its save)
 // a wish from the wishing fish adds to one heirloom for a few levels (see the wishing fish, further down)
 const WISHES = { arrows: 3, arcane: 3, boulders: 3, embers: 3, chill: 2, bounty: 4, eagle: 2, quarter: 2, masonry: 2, volley: 1, chest: 1 };
-const WISH_LEVELS = 5;
+const WISH_LEVELS = 3;
 const wishLeft = () => S && S.wish && S.level <= S.wish.until ? S.wish.until - S.level + 1 : 0;
 const perk = id => (id && S && ((S.perks && S.perks[id]) || 0) + (wishLeft() && S.wish.id === id ? S.wish.n : 0)) || 0;
 // every monster and boss, for the bestiary's "met" and "defeated" records
