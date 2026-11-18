@@ -4604,7 +4604,10 @@ function renderDL() {
     later.hidden = later.previousElementSibling.hidden = false;
   }
 }
-$("btnVersus").addEventListener("click", openVersus);
+// two-player mode is switched off while it's rebalanced for the v5 rules (Lanterns, fog, slimes): set this to true to bring it back
+const VERSUS_ON = false;
+$("btnVersus").hidden = !VERSUS_ON;
+if (VERSUS_ON) $("btnVersus").addEventListener("click", openVersus);
 $("boardVer").addEventListener("change", ev => { viewV = Number(ev.target.value) || 0; if (boardMode === "api" && viewV >= 1) fetchBoard(); else renderBoard(); });
 $("verNote").textContent = `Version ${GAME_VERSION} · rules v${RULES_VERSION}. Each rules version has its own Hall of Heroes.`;
 

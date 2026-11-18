@@ -46,7 +46,7 @@ Ticked items are in the game. Rough order within each section is by value for ef
 - [ ] **Heirloom ideas to add later** — rerolls, a "banish" option, heirlooms that change rules (e.g. towers on the road edge, a second castle path).
 
 ## Two players
-- [x] **Keeper vs Dark Lord (online)** — the Keeper hosts, the Dark Lord joins with a 5-letter code (PeerJS matchmaking, then direct connection). Dark Lord spends dread on a secret army each level, summons reinforcements and casts Tailwind / Scrap armour / Fog / Dark mending mid-level. Match length 10/20/30 levels.
+- [x] **Keeper vs Dark Lord (online)** — the Keeper hosts, the Dark Lord joins with a 5-letter code (PeerJS matchmaking, then direct connection). Dark Lord spends dread on a secret army each level, summons reinforcements and casts Tailwind / Scrap armour / Fog / Dark mending mid-level. Match length 10/20/30 levels. **Switched off for now** (`VERSUS_ON` in the game) until it is rebalanced for the v5 rules: Lanterns and fog only come at night, which a 30-level match never reaches.
 - [ ] **Two-player ideas** — rematch button, let either side host, Dark Lord-only monsters/bosses, spectators, a chat/emote wheel.
 
 ## Leaderboard
