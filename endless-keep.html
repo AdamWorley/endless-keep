@@ -838,7 +838,7 @@ const TOWERS = {
   // each tower has a clear job and a clear weakness:
   //   archers fire fast but each arrow is light, so armour blunts them badly (armorMul);
   //   mages pierce armour but are slow and expensive; catapults hit hard over a wide area but slowly, and can't aim
-  //   at anything right beside them (minRange); frost does little damage; the dragon does everything but costs a fortune
+  //   at anything right beside them (minRange); frost does little damage (none in rules v5: see TUNE5); the dragon does everything but costs a fortune
   archer:   { name: "Archer Tower", cost: 40,  range: 140, dmg: 5.5, rate: 2.0, air: true, magic: false, splash: 0, armorMul: 1.6, role: "Fast · air", desc: "Cheap, rapid arrows. Hits flying foes, but armour turns them aside.", best: "Bats, wolves, wolf riders and goblins. Poor against armour: skeleton knights shrug most arrows off." },
   mage:     { name: "Mage Tower",   cost: 100, range: 125, dmg: 32, rate: 0.5, air: true,  magic: true,  splash: 0,  role: "Armour", desc: "Slow, powerful bolts that pierce armour. One target at a time.", best: "Skeleton knights, trolls, orcs and bosses: magic ignores armour. Hits one monster at a time, so it struggles with big packs." },
   frost:    { name: "Frost Spire",  cost: 70,  range: 115, dmg: 4,  rate: 0.8, air: true,  magic: true,  splash: 48, slow: 0.45, role: "Slow", desc: "Slows everything it touches.", best: "Trolls, fast wolves and riders, and bosses. Low damage, so place it beside your hard hitters." },
@@ -937,8 +937,10 @@ const litTowers = l => S.towers.filter(t => t.type !== "lantern" && Math.hypot(l
 // the same as an upgrade's extra cost (it was 50%, so a carpet of cheap towers beat a few strong ones; now an upgrade
 // is worth as much per gold as a new tower, and saves a build spot and adds range). Monsters gain 0.35% health a
 // level to match (HP5), so overall difficulty stays where it was. Mages hit 25% harder so they really are the answer
-// to trolls and knights, and dragon upgrades are priced as if the roost cost 200, not 350
-const TUNE5 = { mage: { dmg: 40 } };
+// to trolls and knights, and dragon upgrades are priced as if the roost cost 200, not 350.
+// The Frost Spire is a support tower like the Lantern: it does no damage, only chills (and so Jasmine never hexes it)
+const TUNE5 = { mage: { dmg: 40 }, frost: { dmg: 0, desc: "Doesn't hurt anything: it chills everything in its blast, so monsters stay longer in reach of your other towers.",
+  best: "Trolls, fast wolves and riders, and bosses. Place it where your hard hitters can reach what it slows." } };
 const towerDef = k => rules5() && TUNE5[k] ? { ...TOWERS[k], ...TUNE5[k] } : TOWERS[k];
 const lvlDmg = n => Math.pow(rules5() ? 1.55 : 1.5, n);
 const upBase = k => k === "dragon" && rules5() ? 200 : TOWERS[k].cost;
@@ -2455,7 +2457,7 @@ function affect(e, s) {
     e.slowT = 1.6 * (sRule("chill") || 1); e.slowA = Math.max(e.boss ? s.slow * .5 : s.slow, e.slowA);
   }
   if (s.burn) { e.burnT = s.burnLen || 3; e.burnDps = Math.max(e.burnDps, s.dmg * .35); e.burnSrc = s.src; }
-  hurt(e, s.dmg * (e.fly && s.airMul ? s.airMul : 1), s.magic, s.src, s.armorMul);
+  if (s.dmg > 0) hurt(e, s.dmg * (e.fly && s.airMul ? s.airMul : 1), s.magic, s.src, s.armorMul);   // a v5 Frost Spire only chills
 }
 
 // the next level's monsters are decided in advance so "Up next" can show exactly what's coming
@@ -3047,14 +3049,15 @@ function renderPanel() {
     return;
   }
   if (sel.kind === "info") {
-    const k = sel.type, d = TOWERS[k], lk = lockOf(k);
+    const k = sel.type, d = towerDef(k), lk = lockOf(k);
     const head = el("div", "infohead"), tx = el("div");
     tx.append(el("h3", "", d.name), el("p", "hint", d.desc)); head.append(towerIcon(k), tx); p.append(head);
     const bw = el("p", "best"); bw.append(el("b", "", "Best against: "), document.createTextNode(d.best)); p.append(bw);
     const kv = el("dl", "kv"), add = (a, b) => kv.append(el("dt", "", a), el("dd", "", String(b)));
     add("Cost", tCost(k) + " gold");
     if (k === "lantern") { add("Light reach", d.range); add("Extra damage in its light", "+" + Math.round(glowBonus({ lvl: 1 }) * 100) + "%"); }
-    else { add("Damage", towerDef(k).dmg); add("Range", d.range); add("Shots/sec", d.rate.toFixed(1));
+    else if (!d.dmg) { add("Damage", "None"); add("Range", d.range); add("Blasts/sec", d.rate.toFixed(1)); add("Chills a group", d.splash ? "Yes" : "No"); add("Reaches flying", d.air ? "Yes" : "No"); }
+    else { add("Damage", d.dmg); add("Range", d.range); add("Shots/sec", d.rate.toFixed(1));
       add("Splash damage", d.splash ? "Yes" : "No"); add("Hits flying", d.air ? "Yes" : "No"); add("Pierces armour", d.magic ? "Yes" : "No"); }
     if (d.slow) add("Slows by", Math.round(d.slow * 100) + "%");
     if (d.burn) add("Sets foes on fire", "Yes");
@@ -3067,7 +3070,7 @@ function renderPanel() {
     p.append(el("h3", "", "Build here"));
     const opts = el("div", "opts");
     for (const k of TORDER) {
-      const d = TOWERS[k], locked = !!lockOf(k);
+      const d = towerDef(k), locked = !!lockOf(k);
       const b = el("button", "opt"); b.append(towerIcon(k), el("span", "nm", d.name), el("span", "cs", locked ? "Locked" : tCost(k) + " g"), el("span", "ds", d.best));
       if (locked) b.disabled = true; else { b.dataset.cost = tCost(k); b.disabled = S.gold < tCost(k); }
       b.addEventListener("click", () => {
@@ -3091,7 +3094,7 @@ function renderPanel() {
   }
   const t = sel.t;
   if (!S.towers.includes(t)) { sel = null; renderPanel(); return; }
-  const d = TOWERS[t.type], st = tStats(t), nx = tStats({ type: t.type, lvl: t.lvl + 1, x: t.x, y: t.y, name: t.name });
+  const d = towerDef(t.type), st = tStats(t), nx = tStats({ type: t.type, lvl: t.lvl + 1, x: t.x, y: t.y, name: t.name });
   const title = el("h3", "", t.type === "dragon" ? `${dragonLabel(t)} · ${dragonStage(t.lvl).name} · level ${t.lvl}` : `${towerName(t)} · level ${t.lvl}`);
   p.append(title);
   { const bw = el("p", "best"); bw.append(el("b", "", "Best against: "), document.createTextNode(d.best)); p.append(bw); }
@@ -3132,6 +3135,11 @@ function renderPanel() {
     row("Light reach", Math.round(st.range), Math.round(nx.range));
     row("Extra damage", "+" + Math.round(st.bonus * 100) + "%", "+" + Math.round(nx.bonus * 100) + "%");
     kv.append(el("dt", "", "Extra damage given"), el("dd", "", fmt(t.dmg || 0)));
+  } else if (!towerDef(t.type).dmg) {   // a v5 Frost Spire: no damage, only the chill
+    row("Slow", Math.round(st.slow * 100) + "%", Math.round(nx.slow * 100) + "%");
+    row("Range", Math.round(st.range), Math.round(nx.range));
+    row("Blasts/sec", st.rate.toFixed(2), nx.rate.toFixed(2));
+    kv.append(el("dt", "", "Reaches flying"), el("dd", "", d.air ? "Yes" : "No"), el("dt", "", "Monsters slowed"), el("dd", "", fmt(t.slowed || 0)));
   } else {
   row("Damage", Math.round(st.dmg), Math.round(nx.dmg));
   { const lt = lightAt(t.x, t.y); if (lt) { const lb = glowBonus(lt); row("In Lantern light", Math.round(st.dmg * (1 + lb)), Math.round(nx.dmg * (1 + lb))); } }
@@ -3325,7 +3333,7 @@ function showInfo(k) { sel = { kind: "info", type: k }; renderPanel(); }
 function renderPalette() {
   const pal = $("palette"); pal.textContent = ""; pal.style.setProperty("--cols", TORDER.length);
   for (const k of TORDER) {
-    const d = TOWERS[k], b = el("button", "tile"); b.dataset.type = k;
+    const d = towerDef(k), b = el("button", "tile"); b.dataset.type = k;
     b.append(towerIcon(k), el("span", "tn", SHORT[k]), el("span", "tr", d.role), el("span", "tc", tCost(k) + " g"));
     b.setAttribute("aria-label", `${d.name}, ${tCost(k)} gold. Best against: ${d.best} Tap for details, drag onto the grass to build.`);
     b.addEventListener("pointerdown", ev => {
