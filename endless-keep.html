@@ -1019,7 +1019,7 @@ const ENEMIES = {
   // rules v5: slimes split when they die (split: what into, how many, or [fewest, most]), and all slimes heal.
   // Slimelets only ever come out of a slime: each is about an orc, without the armour but healing. A slime and its
   // 8-12 slimelets are about 30 health in all, so they're the late game's wall
-  slime:    { name: "Slimes",           hp: 4,    spd: 36, armor: 0,   gold: 6,  from: 51, r: 12, col: "#7fd36a", dmg: 1, w: 1.2, regen: .015, split: { k: "slimelet", n: [8, 12] }, rv: 5 },
+  slime:    { name: "Slimes",           hp: 4,    spd: 36, armor: 0,   gold: 6,  from: 51, r: 12, col: "#7fd36a", dmg: 3, w: 1.2, regen: .015, split: { k: "slimelet", n: [8, 12] }, rv: 5 },
   slimelet: { name: "Slimelets",        hp: 2.6,  spd: 40, armor: 0,   gold: 6,  from: Infinity, r: 9, col: "#97e07f", dmg: 2, w: 0, regen: .015, rv: 5 },
   orcrider: { name: "Orc raiders",    hp: 2.7,  spd: 66, armor: .15, gold: 12, from: 26, r: 14, col: "#6e6a66", dmg: 2, w: 1.5, rider: true },
 };
