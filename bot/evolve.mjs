@@ -32,7 +32,8 @@ if (args.resume && fs.existsSync(runFile)) {
 } else {
   pop = Array.from({ length: +args.pop }, () => randomGenome(rand));
   // start from an existing strategy too, if there is one with this name
-  if (fs.existsSync(stratFile)) { pop[0] = JSON.parse(fs.readFileSync(stratFile, "utf8")).genome; console.log(`Seeded the population with the saved ${args.name}`); }
+  // (a strategy saved before a gene was added is short: the missing genes start at 0, the middle of most ranges)
+  if (fs.existsSync(stratFile)) { pop[0] = GENES.map((_, i) => clampGene(i, JSON.parse(fs.readFileSync(stratFile, "utf8")).genome[i] ?? 0)); console.log(`Seeded the population with the saved ${args.name}`); }
 }
 
 const pool = makePool(+args.workers || undefined);

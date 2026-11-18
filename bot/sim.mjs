@@ -45,6 +45,8 @@ function stub() {
       if (k === Symbol.toPrimitive) return hint => (hint === "number" ? 0 : "");
       if (k === Symbol.iterator) return function* () {};
       if (k === "then") return undefined;               // never look like a promise
+      // the game measures monster drawings by reading back canvas pixels; a stand-in for every pixel cost ~90MB per game
+      if (k === "getImageData") return (store[k] = () => ({ data: new Uint8ClampedArray(0) }));
       if (k === "length" || k === "width" || k === "height" || k === "clientWidth" || k === "clientHeight") return 0;
       if (k === "prototype") return t.prototype;
       return (store[k] = stub());

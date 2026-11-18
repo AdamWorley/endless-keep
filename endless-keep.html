@@ -569,7 +569,7 @@ canvas.mapedit:focus-visible { outline: 3px solid var(--gold); outline-offset: 2
 "use strict";
 // GAME_VERSION changes with any update. RULES_VERSION goes up ONLY when a balance change makes the game easier or
 // harder: each rules version gets its own leaderboard, so scores from different rules are never mixed.
-const GAME_VERSION = "1.4.0", RULES_VERSION = 4;   // v2: special dragon names give bonuses; v3: dragon names must be unique, slower heirlooms, rebalanced towers, tougher monsters after level 50; v4: seasons change the rules, Lanterns, trolls a little easier
+const GAME_VERSION = "1.5.0", RULES_VERSION = 5;   // v2: special dragon names give bonuses; v3: dragon names must be unique, slower heirlooms, rebalanced towers, tougher monsters after level 50; v4: seasons change the rules, Lanterns, trolls a little easier; v5: Longbows and the Dragon Ballista, castle mages, Lauren
 const W = 960, H = 560;
 const $ = id => document.getElementById(id);
 const cv = $("board"), ctx = cv.getContext("2d", { alpha: false });  // opaque: the browser needn't blend the board with the page behind it
@@ -805,7 +805,7 @@ const TOWERS = {
   //   archers fire fast but each arrow is light, so armour blunts them badly (armorMul);
   //   mages pierce armour but are slow and expensive; catapults hit hard over a wide area but slowly, and can't aim
   //   at anything right beside them (minRange); frost does little damage; the dragon does everything but costs a fortune
-  archer:   { name: "Archer Tower", cost: 50,  range: 140, dmg: 5.5, rate: 2.0, air: true, magic: false, splash: 0, armorMul: 1.6, role: "Fast · air", desc: "Cheap, rapid arrows. Hits flying foes, but armour turns them aside.", best: "Bats, wolves, wolf riders and goblins. Poor against armour: skeleton knights shrug most arrows off." },
+  archer:   { name: "Archer Tower", cost: 40,  range: 140, dmg: 5.5, rate: 2.0, air: true, magic: false, splash: 0, armorMul: 1.6, role: "Fast · air", desc: "Cheap, rapid arrows. Hits flying foes, but armour turns them aside.", best: "Bats, wolves, wolf riders and goblins. Poor against armour: skeleton knights shrug most arrows off." },
   mage:     { name: "Mage Tower",   cost: 100, range: 125, dmg: 32, rate: 0.5, air: true,  magic: true,  splash: 0,  role: "Armour", desc: "Slow, powerful bolts that pierce armour. One target at a time.", best: "Skeleton knights, trolls, orcs and bosses: magic ignores armour. Hits one monster at a time, so it struggles with big packs." },
   frost:    { name: "Frost Spire",  cost: 70,  range: 115, dmg: 4,  rate: 0.8, air: true,  magic: true,  splash: 48, slow: 0.45, role: "Slow", desc: "Slows everything it touches.", best: "Trolls, fast wolves and riders, and bosses. Low damage, so place it beside your hard hitters." },
   catapult: { name: "Catapult",     cost: 110, range: 185, dmg: 50, rate: 0.28, air: false, magic: false, splash: 64, minRange: 60, role: "Crowds", desc: "Slow, heavy boulders that crush whole packs. Ground only.", best: "Big packs of goblins and orcs on the road. Can't hit bats or wyverns, or anything right beside it, so build it back from the road." },
@@ -822,7 +822,8 @@ const dragonStage = lvl => DRAGON_STAGES.find(d => lvl <= d.upto);
 const DRAGON_NAMES = ["Ember", "Pip", "Saffron", "Bramble", "Marigold", "Puff", "Sparky", "Juniper", "Toast", "Wisp", "Clementine", "Smudge", "Biscuit", "Nutmeg", "Pebble", "Fennel", "Comet"];
 // some names are special: the dragon gets a little bonus (and sometimes a new look) to go with it
 const SECRET_DRAGONS = {
-  cinder:    { name: "Cinder",     msg: "Cinder's flames cling twice as long.",                          burn: 2 },
+  cinder:    { name: "Cinder",     msg: "Cinder is as brown as chocolate, and Cinder's flames cling twice as long.", burn: 2,
+               look: { body: "#7b4a2d", wing: "#5a321c", belly: "#d9b08c" } },
   freya:     { name: "Freya",      msg: "Freya fights like a warrior queen: +10% damage.",               dmg: 1.1 },
   sasha:     { name: "Sasha",      msg: "Sasha is lightning quick: breathes fire 15% faster.",           rate: 1.15 },
   bean:      { name: "Bean",       msg: "Bean stays teeny forever, but anything Bean defeats drops 25% more gold.", gold: 1.25, tiny: true },
@@ -831,9 +832,11 @@ const SECRET_DRAGONS = {
   baby:      { name: "Baby",       msg: "Baby will always be a baby. While Baby is on guard, the castle mends a heart after every level.", tiny: true, mend: 1 },
   mushu:     { name: "Mushu",      msg: "Mushu is small, pink and part axolotl, but very fierce: breathes fire 10% faster, and the flames cling 50% longer.", tiny: true, rate: 1.1, burn: 1.5,
                look: { body: "#f4a3bf", wing: "#e57fa4", belly: "#fcd8e3", gill: "#d9467f", axolotl: true } },
+  lauren:    { name: "Lauren",     msg: "Lauren's fire sweeps wide: the flames splash 40% further.",     splash: 1.4, rv: 5 },
 };
 const secretKey = n => String(n || "").toLowerCase().replace(/[^a-z]/g, "");
-const dragonSecret = t => (t && t.type === "dragon" && SECRET_DRAGONS[secretKey(t.name)]) || null;
+// a name added in a later rules version gives no bonus in a game started under older rules
+const dragonSecret = t => { const sp = t && t.type === "dragon" && SECRET_DRAGONS[secretKey(t.name)]; return sp && !(sp.rv && S && S.rv && S.rv < sp.rv) ? sp : null; };
 function onDragonNamed(t) {
   const sp = dragonSecret(t); if (!sp) return;
   toast(`${sp.msg}`); sfx("up");
@@ -862,7 +865,18 @@ const lookoutTrees = t => (S && t.x != null && t.type !== "lantern") ? S.trees.f
 // rules v4: each season has its own rules (see SEASONS). A game started under older rules keeps playing without them
 const newRules = () => !S || !S.rv || S.rv >= 4;
 const sRule = k => (newRules() && season && season[k]) || 0;
-const walkMul = e => e.fly ? 1 : sRule("walk") || 1;   // deep snow slows monsters on foot, not fliers
+const walkMul = e => e.fly ? 1 : sRule("walk") || 1;
+const rules5 = () => !S || !S.rv || S.rv >= 5;
+// rules v5: Archer Towers change as they grow. From level 5 they're Longbows: more reach, and arrows that bite a little
+// deeper into armour. From level 10 they're Dragon Ballistas: slow, heavy bolts built to bring down dragons, which hit
+// fliers 50% harder and aren't blunted by armour any more than a mage's bolt is (armour still counts, just normally).
+// The castle archers stay plain archers. Games started under older rules keep plain archers all the way up.
+const ARCHER_TIERS = [
+  { from: 10, name: "Dragon Ballista", short: "Ballista", range: 1.25, dmg: 1.6, rate: .65, armorMul: 1,   airMul: 1.5, shot: "bolt" },
+  { from: 5,  name: "Longbow Tower",   short: "Longbow",  range: 1.2,  dmg: 1,   rate: 1,   armorMul: 1.3 },
+];
+const archerTier = t => (t && t.type === "archer" && !t.keep && rules5() && ARCHER_TIERS.find(z => t.lvl >= z.from)) || null;
+const towerName = t => (archerTier(t) || TOWERS[t.type]).name;   // deep snow slows monsters on foot, not fliers
 // a Lantern lights the grass round it: towers in its light ignore darkness and fog, and monsters in it take extra damage.
 // Lights don't add up: the brightest one wins
 const glowReach = t => TOWERS.lantern.range * Math.min(1.6, 1 + .04 * (t.lvl - 1));
@@ -884,12 +898,13 @@ function tStats(t) {
   const d = TOWERS[t.type], n = t.lvl - 1, sp = dragonSecret(t) || {};
   if (t.type === "lantern") return { dmg: 0, range: glowReach(t), rate: 0, slow: 0, bonus: glowBonus(t) };
   const lit = t.x != null && !!lightAt(t.x, t.y), dim = (evOn("fog") || vsOn("fog") ? .8 : 1) * (sRule("gloom") || 1);
-  const spDmg = (sp.dmg || 1) * (sp.dark ? (season && season.night ? 1.25 : 1.1) : 1);
+  const spDmg = (sp.dmg || 1) * (sp.dark ? (season && season.night ? 1.25 : 1.1) : 1), tier = archerTier(t) || {};
   return {
-    dmg: d.dmg * Math.pow(1.5, n) * (1 + .06 * perk(TYPE_PERK[t.type]) + .1 * perk("crown") + .05 * dyn()) * (evOn("wizard") ? 1.3 : 1) * spDmg,
-    range: d.range * Math.min(1.6, 1 + 0.04 * n) * (1 + TREE_BONUS * lookoutTrees(t).length + .04 * perk("eagle")) * (lit ? 1 : dim) * (sRule("sight") || 1) * (sp.range || 1),
-    rate: d.rate * Math.min(1.5, 1 + 0.03 * n) * (1 + .08 * perk("volley")) * (sp.rate || 1),
+    dmg: d.dmg * Math.pow(1.5, n) * (1 + .06 * perk(TYPE_PERK[t.type]) + .1 * perk("crown") + .05 * dyn()) * (evOn("wizard") ? 1.3 : 1) * spDmg * (tier.dmg || 1),
+    range: d.range * Math.min(1.6, 1 + 0.04 * n) * (1 + TREE_BONUS * lookoutTrees(t).length + .04 * perk("eagle")) * (lit ? 1 : dim) * (sRule("sight") || 1) * (sp.range || 1) * (tier.range || 1),
+    rate: d.rate * Math.min(1.5, 1 + 0.03 * n) * (1 + .08 * perk("volley")) * (sp.rate || 1) * (tier.rate || 1),
     slow: d.slow ? Math.min(0.8, d.slow + 0.02 * n + .03 * perk("chill")) : 0,
+    armorMul: tier.armorMul || d.armorMul || 1, airMul: tier.airMul || 1, shot: tier.shot,
   };
 }
 const upCost = t => Math.round(TOWERS[t.type].cost * 0.75 * Math.pow(1.55, t.lvl - 1) * (1 - .05 * perk("masonry")));
@@ -933,7 +948,7 @@ const TYPE_PERK = { archer: "arrows", mage: "arcane", catapult: "boulders", drag
 // heirlooms active in the current game (copied from your collection when a new game starts, and kept in its save)
 const perk = id => (id && S && S.perks && S.perks[id]) || 0;
 // every monster and boss, for the bestiary's "met" and "defeated" records
-const BEAST_KEYS = ["goblin", "wolf", "orc", "bat", "wolfrider", "knight", "troll", "wyvern", "orcrider", "trollking", "bigdragon", "wyrm", "jasmine"];
+const BEAST_KEYS = ["goblin", "wolf", "orc", "bat", "wolfrider", "knight", "troll", "wyvern", "orcrider", "slime", "trollking", "bigdragon", "wyrm", "jasmine", "slimecube"];
 const beastRecord = (src, max) => { const o = {}; if (src && typeof src === "object") for (const k of BEAST_KEYS) { const n = Math.floor(+src[k] || 0); if (n > 0) o[k] = Math.min(max, n); } return o; };
 function normMeta(m) {
   m = m && typeof m === "object" ? m : {};
@@ -969,9 +984,14 @@ const ENEMIES = {
   knight: { name: "Skeleton knights", hp: 3,    spd: 36, armor: .5,  gold: 10, from: 12, r: 11, col: "#d8d4c8", dmg: 2, w: 2 },
   troll:  { name: "Trolls",           hp: 6.2,  spd: 28, armor: .1,  gold: 16, from: 16, r: 15, col: "#6f8a99", dmg: 3, w: 1.5, regen: .015 },
   wyvern: { name: "Wyverns",          hp: 3.2,  spd: 50, armor: .1,  gold: 14, from: 22, r: 12, col: "#3f8f7a", dmg: 2, w: 1.5, fly: true },
+  // rules v5: slimes split when they die (split: what into, how many). Little slimelets only ever come out of a slime
+  slime:    { name: "Slimes",           hp: 2.2,  spd: 40, armor: 0,   gold: 5,  from: 51, r: 11, col: "#7fd36a", dmg: 1, w: 1.5, split: { k: "slimelet", n: 2 }, rv: 5 },
+  slimelet: { name: "Slimelets",        hp: 0.7,  spd: 58, armor: 0,   gold: 2,  from: Infinity, r: 7, col: "#97e07f", dmg: 1, w: 0, rv: 5 },
   orcrider: { name: "Orc raiders",    hp: 2.7,  spd: 66, armor: .15, gold: 12, from: 26, r: 14, col: "#6e6a66", dmg: 2, w: 1.5, rider: true },
 };
 // rules v4 made trolls a little easier (they had 6.5 health and healed 2% a second); games started earlier keep the old troll
+// monsters from a later rules version stay out of games started under older rules
+const foeFrom = k => ENEMIES[k].rv && !rules5() ? Infinity : ENEMIES[k].from;
 const foeDef = k => k === "troll" && !newRules() ? { ...ENEMIES.troll, hp: 6.5, regen: .02 } : ENEMIES[k];
 const BOSSES = [
   { key: "trollking", name: "Troll King",   hp: 26, spd: 22, armor: .25, gold: 150, r: 24, col: "#56707f", dmg: 6 },
@@ -979,8 +999,11 @@ const BOSSES = [
   { key: "wyrm",      name: "Bone Wyrm",    hp: 32, spd: 20, armor: .45, gold: 250, r: 24, col: "#e6dfcc", dmg: 6 },
   // flies on a broomstick and hexes whichever tower hurts her (it stops firing for 2 seconds), one tower every 1.5 seconds
   { key: "jasmine",   name: "Jasmine the Witch", hp: 18, spd: 24, armor: .1, gold: 300, r: 24, col: "#4a3a63", dmg: 6, fly: true, hex: 1.5, named: true },
+  // rules v5, level 50: a great cube of jelly that bursts into four slimes, each of which bursts into two slimelets
+  { key: "slimecube", name: "Slime Cube",   hp: 16, spd: 20, armor: 0,   gold: 200, r: 24, col: "#6cc35a", dmg: 6, split: { k: "slime", n: 4 }, rv: 5 },
 ];
-const bossFor = L => BOSSES[(L / 10 - 1) % BOSSES.length];
+const bossList = () => rules5() ? BOSSES : BOSSES.filter(b => !b.rv);
+const bossFor = L => { const b = bossList(); return b[(L / 10 - 1) % b.length]; };
 // the bestiary's words for each monster: a line of flavour and how to beat it
 const LORE = {
   goblin:    { lore: "Small, green and endlessly confident. Goblins come in noisy mobs and fear nothing, mostly because they haven't noticed it yet.",
@@ -1002,11 +1025,15 @@ const LORE = {
   orcrider:  { lore: "Orc raiders ride hard and hit harder, charging past the outer towers before the archers have finished taking aim.",
                tip: "A Frost Spire at the start of the road buys time for your other towers." },
   jasmine:   { lore: "Queen of the witches of the Gloaming Wood. Jasmine burns the mill, curses the bridge and turns the miller into a newt, then flies off to tell everyone how cruelly the village treated her. In every version of the story she tells, she is the one who was wronged.",
-               tip: "She rides a broomstick, so Catapults can't touch her, and she hexes the towers that hurt her, silencing each for two seconds. Spread the damage across many Archer and Mage Towers so there's always another one left to blame. Castle archers are beneath her notice: she never hexes them." },
-  trollking: { lore: "The oldest troll under the mountain, crowned with whatever he crushed last. Every forty levels he comes to see why his trolls haven't come home.",
+               tip: "She rides a broomstick, so Catapults can't touch her, and she hexes the towers that hurt her, silencing each for two seconds. Spread the damage across many Archer and Mage Towers so there's always another one left to blame. Castle archers and mages are beneath her notice: she never hexes them." },
+  trollking: { lore: "The oldest troll under the mountain, crowned with whatever he crushed last. Every fifty levels he comes to see why his trolls haven't come home.",
                tip: "A long fight. Line the road with Frost Spires, and lean on Mage Towers: his armour blunts arrows and boulders." },
   bigdragon: { lore: "An ancient dragon who takes your little roost as a personal insult. She flies straight for the keep and burns anything that argues.",
                tip: "She flies, so Catapults are no use. Every other tower can reach her." },
+  slime:     { lore: "Nobody knows where slimes come from, but everyone knows what happens when you hit one: now there are two. They wobble up the road eating whatever they find, which is usually something important.",
+               tip: "Each one bursts into two quick little slimelets. Catapult and Dragon splash catch the whole family at once; a lone Mage Tower wastes its big bolts on the little ones." },
+  slimecube: { lore: "A slime that never stopped eating. It has swallowed a cart, two knights and most of a bridge, and it is still hungry. You can see them all inside it, slowly turning.",
+               tip: "When it falls it bursts into four slimes, and each of those into two slimelets, so the fight isn't over when the cube is. Keep splash towers near the castle end of the road to mop up." },
   wyrm:      { lore: "A dragon's skeleton held together by old magic and older spite. Its bones shrug off arrows and boulders alike.",
                tip: "Mage Towers and the Dragon Roost ignore its armour, and a Frost Spire keeps it in their range." },
 };
@@ -1027,16 +1054,26 @@ const FORT = {
   archers: { name: "Castle archers", max: 99, cost: n => Math.round(n ? 37.5 * Math.pow(1.55, n + 1) : 145),
              desc: n => n ? `Level ${n}: shoot like a level ${n + 3} Archer Tower with long range. ${Math.round(keepStats(n).dmg)} damage, ${keepStats(n).rate.toFixed(1)} shots/sec. Next: ${Math.round(keepStats(n + 1).dmg)} damage.`
                           : "Archers on the battlements shoot anything near the castle, flying or not. They fire like a level 4 Archer Tower with long range, need no build spot, and can't be hexed." },
+  // castle mages (rules v5) are the same deal for Mage Towers: level n casts like a level n + 3 Mage Tower from the keep,
+  // for the price of a level n + 2 one. Slow, heavy bolts that ignore armour, for the knights and bosses that get through
+  mages:   { name: "Castle mages",   max: 99, cost: n => Math.round(n ? 75 * Math.pow(1.55, n + 1) : 290),
+             desc: n => n ? `Level ${n}: cast like a level ${n + 3} Mage Tower with long range. ${Math.round(keepStats(n, "mage").dmg)} damage, ${keepStats(n, "mage").rate.toFixed(2)} shots/sec. Next: ${Math.round(keepStats(n + 1, "mage").dmg)} damage.`
+                          : "A mage in the keep's tower casts at anything near the castle, flying or not. Bolts pierce armour, like a level 4 Mage Tower with long range. Needs no build spot and can't be hexed." },
   moat:    { name: "Moat",           max: 3,  cost: n => Math.round(150 * Math.pow(2, n)),
              desc: n => `Ground monsters wade through the water by the gate, slowed by ${n * 12}%${n < 3 ? ` (next: ${(n + 1) * 12}%)` : ""}.` },
+  // rules v5: each mason patches 1 heart a level, not 2 (five could take the walls from half to full every level);
+  // the castle starts with 30 hearts instead of 20 to make up for it
   masons:  { name: "Masons",         max: 5,  cost: n => Math.round(120 * Math.pow(1.8, n)),
-             desc: n => `Patch up ${n * 2} heart${n === 1 ? "" : "s"} for free after every level you clear${n < 5 ? ` (next: ${(n + 1) * 2})` : ""}.` },
+             desc: n => `Patch up ${n * masonMend()} heart${n * masonMend() === 1 ? "" : "s"} for free after every level you clear${n < 5 ? ` (next: ${(n + 1) * masonMend()})` : ""}.` },
 };
-const keepStats = n => ({ ...tStats({ type: "archer", lvl: n + 3 }), range: 300 * (evOn("fog") || vsOn("fog") ? .8 : 1) * (sRule("sight") || 1) });  // the castle is lit at night
+const keepStats = (n, type = "archer") => ({ ...tStats({ type, lvl: n + 3, keep: true }), range: 300 * (evOn("fog") || vsOn("fog") ? .8 : 1) * (sRule("sight") || 1) });  // the castle is lit at night
 const KEEP = { type: "archer", x: CASTLE.x + 62, y: CASTLE.y + 50, cd: 0, ang: 0, flash: 0, keep: true };
+const KEEP_MAGE = { type: "mage", x: CASTLE.x + 70, y: CASTLE.y + 96, cd: 0, ang: 0, flash: 0, keep: true };   // bolts leave the staff's orb, 66 above
+const masonMend = () => rules5() ? 1 : 2;
+const FORT_KEYS = () => rules5() ? ["archers", "mages", "moat", "masons"] : ["archers", "moat", "masons"];
 
 function makeWave(L) {
-  const avail = Object.keys(ENEMIES).filter(k => ENEMIES[k].from <= L);
+  const avail = Object.keys(ENEMIES).filter(k => foeFrom(k) <= L);
   const total = avail.reduce((a, k) => a + ENEMIES[k].w, 0);
   const pick = () => { let r = Math.random() * total; for (const k of avail) { r -= ENEMIES[k].w; if (r <= 0) return k; } return avail[0]; };
   const boss = L % 10 === 0;
@@ -1057,7 +1094,7 @@ let S = null, sel = null, hoverPt = null, speed = 1, paused = false, sound = tru
 let playerName = (ls.get("ek_name") || "").toString().slice(0, 16);
 let time = 0;
 function newRun() {
-  S = { rv: RULES_VERSION, level: 1, gold: 180, hp: 20, maxHp: 20, walls: 0, treasury: 0, dragon: false, fort: { archers: 0, moat: 0, masons: 0 },
+  S = { rv: RULES_VERSION, level: 1, gold: 180, hp: 30, maxHp: 30, walls: 0, treasury: 0, dragon: false, fort: { archers: 0, mages: 0, moat: 0, masons: 0 },
         towers: [], trees: freshTrees(), enemies: [], shots: [], fx: [], texts: [],
         phase: "build", queue: [], spawnT: 0, nextT: 6, income: 0, shake: 0, waveHp: 20, newBadges: [],
         stats: { kills: 0, gold: 0, bosses: 0, chopped: 0, built: 0, slowed: 0, grown: 0, events: 0 } };
@@ -1072,7 +1109,7 @@ function restore(sv) {
   const int = (v, lo, hi, d) => v != null && v !== "" && Number.isFinite(+v) ? Math.max(lo, Math.min(hi, Math.floor(+v))) : d, f = sv.fort || {};
   const maxHp = int(sv.maxHp, 1, 1e6, 20);
   Object.assign(S, { level: int(sv.level, 1, 5000, 1), gold: int(sv.gold, 0, 1e9, 0), hp: int(sv.hp, 1, maxHp, maxHp), maxHp, walls: int(sv.walls, 0, 1e3, 0), treasury: int(sv.treasury, 0, 1e3, 0), dragon: !!sv.dragon,
-                     fort: { archers: int(f.archers, 0, FORT.archers.max, 0), moat: int(f.moat, 0, FORT.moat.max, 0), masons: int(f.masons, 0, FORT.masons.max, 0) } });
+                     fort: { archers: int(f.archers, 0, FORT.archers.max, 0), mages: int(f.mages, 0, FORT.mages.max, 0), moat: int(f.moat, 0, FORT.moat.max, 0), masons: int(f.masons, 0, FORT.masons.max, 0) } });
   // saves from before the 40-wide grid had towers in 42-wide cells around a different road: each moves to the
   // nearest free square, and if there's none close by its gold comes back
   const moved = sv.grid !== CELL;
@@ -1382,6 +1419,17 @@ function drawCastle() {
       c.strokeStyle = "#6b4a2b"; c.lineWidth = 1.4; c.beginPath(); c.arc(ax - 4, ay - 5, 6, -1.2, 1.2); c.stroke();
     }
   }
+  // the castle mage stands in front of the keep's window, staff raised; the orb flares when a bolt goes
+  if (S && S.fort.mages) {
+    const mx = x + 62, my = y + 58, f = KEEP_MAGE.flash || 0, p = 3 + Math.sin(time * 4) * .7 + f * 5;
+    c.fillStyle = "#4b3f7a"; tri(c, mx - 7, my, mx + 7, my, mx, my - 15);
+    c.fillStyle = "#5f529a"; tri(c, mx - 7, my, mx, my, mx, my - 15);
+    c.fillStyle = "#e8c9a0"; ell(c, mx, my - 16, 3, 3);
+    c.fillStyle = "#2f2856"; tri(c, mx - 5, my - 17, mx + 5, my - 17, mx + 1, my - 28);
+    c.strokeStyle = "#6b4a2b"; c.lineWidth = 1.6; c.beginPath(); c.moveTo(mx + 7, my); c.lineTo(mx + 8, my - 26); c.stroke();
+    c.fillStyle = "rgba(201,168,255,.35)"; ell(c, mx + 8, my - 30, p * 1.8, p * 1.8);
+    c.fillStyle = "#e3d2ff"; ell(c, mx + 8, my - 30, p * .7, p * .7);
+  }
   // castle hp bar
   if (S) {
     const bw = 90, bx = x + w / 2 - bw / 2 - 6, by = y + h + 10, f = Math.max(0, S.hp / S.maxHp);
@@ -1434,10 +1482,41 @@ function drawTowerShape(c, type, x, y, ang, flash, lvl, name) {
   const face = Math.cos(ang) < 0 ? -1 : 1;
   switch (type) {
     case "archer": {
+      const tier = archerTier({ type, lvl });
+      if (tier && tier.shot === "bolt") {
+        // Dragon Ballista: a squat stone tower with a great crossbow on a turntable, turning to aim
+        c.fillStyle = "#857e70"; c.fillRect(x - 13, y - 24, 26, 26);
+        c.fillStyle = "#a59d8c"; c.fillRect(x - 13, y - 24, 17, 26);
+        for (let i = 0; i < 4; i++) { c.fillStyle = i % 2 ? "#a59d8c" : "#857e70"; c.fillRect(x - 14 + i * 7.5, y - 30, 5.5, 7); }
+        c.fillStyle = "#2c2018"; c.fillRect(x - 3, y - 15, 6, 8);
+        c.fillStyle = "#5e4026"; ell(c, x, y - 26, 11, 4);
+        const aim = Math.max(-0.7, Math.min(0.7, Math.atan2(Math.sin(ang), Math.abs(Math.cos(ang)))));
+        c.save(); c.translate(x, y - 31); c.scale(face, 1); c.rotate(aim);
+        const pull = flash > .3 ? 0 : 3;   // the string snaps forward as it fires, then winds back
+        c.fillStyle = "#6c4a2b"; c.fillRect(-12, -2.5, 26, 5);
+        c.fillStyle = "#4a321d"; c.fillRect(-12, -2.5, 6, 5);
+        c.strokeStyle = "#3b2a1a"; c.lineWidth = 3; c.lineCap = "round";
+        c.beginPath(); c.moveTo(4, -15); c.quadraticCurveTo(12, 0, 4, 15); c.stroke();
+        c.strokeStyle = "#e9dcc0"; c.lineWidth = 1; c.beginPath(); c.moveTo(4, -15); c.lineTo(-pull, 0); c.lineTo(4, 15); c.stroke();
+        if (flash < .3) { c.strokeStyle = "#5a3f26"; c.lineWidth = 2.2; c.beginPath(); c.moveTo(-pull, 0); c.lineTo(17, 0); c.stroke();
+          c.fillStyle = "#cfd3d6"; tri(c, 16, -3, 16, 3, 22, 0); }
+        c.restore();
+        c.fillStyle = "#e9b949"; tri(c, x + 9, y - 30, x + 9, y - 44, x + 18, y - 40); c.strokeStyle = "#4a321d"; c.lineWidth = 1.2; c.beginPath(); c.moveTo(x + 9, y - 30); c.lineTo(x + 9, y - 46); c.stroke();
+        break;
+      }
       c.fillStyle = "#6c4a2b"; c.fillRect(x - 11, y - 28, 22, 30);
       c.fillStyle = "#86603a"; c.fillRect(x - 11, y - 28, 15, 30);
       c.fillStyle = "#4a321d"; c.fillRect(x - 13, y - 30, 26, 5);
       c.fillStyle = "#2c2018"; c.fillRect(x - 3, y - 18, 6, 9);
+      if (tier) {  // Longbow Tower: a green roof, a pennant, and a tall bow hung on the wall
+        c.fillStyle = "#2f5a2c"; tri(c, x - 16, y - 29, x + 16, y - 29, x, y - 54);
+        c.fillStyle = "#3d7a38"; tri(c, x - 16, y - 29, x, y - 29, x, y - 54);
+        c.strokeStyle = "#4a321d"; c.lineWidth = 1.2; c.beginPath(); c.moveTo(x, y - 54); c.lineTo(x, y - 64); c.stroke();
+        c.fillStyle = "#e9b949"; tri(c, x, y - 64, x, y - 58, x + 8 + Math.sin(time * 3) * 1.5, y - 61);
+        c.strokeStyle = "#3b2a1a"; c.lineWidth = 1.6; c.beginPath(); c.arc(x - 16, y - 13, 12, -1.1, 1.1); c.stroke();
+        c.strokeStyle = "#e9dcc0"; c.lineWidth = .8; c.beginPath(); c.moveTo(x - 16 + 12 * Math.cos(-1.1), y - 13 + 12 * Math.sin(-1.1)); c.lineTo(x - 16 + 12 * Math.cos(1.1), y - 13 + 12 * Math.sin(1.1)); c.stroke();
+        break;
+      }
       c.fillStyle = "#a3442e"; tri(c, x - 16, y - 29, x + 16, y - 29, x, y - 50);
       c.fillStyle = "#c25a3e"; tri(c, x - 16, y - 29, x, y - 29, x, y - 50);
       break;
@@ -1944,6 +2023,30 @@ function enemyBody(c, e) {
       webWing(c, 4, -8, -1, 52, Math.max(.25, beat * .85), "#962f22", "#f0a060");
       c.fillStyle = "#e48a70"; ell(c, -20, -8 - 52 * .45 * beat * .5, 1.3, 1.3);
       c.restore(); break; }
+    case "slimecube": case "slime": case "slimelet": {
+      // a wobbling cube of green jelly with a face on the front; the big one has swallowed things on its way here
+      const wob = Math.sin(t * 5 + (e.v || 0) * 6) * .07, w = r * (1 + wob), hh = r * (1 - wob), dp = r * .42, by = r * .85;
+      const y0 = by - 2 * hh + dp, fx1 = w - dp;
+      if (e.k === "slimecube") {   // what it ate: a skull, a sword and a gold coin, slowly turning inside
+        c.save(); c.translate(-w * .35, y0 + hh * .9); c.rotate(Math.sin(t * .8) * .4);
+        c.fillStyle = "#efe6cf"; ell(c, 0, 0, r * .2, r * .18); c.fillRect(-r * .12, r * .1, r * .24, r * .1);
+        c.fillStyle = "#3b3226"; ell(c, -r * .07, -r * .02, r * .05, r * .05); ell(c, r * .07, -r * .02, r * .05, r * .05); c.restore();
+        c.save(); c.translate(w * .2, y0 + hh * 1.2); c.rotate(.9 + Math.sin(t * .6) * .3);
+        c.fillStyle = "#b9bec4"; c.fillRect(-r * .04, -r * .45, r * .08, r * .6); c.fillStyle = "#7a5532"; c.fillRect(-r * .14, r * .12, r * .28, r * .06); c.fillRect(-r * .04, r * .15, r * .08, r * .18); c.restore();
+        c.fillStyle = "#f2c94c"; ell(c, w * .05, y0 + hh * .45, r * .1, r * .06);
+      }
+      const ink = "#2f6b35";
+      c.fillStyle = "rgba(108,195,90,.72)"; c.fillRect(-w, y0, fx1 + w, by - y0);
+      c.fillStyle = "rgba(70,150,62,.78)"; c.beginPath(); c.moveTo(fx1, y0); c.lineTo(w, y0 - dp); c.lineTo(w, by - dp); c.lineTo(fx1, by); c.closePath(); c.fill();
+      c.fillStyle = "rgba(170,236,150,.85)"; c.beginPath(); c.moveTo(-w, y0); c.lineTo(fx1, y0); c.lineTo(w, y0 - dp); c.lineTo(-w + dp, y0 - dp); c.closePath(); c.fill();
+      c.strokeStyle = ink; c.lineWidth = Math.max(1, r * .07); c.lineJoin = "round";
+      c.beginPath(); c.moveTo(-w, by); c.lineTo(-w, y0); c.lineTo(-w + dp, y0 - dp); c.lineTo(w, y0 - dp); c.lineTo(w, by - dp); c.lineTo(fx1, by); c.closePath();
+      c.moveTo(-w, y0); c.lineTo(fx1, y0); c.lineTo(w, y0 - dp); c.moveTo(fx1, y0); c.lineTo(fx1, by); c.stroke();
+      c.fillStyle = "rgba(255,255,255,.45)"; c.fillRect(-w + r * .15, y0 + r * .15, r * .14, (by - y0) * .45);
+      c.fillStyle = "rgba(108,195,90,.8)"; ell(c, -w * .5, by + r * .04, r * .18, r * .1); ell(c, fx1 * .6, by + r * .03, r * .14, r * .08);   // drips
+      eyes(c, (fx1 - w) / 2 + r * .1, y0 + (by - y0) * .38, r * .3, r * .15);
+      c.fillStyle = "#1f4a24"; ell(c, (fx1 - w) / 2 + r * .1, y0 + (by - y0) * .7, r * .2, r * .08 + Math.max(0, Math.sin(t * 3)) * r * .06);
+      break; }
     case "wyrm": {
       // a dragon's skeleton walking on: ribcage with a cold light inside, bony wings with rags of membrane,
       // a chain of vertebrae for neck and tail, horned skull with a creaking jaw. Drawn at r = 24, then sized.
@@ -2051,6 +2154,11 @@ function drawShot(s) {
       const a = Math.atan2(s.vy, s.vx);
       c.strokeStyle = "#5a3f26"; c.lineWidth = 2; c.beginPath(); c.moveTo(x - Math.cos(a) * 11, y - Math.sin(a) * 11); c.lineTo(x, y); c.stroke();
       c.fillStyle = "#d8d8d8"; ell(c, x, y, 1.8, 1.8); break; }
+    case "bolt": {  // a ballista bolt: a long, thick shaft with an iron head and fletching
+      const a = Math.atan2(s.vy, s.vx), ca = Math.cos(a), sa = Math.sin(a);
+      c.strokeStyle = "#4a321d"; c.lineWidth = 3.2; c.beginPath(); c.moveTo(x - ca * 20, y - sa * 20); c.lineTo(x, y); c.stroke();
+      c.strokeStyle = "#e9dcc0"; c.lineWidth = 1.6; c.beginPath(); c.moveTo(x - ca * 20, y - sa * 20); c.lineTo(x - ca * 15, y - sa * 15); c.stroke();
+      c.fillStyle = "#cfd3d6"; tri(c, x + sa * 3.2, y - ca * 3.2, x - sa * 3.2, y + ca * 3.2, x + ca * 6, y + sa * 6); break; }
     case "magic":
       c.fillStyle = "rgba(201,168,255,.35)"; ell(c, x, y, 9, 9);
       c.fillStyle = "#f2e8ff"; ell(c, x, y, 4, 4); break;
@@ -2081,17 +2189,34 @@ function spawn(item) {
   if (item.k === "boss") { const b = bossFor(S.level); d = { ...b, boss: true }; d.k = b.key; }
   else { d = { ...foeDef(item.k), k: item.k }; }
   if (!S.vsGuest && !meta.seen[d.k]) { meta.seen[d.k] = 1; beastDirty = true; }
-  const L = S.level, base = 18;
+  const L = S.level;
   let path = ROADS[(S.spawnN = (S.spawnN || 0) + 1) % ROADS.length];   // monsters on foot take turns between the paths
   if (d.fly) { const sy = 60 + Math.random() * 440; path = mkPath([[-40, sy], [CASTLE.x + 20, CASTLE.y + 110 + (Math.random() - .5) * 60]]); }
-  const hp = base * d.hp * hpScale(L), cols = VCOLS[d.k];
+  S.enemies.push(makeFoe(d, path, L));
+}
+function makeFoe(d, path, L) {
+  const base = 18, hp = base * d.hp * hpScale(L), cols = VCOLS[d.k];
   const e = { v: Math.random(), v2: Math.random(), sz: d.boss ? 1 : .93 + Math.random() * .14, k: d.k, path, d: 0, x: -40, y: 0, hp, max: hp, spd: d.spd * (1 + Math.min(.35, L * .004)) * (0.92 + Math.random() * .16),
               armor: d.armor, gold: d.gold, fly: !!d.fly, r: d.r, col: cols ? cols[(Math.random() * cols.length) | 0] : d.col, dmg: d.dmg, regen: d.regen || 0, boss: !!d.boss, hex: d.hex || 0, hexCd: 0,
-              slowT: 0, slowA: 0, burnT: 0, burnDps: 0, t: Math.random() * 6, face: 1, dead: false };
+              slowT: 0, slowA: 0, burnT: 0, burnDps: 0, t: Math.random() * 6, face: 1, dead: false, split: d.split || null };
   if (evOn("swift")) e.spd *= 1.2;
   if (evOn("ironclad")) e.armor = Math.min(.75, e.armor + .25);
   [e.x, e.y] = posAt(path, 0);
-  S.enemies.push(e);
+  return e;
+}
+// a slime bursts into smaller ones where it fell, spread a little along the road. They join at the end of the tick,
+// so the shot that burst the parent doesn't also hit its children
+function burst(e) {
+  const { k, n } = e.split, d = { ...foeDef(k), k };
+  if (!S.vsGuest && !meta.seen[k]) { meta.seen[k] = 1; beastDirty = true; }
+  for (let i = 0; i < n; i++) {
+    const c = makeFoe(d, e.path, S.level);
+    c.d = Math.max(1, Math.min(e.path.len - 1, e.d + (i - (n - 1) / 2) * (e.r * .9)));
+    [c.x, c.y] = posAt(e.path, c.d);
+    c.slowT = e.slowT; c.slowA = e.slowA;   // still cold if the parent was
+    (S.born = S.born || []).push(c);
+  }
+  for (let i = 0; i < 14; i++) { const a = Math.random() * 6.28, sp = 30 + Math.random() * 70; S.fx.push({ x: e.x, y: e.y - 4, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 30, life: .5, max: .5, col: "rgba(140,220,110,.9)", r: 2.6, g: 80 }); }
 }
 function hurt(e, amt, magic, src, armorMul = 1) {
   if (e.dead) return;
@@ -2113,7 +2238,9 @@ function kill(e, src) {
   e.dead = true;
   const g = Math.max(1, Math.round(e.gold * goldScale(S.level) * (1 + .04 * perk("bounty") + .1 * perk("chest") + .05 * dyn()) * (evOn("goldrush") ? 2 : 1) * ((dragonSecret(src) || {}).gold || 1)));
   earn(g); S.stats.kills++;
-  if (BEAST_KEYS.includes(e.k)) { meta.slain[e.k] = (meta.slain[e.k] || 0) + 1; beastDirty = true; if (BEAST_KEYS.reduce((a, k) => a + (meta.slain[k] || 0), 0) >= 10000) unlock("slayer"); }
+  if (e.split) burst(e);
+  const bk = e.k === "slimelet" ? "slime" : e.k;
+  if (BEAST_KEYS.includes(bk)) { meta.slain[bk] = (meta.slain[bk] || 0) + 1; beastDirty = true; if (BEAST_KEYS.reduce((a, k) => a + (meta.slain[k] || 0), 0) >= 10000) unlock("slayer"); }
   S.texts.push({ x: e.x, y: e.y - (e.fly ? 30 : 12), txt: "+" + g, life: 1, col: "#ffe08a" });
   for (let i = 0; i < (e.boss ? 30 : 8); i++) { const a = Math.random() * 6.28, sp = 30 + Math.random() * (e.boss ? 120 : 60); S.fx.push({ x: e.x, y: e.y - (e.fly ? 22 : 0), vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 20, life: .6, max: .6, col: e.boss ? "#ffd25e" : "rgba(240,235,220,.9)", r: e.boss ? 3.5 : 2.5, g: 60 }); }
   sfx("coin");
@@ -2133,11 +2260,11 @@ function target(t, st) {
 }
 function fire(t, e, st) {
   const x = t.x, y = t.y, D = TOWERS[t.type];
-  const kind = { archer: "arrow", mage: "magic", frost: "frost", catapult: "rock", dragon: "fire" }[t.type];
+  const kind = st.shot || { archer: "arrow", mage: "magic", frost: "frost", catapult: "rock", dragon: "fire" }[t.type];
   const oy = { archer: -36, mage: -66, frost: -40, catapult: -30, dragon: -24 }[t.type];
-  const s = { kind, x, y: y + oy, tgt: e, tx: e.x, ty: e.fly ? e.y - 22 : e.y, spd: { arrow: 520, magic: 300, frost: 320, rock: 240, fire: 330 }[kind],
-              dmg: st.dmg, magic: D.magic, splash: D.splash ? D.splash * (1 + (t.lvl - 1) * .02) : 0, air: D.air, slow: st.slow, burn: !!D.burn, vx: 0, vy: 0, trav: 0, d0: 1,
-              armorMul: D.armorMul || 1, src: t, stage: t.type === "dragon" ? DRAGON_STAGES.indexOf(dragonStage(t.lvl)) : 0, dark: !!(dragonSecret(t) || {}).dark, burnLen: 3 * ((dragonSecret(t) || {}).burn || 1) };
+  const s = { kind, x, y: y + oy, tgt: e, tx: e.x, ty: e.fly ? e.y - 22 : e.y, spd: { arrow: 520, bolt: 460, magic: 300, frost: 320, rock: 240, fire: 330 }[kind],
+              dmg: st.dmg, magic: D.magic, splash: D.splash ? D.splash * (1 + (t.lvl - 1) * .02) * ((dragonSecret(t) || {}).splash || 1) : 0, air: D.air, slow: st.slow, burn: !!D.burn, vx: 0, vy: 0, trav: 0, d0: 1,
+              armorMul: st.armorMul || D.armorMul || 1, airMul: st.airMul || 1, src: t, stage: t.type === "dragon" ? DRAGON_STAGES.indexOf(dragonStage(t.lvl)) : 0, dark: !!(dragonSecret(t) || {}).dark, burnLen: 3 * ((dragonSecret(t) || {}).burn || 1) };
   if (kind === "rock") { s.y = y - 14; s.tgt = null; }
   s.d0 = Math.max(1, Math.hypot(s.tx - s.x, s.ty - s.y));
   if (kind === "rock") { // lead the target a little since rocks don't home
@@ -2146,7 +2273,7 @@ function fire(t, e, st) {
   }
   S.shots.push(s);
   t.ang = Math.atan2(s.ty - y, s.tx - x); t.flash = .5;
-  sfx({ arrow: "shoot", magic: "magic", frost: "frost", rock: "shoot", fire: "fire" }[kind]);
+  sfx({ arrow: "shoot", bolt: "shoot", magic: "magic", frost: "frost", rock: "shoot", fire: "fire" }[kind]);
 }
 function impact(s) {
   if (s.splash) {
@@ -2166,7 +2293,7 @@ function affect(e, s) {
     e.slowT = 1.6 * (sRule("chill") || 1); e.slowA = Math.max(e.boss ? s.slow * .5 : s.slow, e.slowA);
   }
   if (s.burn) { e.burnT = s.burnLen || 3; e.burnDps = Math.max(e.burnDps, s.dmg * .35); e.burnSrc = s.src; }
-  hurt(e, s.dmg, s.magic, s.src, s.armorMul);
+  hurt(e, s.dmg * (e.fly && s.airMul ? s.airMul : 1), s.magic, s.src, s.armorMul);
 }
 
 // the next level's monsters are decided in advance so "Up next" can show exactly what's coming
@@ -2276,7 +2403,7 @@ function clearWave() {
   if (tpay) earn(tpay);
   const unhurt = S.hp >= S.waveHp, thread = S.hp === 1;  // judged before the masons patch the walls up
   if (S.ev && S.ev.L === L) S.stats.events = (S.stats.events || 0) + 1;
-  const mend = Math.min(S.maxHp - S.hp, S.fort.masons * 2 + perk("crown") + S.towers.reduce((a, t) => a + ((dragonSecret(t) || {}).mend || 0), 0));
+  const mend = Math.min(S.maxHp - S.hp, S.fort.masons * masonMend() + perk("crown") + S.towers.reduce((a, t) => a + ((dragonSecret(t) || {}).mend || 0), 0));
   if (mend > 0) { S.hp += mend; S.texts.push({ x: CASTLE.x + 50, y: CASTLE.y + 30, txt: "+" + mend + " ♥", life: 1.4, col: "#9fe08a" }); }
   let msg = `Level ${L} cleared! +${bonus + tpay} gold${tpay ? ` (${tpay} from the treasury)` : ""}`;
   if (L >= dragonAt() && !S.dragon) { S.dragon = true; msg = "A dragon egg has hatched! Dragon Roosts are now unlocked."; }
@@ -2316,7 +2443,7 @@ function gameOver() {
     .forEach(([a, b]) => kv.append(el("dt", "", a), el("dd", "", fmt(b))));
   const mvp = S.towers.filter(t => t.type !== "lantern").sort((a, b) => (b.dmg || 0) - (a.dmg || 0))[0];
   let line = "";
-  if (mvp && mvp.dmg) line = `Star defender: ${mvp.type === "dragon" ? `${dragonLabel(mvp)}, your ${dragonStage(mvp.lvl).name}` : `your ${TOWERS[mvp.type].name}`} (level ${mvp.lvl}) dealt ${fmt(mvp.dmg)} damage and defeated ${fmt(mvp.kills || 0)} monsters.`;
+  if (mvp && mvp.dmg) line = `Star defender: ${mvp.type === "dragon" ? `${dragonLabel(mvp)}, your ${dragonStage(mvp.lvl).name}` : `your ${towerName(mvp)}`} (level ${mvp.lvl}) dealt ${fmt(mvp.dmg)} damage and defeated ${fmt(mvp.kills || 0)} monsters.`;
   if (st.slowed > 0) line += ` Your Frost Spires slowed ${fmt(st.slowed)} monsters.`;
   $("overMvp").textContent = line.trim();
   const ob = $("overBadges"); ob.textContent = "";
@@ -2374,6 +2501,10 @@ function update(dt) {
     const k = KEEP; k.lvl = 1; k.cd -= dt; k.flash = Math.max(0, k.flash - dt);
     if (k.cd <= 0) { const st = keepStats(S.fort.archers), e = target(k, st); if (e) { fire(k, e, st); k.cd = 1 / st.rate; } else k.cd = .1; }
   }
+  if (S.fort.mages) {
+    const k = KEEP_MAGE; k.lvl = 1; k.cd -= dt; k.flash = Math.max(0, k.flash - dt);
+    if (k.cd <= 0) { const st = keepStats(S.fort.mages, "mage"), e = target(k, st); if (e) { fire(k, e, st); k.cd = 1 / st.rate; } else k.cd = .1; }
+  }
   S.towers.forEach(t => {
     if (t.type === "lantern") return;   // lights don't shoot
     t.cd -= dt; t.flash = Math.max(0, t.flash - dt);
@@ -2391,6 +2522,7 @@ function update(dt) {
   }
   S.shots = S.shots.filter(s => !s.done);
   S.enemies = S.enemies.filter(e => !e.dead);
+  if (S.born && S.born.length) { S.enemies.push(...S.born); S.born = []; }
   if (evOn("storm") && S.phase === "wave") {
     S.stormT -= dt;
     if (S.stormT <= 0) {
@@ -2407,7 +2539,7 @@ function update(dt) {
   S.fx = S.fx.filter(f => f.life > 0);
   for (const t of S.texts) { t.life -= dt; t.y -= 22 * dt; }
   S.texts = S.texts.filter(t => t.life > 0);
-  if (S.phase === "wave" && !S.queue.length && !S.enemies.length) clearWave();
+  if (S.phase === "wave" && !S.queue.length && !S.enemies.length && !(S.born && S.born.length)) clearWave();
 }
 
 // a catapult can't aim at anything right beside it: show that blind spot inside its range ring
@@ -2696,8 +2828,8 @@ function renderPanel() {
     if (full) { rep.disabled = true; rep.dataset.full = "1"; }
     walls.append(rep,
       row("Raise the walls", wallCost(), `+5 max hearts (to ${S.maxHp + 5}), and fills those 5 now.`, false, () => { S.walls++; S.maxHp += 5; S.hp += 5; }));
-    for (const k of ["archers", "moat", "masons"]) {
-      const f = FORT[k], n = S.fort[k], maxed = n >= f.max;
+    for (const k of FORT_KEYS()) {
+      const f = FORT[k], n = S.fort[k] || 0, maxed = n >= f.max;
       walls.append(row(n ? `${f.name} · level ${n}` : f.name, f.cost(n), f.desc(maxed ? n : n || 0), maxed, () => { S.fort[k]++; if (S.fort.moat >= FORT.moat.max && S.fort.masons >= FORT.masons.max) unlock("fortress"); }));
     }
     econ.append(row(S.treasury ? `Treasury · level ${S.treasury}` : "Open a treasury", treasCost(),
@@ -2741,6 +2873,7 @@ function renderPanel() {
       add("Splash damage", d.splash ? "Yes" : "No"); add("Hits flying", d.air ? "Yes" : "No"); add("Pierces armour", d.magic ? "Yes" : "No"); }
     if (d.slow) add("Slows by", Math.round(d.slow * 100) + "%");
     if (d.burn) add("Sets foes on fire", "Yes");
+    if (k === "archer" && rules5()) add("Grows into", "Longbow at level 5, Dragon Ballista at level 10");
     p.append(kv);
     p.append(el("p", "hint", lk ? lk.hint : S.gold < tCost(k) ? `You need ${tCost(k) - Math.floor(S.gold)} more gold. Drag it onto open grass once you can afford it.` : "Drag it from the bar under the map onto open grass to build it."));
     return;
@@ -2774,7 +2907,7 @@ function renderPanel() {
   const t = sel.t;
   if (!S.towers.includes(t)) { sel = null; renderPanel(); return; }
   const d = TOWERS[t.type], st = tStats(t), nx = tStats({ type: t.type, lvl: t.lvl + 1, x: t.x, y: t.y, name: t.name });
-  const title = el("h3", "", t.type === "dragon" ? `${dragonLabel(t)} · ${dragonStage(t.lvl).name} · level ${t.lvl}` : `${d.name} · level ${t.lvl}`);
+  const title = el("h3", "", t.type === "dragon" ? `${dragonLabel(t)} · ${dragonStage(t.lvl).name} · level ${t.lvl}` : `${towerName(t)} · level ${t.lvl}`);
   p.append(title);
   { const bw = el("p", "best"); bw.append(el("b", "", "Best against: "), document.createTextNode(d.best)); p.append(bw); }
   { const sp = dragonSecret(t); if (sp) { const sw = el("p", "best"); sw.append(el("b", "", "A special name! "), document.createTextNode(sp.msg)); p.append(sw); } }
@@ -2820,7 +2953,12 @@ function renderPanel() {
   row("Range", Math.round(st.range), Math.round(nx.range));
   row("Shots/sec", st.rate.toFixed(2), nx.rate.toFixed(2));
   if (st.slow) row("Slow", Math.round(st.slow * 100) + "%", Math.round(nx.slow * 100) + "%");
-  kv.append(el("dt", "", "Hits flying"), el("dd", "", d.air ? "Yes" : "No"));
+  kv.append(el("dt", "", "Hits flying"), el("dd", "", d.air ? (st.airMul > 1 ? `Yes, +${Math.round((st.airMul - 1) * 100)}% damage` : "Yes") : "No"));
+  if (t.type === "archer" && rules5()) {
+    const nt = ARCHER_TIERS.slice().reverse().find(z => z.from > t.lvl), cur = archerTier(t);
+    kv.append(el("dt", "", "Armour"), el("dd", "", !cur ? "Blunts arrows badly" : cur.armorMul > 1 ? "Blunts arrows a little less" : "Counts no more than against any other hit"));
+    if (nt) kv.append(el("dt", "", "Becomes"), el("dd", "", `${nt.name} at level ${nt.from}`));
+  }
   kv.append(el("dt", "", "Damage dealt"), el("dd", "", fmt(t.dmg || 0)), el("dt", "", "Monsters defeated"), el("dd", "", fmt(t.kills || 0)));
   }
   if (t.type === "dragon") { const nx2 = DRAGON_STAGES.find(z => z.upto >= t.lvl + 1 && z !== dragonStage(t.lvl)); if (nx2) kv.append(el("dt", "", "Grows up"), el("dd", "", `${nx2.name} at level ${DRAGON_STAGES[DRAGON_STAGES.indexOf(nx2) - 1].upto + 1}`)); }
@@ -2828,8 +2966,9 @@ function renderPanel() {
   const opts = el("div", "opts");
   opts.append(costBtn(`Upgrade · ${upCost(t)} gold`, upCost(t), ev => {
     const c = upCost(t); if (S.gold < c) return; S.gold -= c; t.spent += c;
-    const before = t.type === "dragon" && dragonStage(t.lvl);
+    const before = t.type === "dragon" && dragonStage(t.lvl), tierWas = archerTier(t);
     t.lvl++; sfx("up");
+    if (archerTier(t) !== tierWas) toast(archerTier(t).shot === "bolt" ? "A Dragon Ballista! Heavy bolts that hit fliers 50% harder and shrug off armour." : "Your archers take up longbows: more reach, and arrows that bite deeper into armour.");
     if (before && dragonStage(t.lvl) !== before) toast(`${dragonLabel(t)} has grown into a ${dragonStage(t.lvl).name}!`);
     if (t.type === "dragon" && t.lvl >= 10) unlock("greatwyrm");
     if (t.lvl >= 10) unlock("toplevel");
@@ -2849,7 +2988,7 @@ function renderPanel() {
     });
     no.addEventListener("click", () => { confirmRow.replaceWith(sell); sell.focus(); });
     const confirmRow = el("div", "confirm");
-    confirmRow.append(el("p", "fine", `Sell this ${TOWERS[t.type].name}? You get back ${refund} of the ${t.spent} gold spent on it.`), yes, no);
+    confirmRow.append(el("p", "fine", `Sell this ${towerName(t)}? You get back ${refund} of the ${t.spent} gold spent on it.`), yes, no);
     sell.replaceWith(confirmRow); no.focus();
   });
   opts.append(sell); title.after(opts);
@@ -2955,7 +3094,7 @@ function renderUpNext() {
   // bosses and new monsters are only hinted one level ahead, so each one is still a bit of a surprise
   const N = L + 1;
   if (N % 10 === 0) { const b = bossFor(N); later.append(chip("boss", enemyIcon(b.key, b), `Boss: ${b.name}` + (b.fly ? " (flying)" : ""))); }
-  Object.keys(ENEMIES).filter(k => ENEMIES[k].from === N).forEach(k => later.append(chip(ENEMIES[k].fly ? "fly" : "", enemyIcon(k), `New: ${ENEMIES[k].name}` + (ENEMIES[k].fly ? " (flying)" : ""))));
+  Object.keys(ENEMIES).filter(k => foeFrom(k) === N).forEach(k => later.append(chip(ENEMIES[k].fly ? "fly" : "", enemyIcon(k), `New: ${ENEMIES[k].name}` + (ENEMIES[k].fly ? " (flying)" : ""))));
   if (newRules() && N % 10 === 1) later.append(seasonBox(N, n => n === "Night" ? "Night falls" : `${n} begins`));
   later.previousElementSibling.textContent = `Then, in level ${N}`;
   later.hidden = later.previousElementSibling.hidden = !later.childElementCount;
@@ -3649,6 +3788,7 @@ const ACH = [
   { id: "bigdragon",  name: "Dragonslayer",        desc: "Defeat the Elder Dragon" },
   { id: "wyrm",       name: "Bone Breaker",        desc: "Defeat the Bone Wyrm" },
   { id: "jasmine",    name: "Not the Victim",      desc: "Defeat Jasmine the Witch" },
+  { id: "slimecube",  name: "Mopped Up",           desc: "Defeat the Slime Cube" },
   { id: "untouched",  name: "Not a Scratch",       desc: "Clear a boss level without losing a heart" },
   { id: "greatwyrm",  name: "Dragon Keeper",       desc: "Raise a dragon into a Great wyrm (level 10)" },
   { id: "lumberjack", name: "Lumberjack",          desc: "Chop down 20 trees by hand in one game" },
@@ -3656,7 +3796,7 @@ const ACH = [
   { id: "architect",  name: "Master Builder",      desc: "Have 25 defenders at once" },
   { id: "frosty",     name: "Winter's Grip",       desc: "Slow 1,000 monsters in one game" },
   { id: "namesake",   name: "What's in a Name",    desc: "Give a dragon a very special name" },
-  { id: "whisperer",  name: "Dragon Whisperer",    desc: "Find all eight special dragon names" },
+  { id: "whisperer",  name: "Dragon Whisperer",    desc: "Find all nine special dragon names" },
   { id: "laststand",  name: "By a Thread",         desc: "Clear a level with only 1 heart left" },
   { id: "allfive",    name: "Every Banner Flies",  desc: "Have all five kinds of defender at once" },
   { id: "toplevel",   name: "Tower of Strength",   desc: "Upgrade any defender to level 10" },
@@ -3935,10 +4075,10 @@ const SPELLS = {
 };
 const spellCost = id => Math.round(SPELLS[id].base * (1 + S.level * .08));
 const vsOn = id => !!(S && S.vs && S.vs.spells && S.vs.spells[id] > 0);
-const vsAvail = () => Object.keys(ENEMIES).filter(k => ENEMIES[k].from <= S.level);
+const vsAvail = () => Object.keys(ENEMIES).filter(k => foeFrom(k) <= S.level);
 // the Dark Lord's budget matches what a normal level's army would be worth, so the Keeper faces a familiar challenge
 function vsBudget(L) {
-  const avail = Object.keys(ENEMIES).filter(k => ENEMIES[k].from <= L), tw = avail.reduce((a, k) => a + ENEMIES[k].w, 0);
+  const avail = Object.keys(ENEMIES).filter(k => foeFrom(k) <= L), tw = avail.reduce((a, k) => a + ENEMIES[k].w, 0);
   const avg = avail.reduce((a, k) => a + ENEMIES[k].w * VS_UNIT(k), 0) / tw;
   return Math.round((Math.min(8 + Math.floor(L * .9), 45) - (L % 10 === 0 ? 4 : 0)) * avg);
 }
