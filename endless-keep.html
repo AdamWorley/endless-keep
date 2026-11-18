@@ -959,7 +959,11 @@ const upCost = t => Math.round(upBase(t.type) * 0.75 * Math.pow(1.55, t.lvl - 1)
 const tCost = k => Math.round(TOWERS[k].cost * (1 - .05 * perk("quarter")));
 const dragonAt = () => perk("egg") ? 5 : 10;
 // why a defender can't be built yet: tag for the bar, words for the panel. Lanterns came with rules v4, so older saved games don't get them
+// rules v5: Lanterns unlock on the first night level (41), when you first need them
+function nightFrom() { return 10 * SEASONS.findIndex(z => z.night) + 1; }
+const lanternLocked = () => rules5() && S && S.level < nightFrom();
 const lockOf = k => k === "dragon" && !S.dragon ? { tag: `Level ${dragonAt()}`, why: `The Dragon Roost unlocks after level ${dragonAt()}.`, hint: `Unlocks after you clear level ${dragonAt()}.` }
+  : k === "lantern" && lanternLocked() ? { tag: `Level ${nightFrom()}`, why: `Lanterns unlock when night first falls, at level ${nightFrom()}.`, hint: `Unlocks at level ${nightFrom()}, the first night.` }
   : k === "lantern" && !newRules() ? { tag: "New game", why: "Lanterns came after this game began. Start a new game to build them.", hint: "Lanterns came after this game began. Start a new game to build them." } : null;
 
 /* ---------- heirlooms: permanent upgrades chosen between games (meta progression) ---------- */
@@ -2566,6 +2570,7 @@ function clearWave() {
   if (mend > 0) { S.hp += mend; S.texts.push({ x: CASTLE.x + 50, y: CASTLE.y + 30, txt: "+" + mend + " ♥", life: 1.4, col: "#9fe08a" }); }
   let msg = `Level ${L} cleared! +${bonus + tpay} gold${tpay ? ` (${tpay} from the treasury)` : ""}`;
   if (L >= dragonAt() && !S.dragon) { S.dragon = true; msg = "A dragon egg has hatched! Dragon Roosts are now unlocked."; }
+  if (rules5() && L + 1 === nightFrom()) msg = "Night is coming. Lanterns are now unlocked: towers in their light see through the dark.";
   let grew = 0;
   const spring = newRules() && SEASONS[seasonIdx(L)].grow;   // a level cleared in spring counts twice for saplings
   for (const t of S.trees) if (t.planted != null && !t.fall && (spring && t.planted <= L && (t.boost = (t.boost || 0) + spring), growTree(t))) {
