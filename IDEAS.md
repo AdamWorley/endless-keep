@@ -9,6 +9,8 @@ Ticked items are in the game. Rough order within each section is by value for ef
 - [ ] **First-game coach** — 3–4 one-time tips at the right moment ("Bats incoming: catapults can't hit them").
 
 ## Gameplay
+- [x] **Towers look their level** — Mage, Frost and Catapult towers change look and name at levels 5 and 10, like the archers (looks only): Wizard's Tower → Arcane Spire, Ice Spire → Glacier Spire, Heavy Catapult → Trebuchet.
+- [x] **Slime goo** — slimes leave fading splats of goo on the road (a look only, outside the game's update).
 - [x] **The wishing fish (rules v5)** — now and then (about one level in four, from level 3; not in winter or while a wish is working) a golden fish surfaces in the pond for 8 seconds. Tap it, or press W, and choose one of three wishes: an heirloom's bonus (e.g. Sharp arrows ×3, Volley drills ×1) for the rest of that level and the next 3. It runs on real time outside the game's update, so it's as easy to catch at 3× and bots never meet it. Achievement: Wishful Thinking.
 - [x] **Trees as lookouts** — each grown tree near a tower gives it +5% range, up to +15%. Saplings count once they grow.
 - [x] **Seasons change the rules (rules v4)** — Spring: saplings grow twice as fast. Summer: no change. Autumn: chopped trees give 50% more gold. Winter: monsters on foot 15% slower, towers −10% range, Frost Spire chills last 50% longer. Night: towers −15% range unless lit. Up next warns a level ahead. Older saved games keep their old rules.

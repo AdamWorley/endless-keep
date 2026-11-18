@@ -889,7 +889,7 @@ const lookoutTrees = t => (S && t.x != null && t.type !== "lantern") ? S.trees.f
 // rules v4: each season has its own rules (see SEASONS). A game started under older rules keeps playing without them
 const newRules = () => !S || !S.rv || S.rv >= 4;
 const sRule = k => (newRules() && season && season[k]) || 0;
-const walkMul = e => e.fly ? 1 : sRule("walk") || 1;
+const walkMul = e => e.fly ? 1 : sRule("walk") || 1;   // deep snow slows monsters on foot, not fliers
 const rules5 = () => !S || !S.rv || S.rv >= 5;
 // rules v5: Archer Towers change as they grow. From level 5 they're Longbows: more reach, and arrows that bite a little
 // deeper into armour. From level 10 they're Dragon Ballistas: slow, heavy bolts built to bring down dragons, which hit
@@ -900,7 +900,11 @@ const ARCHER_TIERS = [
   { from: 5,  name: "Longbow Tower",   short: "Longbow",  range: 1.2,  dmg: 1,   rate: 1,   armorMul: 1.3 },
 ];
 const archerTier = t => (t && t.type === "archer" && !t.keep && rules5() && ARCHER_TIERS.find(z => t.lvl >= z.from)) || null;
-const towerName = t => (archerTier(t) || TOWERS[t.type]).name;   // deep snow slows monsters on foot, not fliers
+// Mage, Frost and Catapult towers change their look (and name) at levels 5 and 10, as Archer Towers do; unlike the
+// archers' tiers, these are only looks. Lanterns and Dragon Roosts already grow in their own way
+const LOOKS = { mage: ["Mage Tower", "Wizard's Tower", "Arcane Spire"], frost: ["Frost Spire", "Ice Spire", "Glacier Spire"], catapult: ["Catapult", "Heavy Catapult", "Trebuchet"] };
+const lookOf = lvl => lvl >= 10 ? 2 : lvl >= 5 ? 1 : 0;
+const towerName = t => archerTier(t) ? archerTier(t).name : LOOKS[t.type] ? LOOKS[t.type][lookOf(t.lvl)] : TOWERS[t.type].name;
 // a Lantern lights the grass round it: towers in its light ignore darkness and fog, and monsters in it take extra damage.
 // Lights don't add up: the brightest one wins
 const glowReach = t => TOWERS.lantern.range * Math.min(1.6, 1 + .04 * (t.lvl - 1));
@@ -1156,7 +1160,7 @@ let S = null, sel = null, hoverPt = null, speed = 1, paused = false, sound = tru
 let playerName = (ls.get("ek_name") || "").toString().slice(0, 16);
 let time = 0;
 function newRun() {
-  fish = null; fishL = 0;
+  fish = null; fishL = 0; goo = [];
   S = { rv: RULES_VERSION, level: 1, gold: 180, hp: 30, maxHp: 30, walls: 0, treasury: 0, dragon: false, fort: { archers: 0, mages: 0, moat: 0, masons: 0 },
         towers: [], trees: freshTrees(), enemies: [], shots: [], fx: [], texts: [],
         phase: "build", queue: [], spawnT: 0, nextT: 6, income: 0, shake: 0, waveHp: 20, newBadges: [],
@@ -1586,34 +1590,92 @@ function drawTowerShape(c, type, x, y, ang, flash, lvl, name) {
       break;
     }
     case "mage": {
-      c.fillStyle = "#58507a"; c.fillRect(x - 10, y - 34, 20, 36);
-      c.fillStyle = "#7068a0"; c.fillRect(x - 10, y - 34, 13, 36);
+      // Mage Tower; from level 5 a Wizard's Tower (stone plinth, gold band and trim, rune stones circling the orb);
+      // from level 10 an Arcane Spire (deep violet, a crystal spire for a roof, a turning ring of runes). The orb stays put
+      const look = lookOf(lvl), p = 5 + Math.sin(time * 4) * 1.2 + flash * 4 + look;
+      if (look) { c.fillStyle = "#8d877a"; c.fillRect(x - 13, y - 6, 26, 8); c.fillStyle = "#aaa395"; c.fillRect(x - 13, y - 6, 18, 3); }
+      c.fillStyle = look === 2 ? "#3f3470" : "#58507a"; c.fillRect(x - 10, y - 34, 20, 36);
+      c.fillStyle = look === 2 ? "#54469a" : "#7068a0"; c.fillRect(x - 10, y - 34, 13, 36);
       c.fillStyle = "#f3d77a"; c.beginPath(); c.arc(x, y - 18, 3.5, Math.PI, 0); c.lineTo(x + 3.5, y - 12); c.lineTo(x - 3.5, y - 12); c.fill();
-      c.fillStyle = "#2f2856"; tri(c, x - 14, y - 32, x + 14, y - 32, x + 2, y - 62);
-      const p = 5 + Math.sin(time * 4) * 1.2 + flash * 4;
+      if (look) { c.fillStyle = "#e9b949"; c.fillRect(x - 10, y - 27, 20, 2.5); }
+      if (look === 2) {   // a crystal spire
+        c.fillStyle = "#2f2856"; c.fillRect(x - 13, y - 35, 26, 4);
+        c.fillStyle = "#b9a2f0"; c.beginPath(); c.moveTo(x + 2, y - 60); c.lineTo(x + 9, y - 35); c.lineTo(x - 5, y - 35); c.closePath(); c.fill();
+        c.fillStyle = "#e3d2ff"; c.beginPath(); c.moveTo(x + 2, y - 60); c.lineTo(x - 5, y - 35); c.lineTo(x + 1, y - 35); c.closePath(); c.fill();
+      } else {
+        c.fillStyle = "#2f2856"; tri(c, x - 14, y - 32, x + 14, y - 32, x + 2, y - 62);
+        if (look) {   // a gold-trimmed roof scattered with stars
+          c.strokeStyle = "#e9b949"; c.lineWidth = 1.5; c.beginPath(); c.moveTo(x - 14, y - 32); c.lineTo(x + 14, y - 32); c.stroke();
+          c.fillStyle = "#f3d77a"; for (const [sx, sy, r] of [[-4, -38, 1.6], [5, -44, 1.3], [-1, -50, 1.1], [7, -36, 1.2]]) { c.beginPath(); c.moveTo(x + sx, y + sy - r * 1.8); c.lineTo(x + sx + r * .6, y + sy); c.lineTo(x + sx, y + sy + r * 1.8); c.lineTo(x + sx - r * .6, y + sy); c.closePath(); c.fill(); c.beginPath(); c.moveTo(x + sx - r * 1.8, y + sy); c.lineTo(x + sx, y + sy + r * .6); c.lineTo(x + sx + r * 1.8, y + sy); c.lineTo(x + sx, y + sy - r * .6); c.closePath(); c.fill(); }
+        }
+      }
       c.fillStyle = "rgba(201,168,255,.28)"; ell(c, x + 2, y - 66, p * 2, p * 2);
       c.fillStyle = "#e3d2ff"; ell(c, x + 2, y - 66, p * .8, p * .8);
+      if (look === 2) {   // the ring of runes, tilted, turning
+        c.strokeStyle = "rgba(201,168,255,.75)"; c.lineWidth = 1.2; c.setLineDash([3, 3]); c.lineDashOffset = -time * 12;
+        c.beginPath(); c.ellipse(x + 2, y - 66, 15, 5, 0, 0, Math.PI * 2); c.stroke(); c.setLineDash([]); c.lineDashOffset = 0;
+      }
+      for (let i = 0; i < (look === 2 ? 3 : look ? 2 : 0); i++) {   // rune stones circling the orb
+        const a = time * 1.8 + i * Math.PI * 2 / (look === 2 ? 3 : 2), rx = x + 2 + Math.cos(a) * (look === 2 ? 15 : 11), ry = y - 66 + Math.sin(a) * (look === 2 ? 5 : 4);
+        c.fillStyle = Math.sin(a) > 0 ? "#c9a8ff" : "#8f74d6"; c.beginPath(); c.moveTo(rx, ry - 2.6); c.lineTo(rx + 1.8, ry); c.lineTo(rx, ry + 2.6); c.lineTo(rx - 1.8, ry); c.closePath(); c.fill();
+      }
       break;
     }
     case "frost": {
-      const glow = .5 + Math.sin(time * 3) * .2 + flash;
-      c.fillStyle = `rgba(160,225,245,${.18 * glow})`; ell(c, x, y - 22, 22, 26);
+      // Frost Spire; from level 5 an Ice Spire (a ring of shards, a snowy base, a taller crystal); from level 10 a
+      // Glacier Spire (ice blocks, a tall glowing crystal, shards circling it in a ring of frost)
+      const look = lookOf(lvl), glow = .5 + Math.sin(time * 3) * .2 + flash, top = [52, 57, 63][look];
+      c.fillStyle = `rgba(160,225,245,${(.18 + look * .06) * glow})`; ell(c, x, y - 22 - look * 3, 22 + look * 3, 26 + look * 4);
+      if (look) { c.fillStyle = "#eef8fb"; ell(c, x, y + 1, 18, 5); }
+      if (look === 2) { c.fillStyle = "#bfe6f2"; c.fillRect(x - 17, y - 7, 9, 7); c.fillRect(x + 8, y - 7, 9, 7); c.fillStyle = "#dff3f9"; c.fillRect(x - 17, y - 7, 9, 2.5); c.fillRect(x + 8, y - 7, 9, 2.5); }
+      const shard = (bx, h, w, col) => { c.fillStyle = col; c.beginPath(); c.moveTo(bx - w, y - 2); c.lineTo(bx + (bx < x ? -3 : 3), y - h); c.lineTo(bx + w, y - 2); c.closePath(); c.fill(); };
+      if (look) { shard(x - 18, 18, 3, "#8fcbdd"); shard(x + 18, 20, 3, "#8fcbdd"); }
       c.fillStyle = "#6fb6cf"; c.beginPath(); c.moveTo(x - 12, y - 2); c.lineTo(x - 16, y - 22); c.lineTo(x - 8, y - 4); c.fill();
       c.beginPath(); c.moveTo(x + 10, y - 2); c.lineTo(x + 16, y - 26); c.lineTo(x + 5, y - 4); c.fill();
-      c.fillStyle = "#a9e2f2"; c.beginPath(); c.moveTo(x, y - 52); c.lineTo(x + 10, y - 22); c.lineTo(x, y); c.lineTo(x - 10, y - 22); c.closePath(); c.fill();
-      c.fillStyle = "#e3f7fd"; c.beginPath(); c.moveTo(x, y - 52); c.lineTo(x - 10, y - 22); c.lineTo(x, y); c.closePath(); c.fill();
+      c.fillStyle = "#a9e2f2"; c.beginPath(); c.moveTo(x, y - top); c.lineTo(x + 10, y - 22); c.lineTo(x, y); c.lineTo(x - 10, y - 22); c.closePath(); c.fill();
+      c.fillStyle = "#e3f7fd"; c.beginPath(); c.moveTo(x, y - top); c.lineTo(x - 10, y - 22); c.lineTo(x, y); c.closePath(); c.fill();
+      if (look === 2) {
+        c.fillStyle = `rgba(255,255,255,${.5 + Math.sin(time * 3) * .25})`; ell(c, x - 1, y - 30, 2.4, 6);   // light inside the crystal
+        c.strokeStyle = "rgba(200,240,252,.7)"; c.lineWidth = 1; c.beginPath(); c.ellipse(x, y - 30, 20, 6, 0, 0, Math.PI * 2); c.stroke();
+        for (let i = 0; i < 3; i++) {   // shards circling it
+          const a = time * 1.4 + i * Math.PI * 2 / 3, sx = x + Math.cos(a) * 20, sy = y - 30 + Math.sin(a) * 6;
+          c.fillStyle = Math.sin(a) > 0 ? "#e3f7fd" : "#9ed6e6"; c.beginPath(); c.moveTo(sx, sy - 4); c.lineTo(sx + 2, sy); c.lineTo(sx, sy + 4); c.lineTo(sx - 2, sy); c.closePath(); c.fill();
+        }
+      }
       break;
     }
     case "catapult": {
-      c.fillStyle = "#3b2a1a"; ell(c, x - 12, y + 2, 5, 5); ell(c, x + 12, y + 2, 5, 5);
+      // Catapult; from level 5 a Heavy Catapult (iron-rimmed wheels, iron bands, a stone counterweight, a pile of
+      // boulders); from level 10 a Trebuchet (a tall A-frame with a long arm, a heavy counterweight and a sling)
+      const look = lookOf(lvl), throwA = Math.min(1, flash * 2);
+      if (look === 2) {
+        c.fillStyle = "#3b2a1a"; for (const wx of [-15, -5, 5, 15]) ell(c, x + wx, y + 2, 3.6, 3.6);
+        c.fillStyle = "#7a5532"; c.fillRect(x - 20, y - 6, 40, 6);
+        c.fillStyle = "#4a4d52"; c.fillRect(x - 12, y - 6, 2.5, 6); c.fillRect(x + 9.5, y - 6, 2.5, 6);
+        c.strokeStyle = "#6b4a2b"; c.lineWidth = 3.4; c.lineCap = "round";
+        c.beginPath(); c.moveTo(x - 14, y - 5); c.lineTo(x, y - 36); c.lineTo(x + 14, y - 5); c.moveTo(x - 8, y - 18); c.lineTo(x + 8, y - 18); c.stroke();
+        c.save(); c.translate(x, y - 36); c.scale(face, 1); c.rotate(-1.15 + throwA * 1.9);
+        c.strokeStyle = "#8c6640"; c.lineWidth = 3.2; c.beginPath(); c.moveTo(9, 9); c.lineTo(-9, -30); c.stroke();
+        c.fillStyle = "#5c5f66"; c.fillRect(5, 7, 10, 9); c.fillStyle = "#73777f"; c.fillRect(5, 7, 10, 2.5);   // counterweight
+        c.strokeStyle = "#3b2a1a"; c.lineWidth = 1; c.beginPath(); c.moveTo(-9, -30); c.lineTo(-15, -22); c.stroke();     // sling
+        if (flash < .2) { c.fillStyle = "#8b8b8b"; ell(c, -15, -20, 4, 4); }
+        c.restore();
+        c.fillStyle = "#e9b949"; tri(c, x, y - 37, x, y - 47, x + 7, y - 44); c.strokeStyle = "#4a321d"; c.lineWidth = 1; c.beginPath(); c.moveTo(x, y - 36); c.lineTo(x, y - 48); c.stroke();
+        break;
+      }
+      c.fillStyle = "#3b2a1a"; ell(c, x - 12, y + 2, 5 + look, 5 + look); ell(c, x + 12, y + 2, 5 + look, 5 + look);
+      if (look) { c.strokeStyle = "#5c5f66"; c.lineWidth = 1.4; c.beginPath(); c.arc(x - 12, y + 2, 5.2, 0, Math.PI * 2); c.moveTo(x + 17.2, y + 2); c.arc(x + 12, y + 2, 5.2, 0, Math.PI * 2); c.stroke(); }
       c.fillStyle = "#7a5532"; c.fillRect(x - 17, y - 8, 34, 8);
+      if (look) { c.fillStyle = "#4a4d52"; c.fillRect(x - 13, y - 8, 2.5, 8); c.fillRect(x + 10.5, y - 8, 2.5, 8); }
       c.fillStyle = "#5e4026"; c.fillRect(x - 3, y - 20, 6, 14);
       c.save(); c.translate(x, y - 14); c.scale(face, 1);
-      c.rotate(-0.9 + Math.min(1, flash * 2) * 1.2);
+      c.rotate(-0.9 + throwA * 1.2);
       c.strokeStyle = "#8c6640"; c.lineWidth = 4; c.lineCap = "round"; c.beginPath(); c.moveTo(6, 6); c.lineTo(-4, -26); c.stroke();
+      if (look) { c.fillStyle = "#6e7178"; c.fillRect(3, 4, 8, 7); }   // stone counterweight
       c.fillStyle = "#5e4026"; ell(c, -5, -28, 6, 4);
       if (flash < .2) { c.fillStyle = "#8b8b8b"; ell(c, -5, -31, 4, 4); }
       c.restore();
+      if (look) { c.fillStyle = "#7d7a74"; ell(c, x + 19, y + 3, 3.2, 3); ell(c, x + 23, y + 4, 2.8, 2.6); c.fillStyle = "#a19d95"; ell(c, x + 21, y + 0, 2.8, 2.6); }
       break;
     }
     case "lantern": {
@@ -2642,6 +2704,7 @@ function render() {
   if (bg.width === cv.width && bg.height === cv.height) ctx.drawImage(bg, 0, 0); else ctx.drawImage(bg, 0, 0, cv.width, cv.height);
   if (fadeT > 0 && bgOld) { ctx.globalAlpha = Math.min(1, fadeT / 1.5); ctx.drawImage(bgOld, 0, 0, cv.width, cv.height); ctx.globalAlpha = 1; }
   ctx.setTransform(sc, 0, 0, sc, ox, oy);
+  if (goo.length) drawGoo();
   if (fish) drawFish();
   // a Lantern's pool of light on the grass: faint by day, bright at night and in fog
   if (S) for (const l of S.towers) if (l.type === "lantern") {
@@ -2783,12 +2846,12 @@ function frame(now) {
   if (now - last < (saver && !drag ? 28 : 15)) { requestAnimationFrame(frame); return; }  // 120 Hz screens: every other refresh
   let dt = Math.min(.05, (now - last) / 1000); last = now;
   if (RP) {  // watching a bot replay
-    if (RP.frames) replayTick(dt); else time += dt;
+    if (RP.frames) { replayTick(dt); gooTick(RP.playing ? dt * RP.speed : 0); } else time += dt;
     hitDecay(dt); checkSeason(); if (fadeT > 0) fadeT -= dt; ambient(dt); render(); if (RP.frames) replayHud();
     nextFrame(); return;
   }
   if (NET.role === "guest") {  // the Dark Lord's screen: draw the Keeper's game, moving things along between updates
-    if (S) guestTick(dt); else time += dt;
+    if (S) { guestTick(dt); gooTick(dt); } else time += dt;
     hitDecay(dt);
     checkSeason(); if (fadeT > 0) fadeT -= dt; ambient(dt); musicTick(); render(); guestHud();
     nextFrame(); return;
@@ -2796,6 +2859,7 @@ function frame(now) {
   const running = S && !paused && $("startCard").hidden;
   if (running) { for (let i = 0; i < speed; i++) update(dt); } else time += dt;
   if (S) fishTick(running ? dt : 0);
+  if (S) gooTick(running ? dt * speed : 0);
   hitDecay(dt);
   checkSeason();
   if (fadeT > 0) fadeT -= dt;
@@ -3055,8 +3119,9 @@ function renderPanel() {
   const opts = el("div", "opts");
   opts.append(costBtn(`Upgrade · ${upCost(t)} gold`, upCost(t), ev => {
     const c = upCost(t); if (S.gold < c) return; S.gold -= c; t.spent += c;
-    const before = t.type === "dragon" && dragonStage(t.lvl), tierWas = archerTier(t);
+    const before = t.type === "dragon" && dragonStage(t.lvl), tierWas = archerTier(t), lookWas = LOOKS[t.type] && lookOf(t.lvl);
     t.lvl++; sfx("up");
+    if (LOOKS[t.type] && lookOf(t.lvl) !== lookWas) toast(`Your ${LOOKS[t.type][lookWas]} has grown into ${/^[AEIOU]/.test(LOOKS[t.type][lookOf(t.lvl)]) ? "an" : "a"} ${LOOKS[t.type][lookOf(t.lvl)]}!`);
     if (archerTier(t) !== tierWas) toast(archerTier(t).shot === "bolt" ? "A Dragon Ballista! Heavy bolts that hit fliers 50% harder and shrug off armour." : "Your archers take up longbows: more reach, and arrows that bite deeper into armour.");
     if (before && dragonStage(t.lvl) !== before) toast(`${dragonLabel(t)} has grown into a ${dragonStage(t.lvl).name}!`);
     if (t.type === "dragon" && t.lvl >= 10) unlock("greatwyrm");
@@ -4477,6 +4542,31 @@ $("verNote").textContent = `Version ${GAME_VERSION} · rules v${RULES_VERSION}. 
 buildBg(); resize();
 const hot = window.claude && window.claude.hot;
 if (hot && typeof hot.snapshot === "function") { try { hot.snapshot(() => ({ save: S && S.phase !== "over" ? makeSave() : null, started: $("startCard").hidden })); } catch {} }
+/* ---------- slime goo ----------
+   Slimes leave little splats of goo on the road that fade after a few seconds. Only a look: it lives in the frame
+   loop, not the game's update, so it changes nothing and the bots never see it. */
+let goo = [];
+const GOO_LIFE = 5;
+function gooTick(dt) {
+  if (!dt) return;
+  for (const g of goo) g.life -= dt;
+  if (goo.length && goo[0].life <= 0) goo = goo.filter(g => g.life > 0);
+  for (const e of S.enemies) {
+    if (e.dead || (e.k !== "slime" && e.k !== "slimelet" && e.k !== "slimecube")) continue;
+    if (Math.random() < dt * (e.k === "slimelet" ? 2.5 : 4)) goo.push({ x: e.x + (Math.random() - .5) * e.r, y: e.y + e.r * .55 + (Math.random() - .5) * 3, r: e.r * (.35 + Math.random() * .3), life: GOO_LIFE, s: Math.random() });
+  }
+  if (goo.length > 400) goo = goo.slice(-400);
+}
+function drawGoo() {
+  const c = ctx;
+  for (const g of goo) {
+    const a = Math.min(1, g.life / 1.5) * (season.night ? .35 : .45);
+    c.fillStyle = `rgba(110,195,90,${a})`; ell(c, g.x, g.y, g.r, g.r * .42);
+    c.fillStyle = `rgba(110,195,90,${a * .8})`; ell(c, g.x + g.r * (g.s - .5) * 1.6, g.y + g.r * .25, g.r * .32, g.r * .16);   // a smaller drip beside it
+    c.fillStyle = `rgba(220,255,200,${a * .9})`; ell(c, g.x - g.r * .3, g.y - g.r * .12, g.r * .22, g.r * .08);                  // a wet shine
+  }
+}
+
 /* ---------- the wishing fish ----------
    Now and then a golden fish surfaces in the pond during a level (about one level in four, from level 3; never in
    winter, when the pond is frozen, or while a wish is still working). Tap it, or press W, before it dives and it grants a
