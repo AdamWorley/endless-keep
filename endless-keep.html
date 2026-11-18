@@ -458,6 +458,29 @@ canvas.mapedit:focus-visible { outline: 3px solid var(--gold); outline-offset: 2
   .tile .tr { text-transform: none; letter-spacing: 0; font-size: .75rem; }
 }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } .heirloom { transition: none; } }
+/* bot replays (local dev, #replay) */
+#replayBar { position: fixed; left: 50%; bottom: 12px; transform: translateX(-50%); z-index: 40; width: min(960px, calc(100vw - 24px));
+  background: var(--moss); color: var(--parch); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; box-shadow: 0 8px 24px rgba(0,0,0,.4);
+  display: grid; gap: 8px; font-size: .9rem; }
+#replayBar .rp-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+#replayBar .rp-row b { flex: 1 1 auto; min-width: 0; }
+#replayBar input[type=range] { flex: 1 1 160px; accent-color: var(--gold); }
+#replayBar select { font: inherit; border-radius: 8px; padding: 6px 8px; background: var(--moss-2); color: var(--parch); border: 1px solid var(--line); }
+#replayBar [data-rp=info] { color: var(--parch-dim); flex: 1 1 100%; }
+#replayBar .rp-file input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+#replayBar .rp-file span { display: inline-block; cursor: pointer; border-radius: 8px; padding: 8px 12px; background: var(--btn); color: var(--btn-fg); font-weight: 700; }
+#replayBar .rp-file input:focus-visible + span { outline: 2px solid var(--gold); outline-offset: 2px; }
+.replay #palette, .replay #btnWave { visibility: hidden; }
+.replay #upPanel, .replay #hallPanel, .replay #btnSpeed, .replay #btnPause, .replay #btnAuto, .replay #btnSound, .replay #btnMusic, .replay #btnBuzz { display: none; }
+.rp-log { max-height: 60vh; overflow: auto; margin-top: 6px; font-size: .85rem; }
+.rp-log table { width: 100%; border-collapse: collapse; }
+.rp-log th, .rp-log td { text-align: right; padding: 3px 6px; border-bottom: 1px solid var(--line); }
+.rp-log th:last-child, .rp-log td:last-child { text-align: left; }
+.rp-log thead th { position: sticky; top: 0; background: var(--moss); color: var(--parch-dim); font-weight: 700; }
+.rp-log tr.rec { cursor: pointer; color: var(--parch); }
+.rp-log tr:not(.rec) { color: var(--parch-dim); }
+.rp-log tr.rec:hover, .rp-log tr.rec:focus-visible { background: var(--moss-2); outline: none; }
+.rp-log tr.now { background: var(--moss-3); }
 </style>
 
 <div class="wrap" id="wrap">
@@ -466,7 +489,7 @@ canvas.mapedit:focus-visible { outline: 3px solid var(--gold); outline-offset: 2
     <div class="hud">
       <div class="stat"><span>Level</span><b id="hLevel">1</b></div>
       <div class="stat gold"><span id="hGoldLbl">Gold</span><b id="hGold">0</b></div>
-      <div class="stat hearts" id="hHeartsBox"><span class="lbl"><span class="ok">Castle</span><span class="lo">Low!</span></span><b id="hHearts">20/20</b></div>
+      <div class="stat hearts" id="hHeartsBox"><span class="lbl"><span class="ok">Castle</span><span class="lo">Low!</span></span><b id="hHearts">30/30</b></div>
     </div>
     <button id="btnAch" class="achbtn" title="Achievements"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 2h4l1 5-3 1zM17 2h-4l-1 5 3 1z" class="rib"/><circle cx="12" cy="15" r="7" class="medal"/><path d="M12 10.6l1.3 2.7 3 .4-2.2 2 .6 2.9-2.7-1.5-2.7 1.5.6-2.9-2.2-2 3-.4z" class="star"/></svg><span class="achlbl">Achievements</span><span class="achcount" id="achCount"></span></button>
   </header>
@@ -2385,6 +2408,7 @@ function askEvent() {
 }
 function startWave() {
   if (!S || S.phase !== "build") return;
+  if (RP) return;   // a replay plays itself
   if (NET.role === "guest") return vsSend({ t: "ready" });
   audio();
   if (S.vs) {  // both sides must be ready; if the Dark Lord has left, the dark forces march on by themselves
@@ -2710,6 +2734,11 @@ function nextFrame() {
 function frame(now) {
   if (now - last < (saver && !drag ? 28 : 15)) { requestAnimationFrame(frame); return; }  // 120 Hz screens: every other refresh
   let dt = Math.min(.05, (now - last) / 1000); last = now;
+  if (RP) {  // watching a bot replay
+    if (RP.frames) replayTick(dt); else time += dt;
+    hitDecay(dt); checkSeason(); if (fadeT > 0) fadeT -= dt; ambient(dt); render(); if (RP.frames) replayHud();
+    nextFrame(); return;
+  }
   if (NET.role === "guest") {  // the Dark Lord's screen: draw the Keeper's game, moving things along between updates
     if (S) guestTick(dt); else time += dt;
     hitDecay(dt);
@@ -2765,7 +2794,7 @@ cv.addEventListener("focus", () => { if (cv.matches(":focus-visible")) { kbd = k
 cv.addEventListener("blur", () => { if (kbd) hoverPt = null; kbd = null; });
 function tapBoard(x, y, byPointer, pad = 0) {
   audio();
-  if (!S || S.phase === "over" || NET.role === "guest") return;
+  if (!S || S.phase === "over" || watchOnly()) return;
   const t = towerAt(x, y);
   // once a tree is picked, taps anywhere close to it keep chopping it, so you needn't hit it exactly each time
   const cur = sel && sel.kind === "tree" && !sel.t.fall && S.trees.includes(sel.t) && Math.hypot(sel.t.x - x, sel.t.y - 12 * sel.t.s - y) < 30 * sel.t.s + pad ? sel.t : null;
@@ -2783,7 +2812,7 @@ function tapBoard(x, y, byPointer, pad = 0) {
 }
 cv.addEventListener("pointermove", ev => {
   if (ev.pointerType !== "mouse") return;
-  if (NET.role === "guest" || (S && S.vsGuest)) return;
+  if (watchOnly() || (S && S.vsGuest)) return;
   const [x, y] = toLogical(ev); hoverPt = { x, y };
   cv.style.cursor = towerAt(x, y) || treeAt(x, y) || hitCastle(x, y) || !canBuild(x, y) ? "pointer" : "not-allowed";
 });
@@ -3075,7 +3104,7 @@ function renderVsUpNext() {
 function renderUpNext() {
   const box = $("upNext"); box.textContent = "";
   if (!S) return;
-  if (NET.role === "guest") return;
+  if (watchOnly()) return;
   if (S.vs) return renderVsUpNext();
   const L = S.level, plan = planFor();
   $("upTitle").textContent = S.phase === "wave" ? `Level ${L} (under way)` : `Coming in level ${L}`;
@@ -3172,7 +3201,7 @@ function renderPalette() {
   updatePalette();
 }
 function updatePalette() {
-  if (!S || NET.role === "guest") return;
+  if (!S || watchOnly()) return;
   document.querySelectorAll("#palette .tile").forEach(b => {
     const k = b.dataset.type, d = TOWERS[k]; if (!d) return;
     const lk = lockOf(k), locked = !!lk;
@@ -3239,7 +3268,7 @@ $("btnAuto").addEventListener("click", () => { auto = !auto; if (S) S.nextT = Ma
 $("btnMusic").addEventListener("click", () => { audio(); setMusic(!music); });
 $("btnSpeed").addEventListener("click", () => { speed = speed % 3 + 1; $("btnSpeed").textContent = `Speed ${speed}×`; });
 $("btnSound").addEventListener("click", () => { sound = !sound; audio(); $("btnSound").textContent = `Sound: ${sound ? "on" : "off"}`; $("btnSound").classList.toggle("on", sound); ls.set("ek_sound", sound); audioRest(); });
-function setPaused(v) { if (!S || S.phase === "over" || !$("startCard").hidden || NET.role === "guest") return; paused = v; if (S.vs) vsSend({ t: "toast", msg: v ? "The Keeper has paused the game." : "The Keeper is back. The battle continues." }); $("pauseCard").hidden = !v; $("btnPause").textContent = v ? "Resume" : "Pause"; }
+function setPaused(v) { if (!S || S.phase === "over" || !$("startCard").hidden || watchOnly()) return; paused = v; if (S.vs) vsSend({ t: "toast", msg: v ? "The Keeper has paused the game." : "The Keeper is back. The battle continues." }); $("pauseCard").hidden = !v; $("btnPause").textContent = v ? "Resume" : "Pause"; }
 $("btnPause").addEventListener("click", () => setPaused(!paused));
 $("btnResume").addEventListener("click", () => setPaused(false));
 $("btnQuit").addEventListener("click", () => { if (S && S.phase === "build") persist(); paused = false; $("pauseCard").hidden = true; $("btnPause").textContent = "Pause"; showStart(); });
@@ -3249,7 +3278,7 @@ document.addEventListener("keydown", ev => {
   if (ev.target.tagName === "INPUT" || ev.target.tagName === "TEXTAREA" || ev.target.tagName === "SELECT") return;
   const onControl = ev.target.closest && ev.target.closest("button, a, summary, [tabindex]");
   if (ev.code === "Space" && !onControl) { ev.preventDefault(); if (S && S.phase === "build" && $("startCard").hidden && !paused) startWave(); }
-  if (NET.role === "guest") return;
+  if (watchOnly()) return;
   if (ev.key === "p" || ev.key === "P") setPaused(!paused);
   if (ev.key === "Escape") { sel = null; renderPanel(); }
   if ((ev.key === "f" || ev.key === "F") && !ev.ctrlKey && !ev.metaKey && !ev.altKey) setFull(!full);
@@ -4075,6 +4104,8 @@ function clearSave() {
    The Keeper's device simulates everything and sends the Dark Lord a picture of the battlefield ten times a second;
    the Dark Lord sends back only their choices (army, summons, spells, ready). */
 const NET = { role: null, peer: null, conn: null, timer: 0 };
+// the Dark Lord, and anyone watching a bot replay, sees the game but can't touch it
+const watchOnly = () => NET.role === "guest" || !!RP;
 const PEER_PREFIX = "endless-keep-v1-";
 const VS_UNIT = k => ENEMIES[k].gold * 2;                       // dread cost of one monster
 const SPELLS = {
@@ -4248,10 +4279,13 @@ function vsShowOver(head, note) {
   $("overCard").hidden = false;
 }
 const r1 = v => Math.round(v * 10) / 10;
+// the game as plain data: what two-player mode sends the Dark Lord many times a second, and what a bot replay records
 function vsSnap() {
+  return { t: "snap", ...snapState(), vs: { dread: Math.floor(S.vs.dread), army: S.vs.army, ready: S.vs.ready, spells: S.vs.spells, len: S.vs.len } };
+}
+function snapState() {
   return {
-    t: "snap", L: S.level, ph: S.phase, hp: S.hp, mh: S.maxHp, gold: Math.floor(S.gold), fort: S.fort, hl: S.hitTotal || 0, hd: S.hitDread || 0,
-    vs: { dread: Math.floor(S.vs.dread), army: S.vs.army, ready: S.vs.ready, spells: S.vs.spells, len: S.vs.len },
+    L: S.level, ph: S.phase, hp: S.hp, mh: S.maxHp, gold: Math.floor(S.gold), fort: S.fort, hl: S.hitTotal || 0, hd: S.hitDread || 0,
     tw: S.towers.map(t => [t.type, t.lvl, r1(t.x), r1(t.y), r1(t.ang || 0), r1(t.flash || 0), t.name || "", r1(t.hexT || 0)]),
     tr: S.trees.map(t => [t.id, t.x, t.y, r1(t.s), t.tone, t.max, t.hp, r1(t.fall || 0), t.dir, t.planted == null ? null : t.planted]),
     en: S.enemies.filter(e => !e.dead).map(e => [e.k, r1(e.d), e.path !== ROAD ? e.path.pts : 0, Math.round(e.hp), Math.round(e.max), r1(e.spd), r1(e.slowA), r1(e.slowT), r1(e.burnT), e.face, r1(e.t), r1(e.v), r1(e.v2), r1(e.sz || 1), e.col, e.r, e.boss ? 1 : 0]),
@@ -4279,15 +4313,7 @@ function guestMsg(m) {
   if (first) setMap(DEFAULT_MAP);
   const keepFx = S && S.vsGuest ? S.fx.filter(f => f.local) : [], keepTx = S && S.vsGuest ? S.texts.filter(q => q.local) : [];
   const was = S && S.vsGuest ? S : null;
-  S = {
-    vsGuest: true, level: m.L, phase: m.ph, hp: m.hp, maxHp: m.mh, gold: m.gold, fort: m.fort, vs: m.vs, perks: {}, dyn: 0, hitTotal: m.hl || 0, hitDread: m.hd || 0,
-    towers: m.tw.map(a => ({ type: a[0], lvl: a[1], x: a[2], y: a[3], ang: a[4], flash: a[5], name: a[6] || undefined, hexT: a[7] || 0 })),
-    trees: m.tr.map(a => ({ id: a[0], x: a[1], y: a[2], s: a[3], tone: a[4], max: a[5], hp: a[6], fall: a[7], dir: a[8], planted: a[9], shake: 0 })),
-    enemies: m.en.map(a => { const path = a[2] ? pathFor(a[2]) : ROAD, e = { k: a[0], d: a[1], path, hp: a[3], max: a[4], spd: a[5], slowA: a[6], slowT: a[7], burnT: a[8], face: a[9], t: a[10], v: a[11], v2: a[12], sz: a[13], col: a[14], r: a[15], boss: !!a[16], fly: !!a[2] }; [e.x, e.y] = posAt(path, e.d); return e; }),
-    shots: m.sh.map(a => { const dx = a[3] - a[1], dy = a[4] - a[2], dd = Math.hypot(dx, dy) || 1; return { kind: a[0], x: a[1], y: a[2], tx: a[3], ty: a[4], spd: a[5], stage: a[6], trav: a[7], d0: a[8], vx: dx / dd, vy: dy / dd }; }),
-    fx: m.fx.concat(keepFx), texts: m.tx.map(a => ({ txt: a[0], x: a[1], y: a[2], life: a[3], col: a[4] })).concat(keepTx),
-    trees0: null, stats: {}, newBadges: [],
-  };
+  S = stateFromSnap(m, keepFx, keepTx); S.vs = m.vs;
   if (was && S.hitTotal > was.hitTotal) {  // the Dark Lord's side of a castle hit: a reward, not an alarm
     const lost = S.hitTotal - was.hitTotal, gain = S.hitDread - was.hitDread;
     castleHit(hitTier(lost, S.hp + lost, S.hp, S.maxHp), false);
@@ -4302,6 +4328,18 @@ function guestMsg(m) {
     dlKey = barKey = "";
   }
   renderDL();
+}
+// a snapshot back into a game state that can be drawn (but not played): keepFx and keepTx are local effects to carry over
+function stateFromSnap(m, keepFx = [], keepTx = []) {
+  return {
+    vsGuest: true, level: m.L, phase: m.ph, hp: m.hp, maxHp: m.mh, gold: m.gold, fort: m.fort, perks: {}, dyn: 0, hitTotal: m.hl || 0, hitDread: m.hd || 0,
+    towers: m.tw.map(a => ({ type: a[0], lvl: a[1], x: a[2], y: a[3], ang: a[4], flash: a[5], name: a[6] || undefined, hexT: a[7] || 0 })),
+    trees: m.tr.map(a => ({ id: a[0], x: a[1], y: a[2], s: a[3], tone: a[4], max: a[5], hp: a[6], fall: a[7], dir: a[8], planted: a[9], shake: 0 })),
+    enemies: m.en.map(a => { const path = a[2] ? pathFor(a[2]) : ROAD, e = { k: a[0], d: a[1], path, hp: a[3], max: a[4], spd: a[5], slowA: a[6], slowT: a[7], burnT: a[8], face: a[9], t: a[10], v: a[11], v2: a[12], sz: a[13], col: a[14], r: a[15], boss: !!a[16], fly: !!a[2] }; [e.x, e.y] = posAt(path, e.d); return e; }),
+    shots: m.sh.map(a => { const dx = a[3] - a[1], dy = a[4] - a[2], dd = Math.hypot(dx, dy) || 1; return { kind: a[0], x: a[1], y: a[2], tx: a[3], ty: a[4], spd: a[5], stage: a[6], trav: a[7], d0: a[8], vx: dx / dd, vy: dy / dd }; }),
+    fx: m.fx.concat(keepFx), texts: m.tx.map(a => ({ txt: a[0], x: a[1], y: a[2], life: a[3], col: a[4] })).concat(keepTx),
+    trees0: null, stats: {}, newBadges: [],
+  };
 }
 function guestTick(dt) {
   time += dt;
@@ -4383,11 +4421,111 @@ $("verNote").textContent = `Version ${GAME_VERSION} · rules v${RULES_VERSION}. 
 buildBg(); resize();
 const hot = window.claude && window.claude.hot;
 if (hot && typeof hot.snapshot === "function") { try { hot.snapshot(() => ({ save: S && S.phase !== "over" ? makeSave() : null, started: $("startCard").hidden })); } catch {} }
+/* ---------- bot replays (local dev) ----------
+   Open the game with #replay on the end of its address and drop in a file from `npm run bot:replay`. The file holds
+   snapshots of the game (the same ones two-player mode sends the Dark Lord), about ten a second, and the board is
+   drawn straight from them, moving things along in between. Nothing is played or saved, and it never touches your game. */
+let RP = null;   // { meta, frames, i, t, speed, playing, tw, tr }
+function replayApply(i) {
+  const f = RP.frames[i];
+  if (f.tw) RP.tw = f.tw;   // towers and trees are only stored when they change; aim and muzzle flash come every frame
+  if (f.tr) RP.tr = f.tr;
+  const tw = f.ta ? RP.tw.map((a, j) => { const b = a.slice(); b[4] = f.ta[2 * j]; b[5] = f.ta[2 * j + 1]; return b; }) : RP.tw;
+  const was = S && S.vsGuest ? S : null;
+  S = stateFromSnap({ ...f, tw, tr: RP.tr }); S.rv = RP.meta.rules;
+  if (was && S.hitTotal > was.hitTotal && i === RP.i + 1) { const lost = S.hitTotal - was.hitTotal; castleHit(hitTier(lost, S.hp + lost, S.hp, S.maxHp), false); }
+  RP.i = i;
+}
+function replaySeek(t) {
+  const F = RP.frames; t = Math.max(0, Math.min(F[F.length - 1].g, t));
+  let lo = 0, hi = F.length - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (F[m].g <= t) lo = m; else hi = m - 1; }
+  // towers and trees come from the last frame that stored them
+  RP.tw = RP.tr = null; for (let j = lo; j >= 0 && (!RP.tw || !RP.tr); j--) { if (!RP.tw && F[j].tw) RP.tw = F[j].tw; if (!RP.tr && F[j].tr) RP.tr = F[j].tr; }
+  RP.t = t; RP.i = -1; replayApply(lo); replayHud(true);
+}
+function replayTick(dt) {
+  if (!RP.playing) { time += dt; return; }
+  const F = RP.frames, step = dt * RP.speed; RP.t += step;
+  let j = RP.i; while (j + 1 < F.length && F[j + 1].g <= RP.t) j++;
+  if (j !== RP.i) replayApply(j); else guestTick(step);
+  if (RP.i >= F.length - 1) { RP.playing = false; replayHud(true); }
+}
+function replayLevelStart(L) { const f = RP.frames.find(q => q.L === L); return f ? f.g : 0; }
+let rpKey = "";
+function replayHud(force) {
+  const bar = $("replayBar"); if (!bar || !RP.frames) return;
+  const F = RP.frames, f = F[Math.max(0, RP.i)], key = [RP.i, RP.playing, RP.speed].join("|");
+  $("hLevel").textContent = S.level; $("hGold").textContent = Math.floor(S.gold).toLocaleString(); $("hHearts").textContent = `${S.hp}/${S.maxHp}`;
+  if (!force && key === rpKey) return; rpKey = key;
+  bar.querySelector("[data-rp=play]").textContent = RP.playing ? "Pause" : RP.i >= F.length - 1 ? "Replay" : "Play";
+  const sl = bar.querySelector("input[type=range]"); if (document.activeElement !== sl) sl.value = RP.t;
+  const sel = bar.querySelector("select[data-rp=level]"); if (document.activeElement !== sel) sel.value = f.L;
+  const lv = (RP.meta.levels || []).find(q => q.L === f.L);
+  const log = document.querySelector(".rp-log"); if (log) { const was = log.querySelector("tr.now"), row = log.querySelector(`tr[data-l="${f.L}"]`); if (was !== row) { if (was) was.classList.remove("now"); if (row) { row.classList.add("now"); row.scrollIntoView({ block: "nearest" }); } } }
+  bar.querySelector("[data-rp=info]").textContent = `Level ${f.L} · ${f.ph === "wave" ? "wave" : "building"}` +
+    (lv ? ` · lost ${lv.hpLost} heart${lv.hpLost === 1 ? "" : "s"} · ${lv.towers} towers${lv.ev ? " · event: " + lv.ev : ""}` : "");
+}
+function replayStart(data) {
+  if (!data || !Array.isArray(data.frames) || !data.frames.length || !data.meta) { toast("That isn't a replay file from npm run bot:replay."); return; }
+  RP = { meta: data.meta, frames: data.frames, i: -1, t: 0, speed: 2, playing: true, tw: null, tr: null };
+  setMap(data.meta.map ? { name: "Replay", road: data.meta.map } : DEFAULT_MAP);
+  modalDone = null; closeModal(); $("startCard").hidden = true; $("overCard").hidden = true; sel = null;
+  document.documentElement.classList.add("replay"); $("palette").textContent = ""; $("selPanel").textContent = "";
+  replaySeek(0); seasonI = seasonIdx(S.level); season = SEASONS[seasonI]; buildBg(); amb = []; fadeT = 0;
+  const M = data.meta, bar = $("replayBar"), levels = [...new Set(data.frames.map(q => q.L))];
+  bar.querySelector("[data-rp=title]").textContent = `${M.strategy} · seed ${M.seed} · held ${M.held} levels${M.killedBy && M.killedBy.length ? " · fell to " + M.killedBy.join(", ") : ""}`;
+  const sl = bar.querySelector("input[type=range]"); sl.max = data.frames[data.frames.length - 1].g; sl.step = .1;
+  const ls = bar.querySelector("select[data-rp=level]"); ls.textContent = ""; levels.forEach(L => { const o = document.createElement("option"); o.value = L; o.textContent = "Level " + L; ls.append(o); });
+  // the side panel: the whole game level by level; the recorded levels can be jumped to
+  const p = $("selPanel"); p.textContent = "";
+  p.append(el("h3", "", "Bot replay"), el("p", "hint", `Recorded levels ${levels[0]}–${levels[levels.length - 1]} of a game that held ${M.held}. Game ${M.game}, rules v${M.rules}. Click a recorded level to jump to it.`));
+  const box = el("div", "rp-log"), tb = document.createElement("table"), body = document.createElement("tbody");
+  tb.innerHTML = "<thead><tr><th>Level</th><th>Hearts lost</th><th>Gold</th><th>Towers</th><th>Event</th></tr></thead>";
+  for (const q of M.levels || []) {
+    const tr = document.createElement("tr"), rec = levels.includes(q.L); tr.dataset.l = q.L;
+    for (const v of [q.L, q.hpLost, Math.floor(q.gold).toLocaleString(), q.towers, q.ev || ""]) tr.append(el("td", "", String(v)));
+    if (rec) { tr.className = "rec"; tr.tabIndex = 0; const go = () => replaySeek(replayLevelStart(q.L)); tr.addEventListener("click", go); tr.addEventListener("keydown", e => { if (e.key === "Enter") go(); }); }
+    body.append(tr);
+  }
+  tb.append(body); box.append(tb); p.append(box);
+  replayHud(true);
+}
+async function replayLoad(file) {
+  try {
+    const gz = /\.gz$/i.test(file.name) || new Uint8Array(await file.slice(0, 2).arrayBuffer()).join() === "31,139";
+    const data = await new Response(gz ? file.stream().pipeThrough(new DecompressionStream("gzip")) : file).json();
+    replayStart(data);
+  } catch (e) { toast("Couldn't read that replay: " + e.message); }
+}
+function replayOpen() {
+  const bar = document.createElement("div"); bar.id = "replayBar";
+  bar.innerHTML = `<div class="rp-row"><b data-rp="title">Bot replay: choose a file from npm run bot:replay, or drop one on the page</b>
+    <label class="rp-file"><input type="file" accept=".json,.gz,application/json,application/gzip"><span>Open replay…</span></label></div>
+    <div class="rp-row"><button data-rp="prev" title="Previous level">‹ Level</button><button data-rp="play" class="primary">Play</button><button data-rp="next" title="Next level">Level ›</button>
+    <select data-rp="speed" aria-label="Speed">${[.5, 1, 2, 4, 8, 16].map(v => `<option value="${v}"${v === 2 ? " selected" : ""}>${v}×</option>`).join("")}</select>
+    <select data-rp="level" aria-label="Jump to level"></select><input type="range" min="0" max="1" value="0" aria-label="Position in the replay"><span data-rp="info"></span></div>`;
+  document.body.append(bar);
+  const q = k => bar.querySelector(k);
+  q("input[type=file]").addEventListener("change", ev => { if (ev.target.files[0]) replayLoad(ev.target.files[0]); });
+  document.addEventListener("dragover", ev => ev.preventDefault());
+  document.addEventListener("drop", ev => { ev.preventDefault(); const f = ev.dataTransfer.files[0]; if (f) replayLoad(f); });
+  q("[data-rp=play]").addEventListener("click", () => { if (!RP) return; if (RP.i >= RP.frames.length - 1) replaySeek(0); RP.playing = !RP.playing; replayHud(true); });
+  q("[data-rp=speed]").addEventListener("change", ev => { if (RP) RP.speed = +ev.target.value; });
+  q("[data-rp=level]").addEventListener("change", ev => { if (RP) replaySeek(replayLevelStart(+ev.target.value)); });
+  q("input[type=range]").addEventListener("input", ev => { if (RP) replaySeek(+ev.target.value); });
+  const hop = d => { if (!RP) return; const ls = [...new Set(RP.frames.map(f => f.L))], k = ls.indexOf(S.level) + d; if (k >= 0 && k < ls.length) replaySeek(replayLevelStart(ls[k])); };
+  q("[data-rp=prev]").addEventListener("click", () => hop(-1)); q("[data-rp=next]").addEventListener("click", () => hop(1));
+  document.addEventListener("keydown", ev => { if (!RP || ev.target.closest("input, select")) return; if (ev.key === " ") { ev.preventDefault(); q("[data-rp=play]").click(); } else if (ev.key === "ArrowRight") hop(1); else if (ev.key === "ArrowLeft") hop(-1); });
+  RP = { meta: null, frames: null, playing: false };   // watching, but nothing loaded yet
+  modalDone = null; closeModal(); $("startCard").hidden = true; paused = true;
+}
+
 function boot(data) {
   newRun(); // a preview run behind the start card so the meadow is alive
   if (data && data.save && data.started) begin(data.save); else showStart();
   renderPalette(); renderBoard(); renderUpNext(); updateHud();
   requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
+  if (/^#replay/.test(location.hash)) { replayOpen(); return; }   // local dev: watch a bot's game instead of playing
   initCloud();
 }
 if (hot && typeof hot.ready === "function") hot.ready(boot); else boot((hot && hot.data) || {});

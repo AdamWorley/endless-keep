@@ -24,6 +24,25 @@ npm run bot:test -- --games 50 --save before
 npm run bot:test -- --games 50 --compare before
 ```
 
+## Watching a game
+
+`npm run bot:replay` plays one game with a saved strategy and records it, about ten snapshots a second, to
+`bot/replays/` (not committed). Open the game with `#replay` on the end of its address, either the built game at
+<http://localhost:8420/#replay> or `endless-keep.html#replay` straight from disk, then choose the file or drop it on
+the page. You get play and pause, speed (½× to 16×), a position slider, a jump to any recorded level, and the whole
+game's level-by-level log beside the board (hearts lost, gold, towers, the level's event).
+
+```sh
+npm run bot:replay                                        # all-rounder, first test seed, the last 10 levels
+npm run bot:replay -- --strategy no-frost --levels 40-60  # a level range
+npm run bot:replay -- --seed 2000000007 --levels 50       # one level
+npm run bot:replay -- --levels all                        # every level (tens of MB)
+```
+
+The snapshots are the same ones two-player mode sends the Dark Lord, so the replay draws exactly what the bot's game
+held. Ten levels is about 5 MB. The seeds match `bot:test`'s (2000000000 upwards), so a game that falls early in a
+test can be recorded and watched.
+
 ## What a strategy is
 
 A strategy is about 45 numbers (genes, listed in `policy.mjs`). Between levels it:

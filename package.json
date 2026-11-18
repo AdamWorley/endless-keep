@@ -6,7 +6,8 @@
     "build": "sh pwa/build.sh && node pwa/check.mjs dist",
     "dev": "npm run build && wrangler pages dev --port 8420",
     "bot:evolve": "node bot/evolve.mjs",
-    "bot:test": "node bot/test.mjs"
+    "bot:test": "node bot/test.mjs",
+    "bot:replay": "node bot/replay.mjs"
   },
   "devDependencies": {
     "wrangler": "^4.162.0"

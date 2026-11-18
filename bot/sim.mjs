@@ -16,7 +16,7 @@ globalThis.__EK = {
   begin, startWave, update, checkSeason, lightAt, makeSave, placeTower, canBuild, gridSnap, tStats, upCost, tCost, keepStats, lockOf, glowReach,
   chop, plantSapling, plantCost, treeStage, woodValue, GROWTH, repairCost, wallCost, treasCost, treasPay, FORT, curEv, chooseEvent, EVENTS,
   TOWERS, TORDER, ENEMIES, ROAD, posAt, distRoad, CELL, W, H, CASTLE, dragonAt, bossFor, planFor, goldScale,
-  RULES_VERSION, GAME_VERSION,
+  RULES_VERSION, GAME_VERSION, snapState, get MAP() { return MAP; }, DEFAULT_MAP,
 };
 `;
 
