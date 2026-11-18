@@ -1016,9 +1016,11 @@ const ENEMIES = {
   knight: { name: "Skeleton knights", hp: 3,    spd: 36, armor: .5,  gold: 10, from: 12, r: 11, col: "#d8d4c8", dmg: 2, w: 2 },
   troll:  { name: "Trolls",           hp: 6.2,  spd: 28, armor: .1,  gold: 16, from: 16, r: 15, col: "#6f8a99", dmg: 3, w: 1.5, regen: .015 },
   wyvern: { name: "Wyverns",          hp: 3.2,  spd: 50, armor: .1,  gold: 14, from: 22, r: 12, col: "#3f8f7a", dmg: 2, w: 1.5, fly: true },
-  // rules v5: slimes split when they die (split: what into, how many). Little slimelets only ever come out of a slime
-  slime:    { name: "Slimes",           hp: 2.2,  spd: 40, armor: 0,   gold: 5,  from: 51, r: 11, col: "#7fd36a", dmg: 1, w: 1.5, split: { k: "slimelet", n: 2 }, rv: 5 },
-  slimelet: { name: "Slimelets",        hp: 0.7,  spd: 58, armor: 0,   gold: 2,  from: Infinity, r: 7, col: "#97e07f", dmg: 1, w: 0, rv: 5 },
+  // rules v5: slimes split when they die (split: what into, how many, or [fewest, most]), and all slimes heal.
+  // Slimelets only ever come out of a slime: each is about an orc, without the armour but healing. A slime and its
+  // 8-12 slimelets are about 30 health in all, so they're the late game's wall
+  slime:    { name: "Slimes",           hp: 4,    spd: 36, armor: 0,   gold: 6,  from: 51, r: 12, col: "#7fd36a", dmg: 1, w: 1.2, regen: .015, split: { k: "slimelet", n: [8, 12] }, rv: 5 },
+  slimelet: { name: "Slimelets",        hp: 2.6,  spd: 40, armor: 0,   gold: 6,  from: Infinity, r: 9, col: "#97e07f", dmg: 2, w: 0, regen: .015, rv: 5 },
   orcrider: { name: "Orc raiders",    hp: 2.7,  spd: 66, armor: .15, gold: 12, from: 26, r: 14, col: "#6e6a66", dmg: 2, w: 1.5, rider: true },
 };
 // rules v4 made trolls a little easier (they had 6.5 health and healed 2% a second); games started earlier keep the old troll
@@ -1031,8 +1033,8 @@ const BOSSES = [
   { key: "wyrm",      name: "Bone Wyrm",    hp: 32, spd: 20, armor: .45, gold: 250, r: 24, col: "#e6dfcc", dmg: 6 },
   // flies on a broomstick and hexes whichever tower hurts her (it stops firing for 2 seconds), one tower every 1.5 seconds
   { key: "jasmine",   name: "Jasmine the Witch", hp: 18, spd: 24, armor: .1, gold: 300, r: 24, col: "#4a3a63", dmg: 6, fly: true, hex: 1.5, named: true },
-  // rules v5, level 50: a great cube of jelly that bursts into four slimes, each of which bursts into two slimelets
-  { key: "slimecube", name: "Slime Cube",   hp: 16, spd: 20, armor: 0,   gold: 200, r: 24, col: "#6cc35a", dmg: 6, split: { k: "slime", n: 4 }, rv: 5 },
+  // rules v5, level 50: a great cube of jelly that bursts into four slimes, each of which bursts into 8-12 slimelets
+  { key: "slimecube", name: "Slime Cube",   hp: 22, spd: 20, armor: 0,   gold: 200, r: 24, col: "#6cc35a", dmg: 6, regen: .01, split: { k: "slime", n: 4 }, rv: 5 },
 ];
 const bossList = () => rules5() ? BOSSES : BOSSES.filter(b => !b.rv);
 const bossFor = L => { const b = bossList(); return b[(L / 10 - 1) % b.length]; };
@@ -1062,10 +1064,10 @@ const LORE = {
                tip: "A long fight. Line the road with Frost Spires, and lean on Mage Towers: his armour blunts arrows and boulders." },
   bigdragon: { lore: "An ancient dragon who takes your little roost as a personal insult. She flies straight for the keep and burns anything that argues.",
                tip: "She flies, so Catapults are no use. Every other tower can reach her." },
-  slime:     { lore: "Nobody knows where slimes come from, but everyone knows what happens when you hit one: now there are two. They wobble up the road eating whatever they find, which is usually something important.",
-               tip: "Each one bursts into two quick little slimelets. Catapult and Dragon splash catch the whole family at once; a lone Mage Tower wastes its big bolts on the little ones." },
+  slime:     { lore: "Nobody knows where slimes come from, but everyone knows what happens when you hit one: now there are ten. They wobble up the road eating whatever they find, which is usually something important.",
+               tip: "Slimes heal, and each one bursts into a swarm of 8 to 12 orc-sized slimelets that heal too, so chip damage gets you nowhere. Hit the whole family hard and together: Catapult and Dragon splash, with a Frost Spire to hold them in range. Dragon fire keeps burning while they heal." },
   slimecube: { lore: "A slime that never stopped eating. It has swallowed a cart, two knights and most of a bridge, and it is still hungry. You can see them all inside it, slowly turning.",
-               tip: "When it falls it bursts into four slimes, and each of those into two slimelets, so the fight isn't over when the cube is. Keep splash towers near the castle end of the road to mop up." },
+               tip: "It heals as it goes, and when it falls it bursts into four slimes, each of which bursts into a swarm of 8 to 12 slimelets, and they all heal too. The fight isn't over when the cube is: keep splash towers near the castle end of the road to mop up." },
   wyrm:      { lore: "A dragon's skeleton held together by old magic and older spite. Its bones shrug off arrows and boulders alike.",
                tip: "Mage Towers and the Dragon Roost ignore its armour, and a Frost Spire keeps it in their range." },
 };
@@ -2240,11 +2242,11 @@ function makeFoe(d, path, L) {
 // a slime bursts into smaller ones where it fell, spread a little along the road. They join at the end of the tick,
 // so the shot that burst the parent doesn't also hit its children
 function burst(e) {
-  const { k, n } = e.split, d = { ...foeDef(k), k };
+  const { k } = e.split, d = { ...foeDef(k), k }, n = Array.isArray(e.split.n) ? e.split.n[0] + Math.floor(Math.random() * (e.split.n[1] - e.split.n[0] + 1)) : e.split.n;
   if (!S.vsGuest && !meta.seen[k]) { meta.seen[k] = 1; beastDirty = true; }
   for (let i = 0; i < n; i++) {
     const c = makeFoe(d, e.path, S.level);
-    c.d = Math.max(1, Math.min(e.path.len - 1, e.d + (i - (n - 1) / 2) * (e.r * .9)));
+    c.d = Math.max(1, Math.min(e.path.len - 1, e.d + (i - (n - 1) / 2) * Math.max(6, e.r * 3 / n)));   // a huddle along the road, a few steps apart
     [c.x, c.y] = posAt(e.path, c.d);
     c.slowT = e.slowT; c.slowA = e.slowA;   // still cold if the parent was
     (S.born = S.born || []).push(c);
