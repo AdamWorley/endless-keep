@@ -987,13 +987,14 @@ const perk = id => (id && S && ((S.perks && S.perks[id]) || 0) + (wishLeft() && 
 // every monster and boss, for the bestiary's "met" and "defeated" records
 const BEAST_KEYS = ["goblin", "wolf", "orc", "bat", "wolfrider", "knight", "troll", "wyvern", "orcrider", "slime", "trollking", "bigdragon", "wyrm", "jasmine", "slimecube"];
 const beastRecord = (src, max) => { const o = {}; if (src && typeof src === "object") for (const k of BEAST_KEYS) { const n = Math.floor(+src[k] || 0); if (n > 0) o[k] = Math.min(max, n); } return o; };
+// (this runs before BOSSES is defined, when the saved meta is first read, so it checks names against BEAST_KEYS)
 function normMeta(m) {
   m = m && typeof m === "object" ? m : {};
   const perks = {}, src = m.perks && typeof m.perks === "object" ? m.perks : {};
   for (const id in PERKS) { const n = Math.floor(+src[id] || 0); if (n > 0) perks[id] = Math.min(PERKS[id].max, n); }
   const offer = Array.isArray(m.offer) && m.offer.length && m.offer.every(id => PERKS[id]) ? m.offer.slice(0, 3) : null;
   return { v: 1, perks, picks: Math.max(0, Math.min(50, Math.floor(+m.picks || 0))), luck: Math.max(0, Math.floor(+m.luck || 0)),
-           runs: Math.max(0, Math.floor(+m.runs || 0)), offer, names: Array.isArray(m.names) ? [...new Set(m.names.filter(n => typeof n === "string" && SECRET_DRAGONS[n]))] : [], dynasty: Math.max(0, Math.min(99, Math.floor(+m.dynasty || 0))), seen: beastRecord(m.seen, 1), slain: beastRecord(m.slain, 1e9), savedAt: +m.savedAt || 0 };
+           runs: Math.max(0, Math.floor(+m.runs || 0)), offer, back: Array.isArray(m.back) ? [...new Set(m.back.filter(k => typeof k === "string" && BEAST_KEYS.includes(k)))] : [], names: Array.isArray(m.names) ? [...new Set(m.names.filter(n => typeof n === "string" && SECRET_DRAGONS[n]))] : [], dynasty: Math.max(0, Math.min(99, Math.floor(+m.dynasty || 0))), seen: beastRecord(m.seen, 1), slain: beastRecord(m.slain, 1e9), savedAt: +m.savedAt || 0 };
 }
 let meta = normMeta(ls.get("ek_meta"));
 const heirloomCount = () => Object.values(meta.perks).reduce((a, b) => a + b, 0);
@@ -1086,7 +1087,7 @@ const LORE = {
                tip: "A Frost Spire at the start of the road buys time for your other towers." },
   jasmine:   { lore: "Queen of the witches of the Gloaming Wood. Jasmine burns the mill, curses the bridge and turns the miller into a newt, then flies off to tell everyone how cruelly the village treated her. In every version of the story she tells, she is the one who was wronged.",
                tip: "She rides a broomstick, so Catapults can't touch her, and she hexes the towers that hurt her, silencing each for two seconds. Spread the damage across many Archer and Mage Towers so there's always another one left to blame. Castle archers and mages are beneath her notice: she never hexes them." },
-  trollking: { lore: "The oldest troll under the mountain, crowned with whatever he crushed last. Every fifty levels he comes to see why his trolls haven't come home.",
+  trollking: { lore: "The oldest troll under the mountain, crowned with whatever he crushed last. He has come down from the mountain to see why his trolls haven't come home.",
                tip: "A long fight. Line the road with Frost Spires, and lean on Mage Towers: his armour blunts arrows and boulders." },
   bigdragon: { lore: "An ancient dragon who takes your little roost as a personal insult. She flies straight for the keep and burns anything that argues.",
                tip: "She flies, so Catapults are no use. Every other tower can reach her." },
@@ -2257,6 +2258,7 @@ function spawn(item) {
   if (item.k === "boss") { const b = bossFor(S.level); d = { ...b, boss: true }; d.k = b.key; }
   else { d = { ...foeDef(item.k), k: item.k }; }
   if (!S.vsGuest && !meta.seen[d.k]) { meta.seen[d.k] = 1; beastDirty = true; }
+  if (!S.vsGuest && d.back && !meta.back.includes(d.k)) { meta.back.push(d.k); beastDirty = true; }   // the bestiary keeps a returning boss secret until you've met it
   const L = S.level;
   let path = ROADS[(S.spawnN = (S.spawnN || 0) + 1) % ROADS.length];   // monsters on foot take turns between the paths
   if (d.fly) { const sy = 60 + Math.random() * 440; path = mkPath([[-40, sy], [CASTLE.x + 20, CASTLE.y + 110 + (Math.random() - .5) * 60]]); }
@@ -3181,7 +3183,8 @@ function renderUpNext() {
   const later = $("upLater"); later.textContent = "";
   // bosses and new monsters are only hinted one level ahead, so each one is still a bit of a surprise
   const N = L + 1;
-  if (N % 10 === 0) { const b = bossFor(N); later.append(chip("boss", enemyIcon(b.key, b), `Boss: ${b.name}` + (b.fly ? " (flying)" : ""))); }
+  if (N % 10 === 0) { const b = bossFor(N), secret = b.back && !meta.back.includes(b.key);   // a returning boss you haven't met stays a mystery until its level
+    later.append(chip("boss", enemyIcon(b.key, b, 52, secret), secret ? "Boss: ???" : `Boss: ${b.name}` + (b.fly ? " (flying)" : ""))); }
   Object.keys(ENEMIES).filter(k => foeFrom(k) === N).forEach(k => later.append(chip(ENEMIES[k].fly ? "fly" : "", enemyIcon(k), `New: ${ENEMIES[k].name}` + (ENEMIES[k].fly ? " (flying)" : ""))));
   if (newRules() && N % 10 === 1) later.append(seasonBox(N, n => n === "Night" ? "Night falls" : `${n} begins`));
   later.previousElementSibling.textContent = `Then, in level ${N}`;
@@ -3451,12 +3454,13 @@ function beastPage(k, atLevel) {
   if (d.hex) row("Hex", `Silences the tower that hurt her for 2 seconds (one every ${d.hex} seconds)`);
   row("Castle hearts it takes", String(d.dmg));
   row(`Gold per kill (level ${L})`, String(Math.max(1, Math.round(d.gold * goldScale(L)))));
-  row(boss ? "Comes at levels" : "First appears", boss ? `${first}, ${first + 10 * BOSSES.length}, ${first + 20 * BOSSES.length}…` : `level ${first}`);
+  const metBack = boss && meta.back.includes(k);
+  row(metBack ? "Comes at levels" : "First appears", metBack ? `${first}, ${first + 10 * BOSSES.length}, ${first + 20 * BOSSES.length}…` : `level ${first}`);
   row("Defeated by you", (meta.slain[k] || 0).toLocaleString());
   box.append(kv);
   const tips = el("ul", "tips");
   if (lore.tip) tips.append(el("li", "", lore.tip));
-  if (boss && d.again && rules5()) { const li = el("li"); li.append(el("b", "", `Comes back as ${d.again.name}`), document.createTextNode(` from level ${first + 10 * BOSSES.length}: ${d.again.desc}`)); tips.append(li); }
+  if (metBack && d.again && rules5()) { const li = el("li"); li.append(el("b", "", `Comes back as ${d.again.name}`), document.createTextNode(` from level ${first + 10 * BOSSES.length}: ${d.again.desc}`)); tips.append(li); }
   else if (d.fly) tips.append(el("li", "", "It flies over everything, so Catapults can't hit it."));
   if (!lore.tip && d.armor >= .3) tips.append(el("li", "", "Mage Towers, Frost Spires and the Dragon Roost ignore armour."));
   box.append(tips);
