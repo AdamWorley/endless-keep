@@ -1,17 +1,17 @@
 {
  "name": "all-rounder",
  "ban": [],
- "fitness": 129,
+ "fitness": 123.66666666666667,
  "held": [
   125,
-  127,
-  135
+  126,
+  120
  ],
- "foundInGeneration": 12,
- "generations": 12,
+ "foundInGeneration": 2,
+ "generations": 2,
  "game": "1.5.0",
  "rules": 5,
- "savedAt": "2026-11-18T08:52:00.525Z",
+ "savedAt": "2026-11-18T15:16:34.009Z",
  "summary": {
   "eras": [
    {

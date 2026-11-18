@@ -908,7 +908,8 @@ const towerName = t => archerTier(t) ? archerTier(t).name : LOOKS[t.type] ? LOOK
 // a Lantern lights the grass round it: towers in its light ignore darkness and fog, and monsters in it take extra damage.
 // Lights don't add up: the brightest one wins
 const glowReach = t => TOWERS.lantern.range * Math.min(1.6, 1 + .04 * (t.lvl - 1));
-const glowBonus = t => Math.min(.3, .1 + .02 * (t.lvl - 1));
+// rules v5: capped at +20% (level 6) instead of +30% (level 11)
+const glowBonus = t => Math.min(rules5() ? .2 : .3, .1 + .02 * (t.lvl - 1));
 // every monster hit asks this, so the Lanterns are listed once per tick (or when towers are added or sold), not per hit
 let lightList = [], lightOf = null, lightLen = -1, lightTime = -1;
 function lightAt(x, y) {
