@@ -894,20 +894,29 @@ function lightAt(x, y) {
   return best;
 }
 const litTowers = l => S.towers.filter(t => t.type !== "lantern" && Math.hypot(l.x - t.x, l.y - t.y) <= glowReach(l));
+// rules v5 tuning, from bot tests where only frost and catapults earned their place: each level now adds 55% damage,
+// the same as an upgrade's extra cost (it was 50%, so a carpet of cheap towers beat a few strong ones; now an upgrade
+// is worth as much per gold as a new tower, and saves a build spot and adds range). Monsters gain 0.35% health a
+// level to match (HP5), so overall difficulty stays where it was. Mages hit 25% harder so they really are the answer
+// to trolls and knights, and dragon upgrades are priced as if the roost cost 200, not 350
+const TUNE5 = { mage: { dmg: 40 } };
+const towerDef = k => rules5() && TUNE5[k] ? { ...TOWERS[k], ...TUNE5[k] } : TOWERS[k];
+const lvlDmg = n => Math.pow(rules5() ? 1.55 : 1.5, n);
+const upBase = k => k === "dragon" && rules5() ? 200 : TOWERS[k].cost;
 function tStats(t) {
-  const d = TOWERS[t.type], n = t.lvl - 1, sp = dragonSecret(t) || {};
+  const d = towerDef(t.type), n = t.lvl - 1, sp = dragonSecret(t) || {};
   if (t.type === "lantern") return { dmg: 0, range: glowReach(t), rate: 0, slow: 0, bonus: glowBonus(t) };
   const lit = t.x != null && !!lightAt(t.x, t.y), dim = (evOn("fog") || vsOn("fog") ? .8 : 1) * (sRule("gloom") || 1);
   const spDmg = (sp.dmg || 1) * (sp.dark ? (season && season.night ? 1.25 : 1.1) : 1), tier = archerTier(t) || {};
   return {
-    dmg: d.dmg * Math.pow(1.5, n) * (1 + .06 * perk(TYPE_PERK[t.type]) + .1 * perk("crown") + .05 * dyn()) * (evOn("wizard") ? 1.3 : 1) * spDmg * (tier.dmg || 1),
+    dmg: d.dmg * lvlDmg(n) * (1 + .06 * perk(TYPE_PERK[t.type]) + .1 * perk("crown") + .05 * dyn()) * (evOn("wizard") ? 1.3 : 1) * spDmg * (tier.dmg || 1),
     range: d.range * Math.min(1.6, 1 + 0.04 * n) * (1 + TREE_BONUS * lookoutTrees(t).length + .04 * perk("eagle")) * (lit ? 1 : dim) * (sRule("sight") || 1) * (sp.range || 1) * (tier.range || 1),
     rate: d.rate * Math.min(1.5, 1 + 0.03 * n) * (1 + .08 * perk("volley")) * (sp.rate || 1) * (tier.rate || 1),
     slow: d.slow ? Math.min(0.8, d.slow + 0.02 * n + .03 * perk("chill")) : 0,
     armorMul: tier.armorMul || d.armorMul || 1, airMul: tier.airMul || 1, shot: tier.shot,
   };
 }
-const upCost = t => Math.round(TOWERS[t.type].cost * 0.75 * Math.pow(1.55, t.lvl - 1) * (1 - .05 * perk("masonry")));
+const upCost = t => Math.round(upBase(t.type) * 0.75 * Math.pow(1.55, t.lvl - 1) * (1 - .05 * perk("masonry")));
 const tCost = k => Math.round(TOWERS[k].cost * (1 - .05 * perk("quarter")));
 const dragonAt = () => perk("egg") ? 5 : 10;
 // why a defender can't be built yet: tag for the bar, words for the panel. Lanterns came with rules v4, so older saved games don't get them
@@ -1038,7 +1047,8 @@ const LORE = {
                tip: "Mage Towers and the Dragon Roost ignore its armour, and a Frost Spire keeps it in their range." },
 };
 // enemy health compounds 5% a level up to 50, then 4.5% after that, so level 100 is a real achievement
-const hpScale = L => (1 + 0.12 * (L - 1)) * Math.pow(1.05, Math.min(L, 50) - 1) * Math.pow(1.045, Math.max(0, L - 50));
+const HP5 = 1.0035;   // rules v5: monsters get a little tougher each level, to balance towers growing faster with upgrades
+const hpScale = L => (1 + 0.12 * (L - 1)) * Math.pow(1.05, Math.min(L, 50) - 1) * Math.pow(1.045, Math.max(0, L - 50)) * (rules5() ? Math.pow(HP5, L - 1) : 1);
 const goldScale = L => 1 + 0.06 * (L - 1);
 const repairCost = () => 20 + 4 * S.level;
 const wallCost = () => Math.round(80 * Math.pow(1.6, S.walls));
@@ -2869,7 +2879,7 @@ function renderPanel() {
     const kv = el("dl", "kv"), add = (a, b) => kv.append(el("dt", "", a), el("dd", "", String(b)));
     add("Cost", tCost(k) + " gold");
     if (k === "lantern") { add("Light reach", d.range); add("Extra damage in its light", "+" + Math.round(glowBonus({ lvl: 1 }) * 100) + "%"); }
-    else { add("Damage", d.dmg); add("Range", d.range); add("Shots/sec", d.rate.toFixed(1));
+    else { add("Damage", towerDef(k).dmg); add("Range", d.range); add("Shots/sec", d.rate.toFixed(1));
       add("Splash damage", d.splash ? "Yes" : "No"); add("Hits flying", d.air ? "Yes" : "No"); add("Pierces armour", d.magic ? "Yes" : "No"); }
     if (d.slow) add("Slows by", Math.round(d.slow * 100) + "%");
     if (d.burn) add("Sets foes on fire", "Yes");
