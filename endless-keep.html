@@ -3271,9 +3271,11 @@ function renderUpNext() {
     }
     box.append(bx);
   }
-  // a new season brings new rules: say so the level before and all through its first level
+  // a new season brings new rules: say so the level before, and keep them here all season (the toast goes by too fast
+  // to read at 3x). A season with no rules (Summer) is only mentioned as it arrives
   const seasonBox = (n, title) => { const z = SEASONS[seasonIdx(n)], bx = el("div", "event " + (z.kind || "")); bx.append(el("b", "", title(z.name)), el("span", "", z.rule)); return bx; };
   if (newRules() && L > 1 && L % 10 === 1) box.append(seasonBox(L, n => n === "Night" ? "Night has fallen" : `${n} has come`));
+  else if (newRules() && SEASONS[seasonIdx(L)].kind) box.append(seasonBox(L, n => `${n}, level ${(L - 1) % 10 + 1} of 10`));
   if (L % 10 === 0) { const b = bossFor(L); box.append(beastChip("boss", b.key, b, "Boss: " + b.name + (b.fly ? " (flying)" : ""))); }
   const counts = new Map(); plan.forEach(q => { if (q.k !== "boss") counts.set(q.k, (counts.get(q.k) || 0) + 1); });
   [...counts].sort((a, b) => b[1] - a[1]).forEach(([k, n]) => box.append(beastChip(ENEMIES[k].fly ? "fly" : "", k, null, `${n} × ${ENEMIES[k].name}` + (ENEMIES[k].fly ? " (flying)" : ""))));
