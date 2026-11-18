@@ -57,6 +57,7 @@ Ticked items are in the game. Rough order within each section is by value for ef
 
 ## Feel and UI
 - [x] **Clearer castle hits** — the gate flashes, the Castle counter jolts and turns to "Low!" below a third, heavy blows redden the board's edges, phones buzz (Buzz toggle), and the Dark Lord sees "Your army got through!". Hits close together build into one cue.
+- [x] **Heirlooms button** — a crown beside Achievements in the top bar with a count. During a game it lists the heirlooms working in it and exactly what each gives (with a wish from the fish and House rank shown too), pausing a solo game while it's open; between games it opens your collection.
 - [ ] **Undo during build** — full refund for a tower placed this build phase.
 - [ ] **Install button in the PWA build** — catch the browser's install prompt and offer it on the start card.
 
