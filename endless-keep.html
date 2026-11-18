@@ -2490,7 +2490,9 @@ function rollEvent(L) {
   const nb = runHeirlooms() + 3 * dyn();
   if (Math.random() > Math.min(.6, .22 + .02 * nb)) return null;
   const w = { good: 3, choice: 3, bad: 2.5 + .35 * nb };
-  const ids = Object.keys(EVENTS).filter(id => (EVENTS[id].from || 0) <= L);
+  // rules v5: no fog before the first night (41), when Lanterns unlock to answer it
+  const from = id => id === "fog" && rules5() ? nightFrom() : EVENTS[id].from || 0;
+  const ids = Object.keys(EVENTS).filter(id => from(id) <= L);
   const tot = ids.reduce((a, id) => a + w[EVENTS[id].kind], 0); let r = Math.random() * tot;
   return { id: ids.find(id => (r -= w[EVENTS[id].kind]) <= 0) || ids[0], L, choice: null };
 }
