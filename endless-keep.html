@@ -959,9 +959,10 @@ function tStats(t) {
 }
 const upCost = t => Math.round(upBase(t.type) * 0.75 * Math.pow(1.55, t.lvl - 1) * (1 - .05 * perk("masonry")));
 // rules v5: each tower of a kind already on the map makes the next one of that kind 6% dearer (the 11th archer
-// costs 64 instead of 40), so a carpet of one kind costs more than a mix, and upgrading becomes the cheaper way to grow
-const CROWD = .06;
-const tCost = k => Math.round(TOWERS[k].cost * (1 - .05 * perk("quarter")) * (rules5() && S ? 1 + CROWD * S.towers.filter(t => t.type === k).length : 1));
+// costs 64 instead of 40), so a carpet of one kind costs more than a mix, and upgrading becomes the cheaper way to grow.
+// Dragons go up 15% a roost: bots re-trained on these rules built 25-30 roosts and nothing else that fights
+const CROWD = .06, crowdOf = k => k === "dragon" ? .15 : CROWD;
+const tCost = k => Math.round(TOWERS[k].cost * (1 - .05 * perk("quarter")) * (rules5() && S ? 1 + crowdOf(k) * S.towers.filter(t => t.type === k).length : 1));
 const dragonAt = () => perk("egg") ? 5 : 10;
 // why a defender can't be built yet: tag for the bar, words for the panel. Lanterns came with rules v4, so older saved games don't get them
 // rules v5: Lanterns unlock on the first night level (41), when you first need them
@@ -1048,9 +1049,10 @@ const ENEMIES = {
   wyvern: { name: "Wyverns",          hp: 3.2,  spd: 50, armor: .1,  gold: 14, from: 22, r: 12, col: "#3f8f7a", dmg: 2, w: 1.5, fly: true },
   // rules v5: slimes split when they die (split: what into, how many, or [fewest, most]), and all slimes heal.
   // Slimelets only ever come out of a slime: each is about an orc, without the armour but healing. A slime and its
-  // 8-12 slimelets are about 30 health in all, so they're the late game's wall
-  slime:    { name: "Slimes",           hp: 4,    spd: 36, armor: 0,   gold: 6,  from: 51, r: 12, col: "#7fd36a", dmg: 3, w: 1.2, regen: .015, split: { k: "slimelet", n: [8, 12] }, rv: 5 },
-  slimelet: { name: "Slimelets",        hp: 2.6,  spd: 40, armor: 0,   gold: 6,  from: Infinity, r: 9, col: "#97e07f", dmg: 2, w: 0, regen: .015, rv: 5 },
+  // a slime bursts into 6 slimelets. Hearts add up the family, so killing one is never worse than letting it through:
+  // a slimelet takes 1, a slime 7 (a bit more than its 6 slimelets), the Slime Cube 15 (a bit more than its 2 slimes)
+  slime:    { name: "Slimes",           hp: 4,    spd: 36, armor: 0,   gold: 6,  from: 51, r: 12, col: "#7fd36a", dmg: 7, w: 1.2, regen: .015, split: { k: "slimelet", n: 6 }, rv: 5 },
+  slimelet: { name: "Slimelets",        hp: 2.6,  spd: 40, armor: 0,   gold: 6,  from: Infinity, r: 9, col: "#97e07f", dmg: 1, w: 0, regen: .015, rv: 5 },
   orcrider: { name: "Orc raiders",    hp: 2.7,  spd: 66, armor: .15, gold: 12, from: 26, r: 14, col: "#6e6a66", dmg: 2, w: 1.5, rider: true },
 };
 // rules v4 made trolls a little easier (they had 6.5 health and healed 2% a second); games started earlier keep the old troll
@@ -1069,9 +1071,9 @@ const BOSSES = [
   // flies on a broomstick and hexes whichever tower hurts her (it stops firing for 2 seconds), one tower every 1.5 seconds
   { key: "jasmine",   name: "Jasmine the Witch", hp: 18, spd: 24, armor: .1, gold: 300, r: 24, col: "#4a3a63", dmg: 6, fly: true, hex: 1.5, named: true,
     again: { name: "Jasmine, Queen of Hexes", hex: .75, escort: "bat", aura: "#c9a8ff", desc: "She hexes a tower twice as often, and a cloud of bats flies ahead of her broomstick." } },
-  // rules v5, level 50: a great cube of jelly that bursts into four slimes, each of which bursts into 8-12 slimelets
-  { key: "slimecube", name: "Slime Cube",   hp: 22, spd: 20, armor: 0,   gold: 200, r: 24, col: "#6cc35a", dmg: 6, regen: .01, split: { k: "slime", n: 4 }, rv: 5,
-    again: { name: "Great Slime Cube", split: { k: "slime", n: 6 }, escort: "slime", aura: "#b6ef9a", desc: "Even bigger inside, it bursts into six slimes instead of four. Slimes ooze ahead of it." } },
+  // rules v5, level 50: a great cube of jelly that bursts into two slimes, each of which bursts into 6 slimelets
+  { key: "slimecube", name: "Slime Cube",   hp: 22, spd: 20, armor: 0,   gold: 200, r: 24, col: "#6cc35a", dmg: 15, regen: .01, split: { k: "slime", n: 2 }, rv: 5,
+    again: { name: "Great Slime Cube", dmg: 22, split: { k: "slime", n: 3 }, escort: "slime", aura: "#b6ef9a", desc: "Even bigger inside, it bursts into three slimes instead of two, and takes 22 hearts if it reaches the castle. Slimes ooze ahead of it." } },
 ];
 const bossList = () => rules5() ? BOSSES : BOSSES.filter(b => !b.rv);
 // how many times round the bosses have already been by level L (0 the first time, 1 from level 60…)
@@ -1115,10 +1117,10 @@ const LORE = {
                tip: "A long fight. Line the road with Frost Spires, and lean on Mage Towers: his armour blunts arrows and boulders." },
   bigdragon: { lore: "An ancient dragon who takes your little roost as a personal insult. She flies straight for the keep and burns anything that argues.",
                tip: "She flies, so Catapults are no use. Every other tower can reach her." },
-  slime:     { lore: "Nobody knows where slimes come from, but everyone knows what happens when you hit one: now there are ten. They wobble up the road eating whatever they find, which is usually something important.",
-               tip: "Slimes heal, and each one bursts into a swarm of 8 to 12 orc-sized slimelets that heal too, so chip damage gets you nowhere. Hit the whole family hard and together: Catapult and Dragon splash, with a Frost Spire to hold them in range. Dragon fire keeps burning while they heal." },
+  slime:     { lore: "Nobody knows where slimes come from, but everyone knows what happens when you hit one: now there are six. They wobble up the road eating whatever they find, which is usually something important.",
+               tip: "Slimes heal, and each one bursts into 6 orc-sized slimelets that heal too, so chip damage gets you nowhere. One that reaches the castle takes 7 hearts, more than all its slimelets would. Hit the whole family hard and together: Catapult and Dragon splash, with a Frost Spire to hold them in range. Dragon fire keeps burning while they heal." },
   slimecube: { lore: "A slime that never stopped eating. It has swallowed a cart, two knights and most of a bridge, and it is still hungry. You can see them all inside it, slowly turning.",
-               tip: "It heals as it goes, and when it falls it bursts into four slimes, each of which bursts into a swarm of 8 to 12 slimelets, and they all heal too. The fight isn't over when the cube is: keep splash towers near the castle end of the road to mop up." },
+               tip: "It heals as it goes, and when it falls it bursts into two slimes, each of which bursts into 6 slimelets, and they all heal too. If it reaches the castle it takes 15 hearts, half the walls. The fight isn't over when the cube is: keep splash towers near the castle end of the road to mop up." },
   wyrm:      { lore: "A dragon's skeleton held together by old magic and older spite. Its bones shrug off arrows and boulders alike.",
                tip: "Mage Towers and the Dragon Roost ignore its armour, and a Frost Spire keeps it in their range." },
 };
@@ -3058,8 +3060,8 @@ function renderPanel() {
     const bw = el("p", "best"); bw.append(el("b", "", "Best against: "), document.createTextNode(d.best)); p.append(bw);
     const kv = el("dl", "kv"), add = (a, b) => kv.append(el("dt", "", a), el("dd", "", String(b)));
     { const n = rules5() ? S.towers.filter(t => t.type === k).length : 0;
-      add("Cost", tCost(k) + " gold" + (n ? ` (+${Math.round(CROWD * n * 100)}%: ${n} already built)` : "")); }
-    if (rules5()) kv.append(el("dt", "", "Each one built"), el("dd", "", `Makes the next ${Math.round(CROWD * 100)}% dearer`));
+      add("Cost", tCost(k) + " gold" + (n ? ` (+${Math.round(crowdOf(k) * n * 100)}%: ${n} already built)` : "")); }
+    if (rules5()) kv.append(el("dt", "", "Each one built"), el("dd", "", `Makes the next ${Math.round(crowdOf(k) * 100)}% dearer`));
     if (k === "lantern") { add("Light reach", d.range); add("Extra damage in its light", "+" + Math.round(glowBonus({ lvl: 1 }) * 100) + "%"); }
     else if (!d.dmg) { add("Damage", "None"); add("Range", d.range); add("Blasts/sec", d.rate.toFixed(1)); add("Chills a group", d.splash ? "Yes" : "No"); add("Reaches flying", d.air ? "Yes" : "No"); }
     else { add("Damage", d.dmg); add("Range", d.range); add("Shots/sec", d.rate.toFixed(1));
