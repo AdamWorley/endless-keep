@@ -1050,9 +1050,10 @@ const ENEMIES = {
   // rules v5: slimes split when they die (split: what into, how many, or [fewest, most]), and all slimes heal.
   // Slimelets only ever come out of a slime: each is about an orc, without the armour but healing. A slime and its
   // a slime bursts into 6 slimelets. Hearts add up the family, so killing one is never worse than letting it through:
-  // a slimelet takes 1, a slime 7 (a bit more than its 6 slimelets), the Slime Cube 15 (a bit more than its 2 slimes)
-  slime:    { name: "Slimes",           hp: 4,    spd: 36, armor: 0,   gold: 6,  from: 51, r: 12, col: "#7fd36a", dmg: 7, w: 1.2, regen: .015, split: { k: "slimelet", n: 6 }, rv: 5 },
-  slimelet: { name: "Slimelets",        hp: 2.6,  spd: 40, armor: 0,   gold: 6,  from: Infinity, r: 9, col: "#97e07f", dmg: 1, w: 0, regen: .015, rv: 5 },
+  // a slimelet takes 1, a slime 7 (a bit more than its 6 slimelets), the Slime Cube 15 (a bit more than its 2 slimes).
+  // With the smaller family (bots went 123 -> 135 levels) slimes got hardier: health 4 -> 6, slimelets 2.6 -> 3.5
+  slime:    { name: "Slimes",           hp: 6,    spd: 36, armor: 0,   gold: 6,  from: 51, r: 12, col: "#7fd36a", dmg: 7, w: 1.2, regen: .015, split: { k: "slimelet", n: 6 }, rv: 5 },
+  slimelet: { name: "Slimelets",        hp: 3.5,  spd: 40, armor: 0,   gold: 6,  from: Infinity, r: 9, col: "#97e07f", dmg: 1, w: 0, regen: .015, rv: 5 },
   orcrider: { name: "Orc raiders",    hp: 2.7,  spd: 66, armor: .15, gold: 12, from: 26, r: 14, col: "#6e6a66", dmg: 2, w: 1.5, rider: true },
 };
 // rules v4 made trolls a little easier (they had 6.5 health and healed 2% a second); games started earlier keep the old troll
