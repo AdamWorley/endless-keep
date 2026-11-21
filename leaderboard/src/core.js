@@ -19,6 +19,7 @@ export const BADGES = new Set(["lv10", "lv25", "lv50", "lv100", "trollking", "bi
   "laststand", "allfive", "toplevel", "fortress", "greenthumb", "eventful", "scholar", "slayer", "slimecube", "wish"]);
 // the game's built-in maps (MAPS in the game; the tests check they match)
 export const MAPS = new Set(["meadow", "graveyard", "millford", "trollpass", "gloaming", "saltmarsh", "harbour", "ember"]);
+for (const m of MAPS) BADGES.add("lv100@" + m);   // level 100 on each map
 const isMap = m => typeof m === "string" && MAPS.has(m);
 const MAX_LEVEL = 5000;
 const MAX_VERSION = 999;
