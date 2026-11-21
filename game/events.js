@@ -77,7 +77,17 @@ function evPortrait(who) {
   const g = cv.getContext("2d"); g.scale(2, 2); g.lineJoin = g.lineCap = "round";
   const ink = "#33261a", blob = (x, y, rx, ry, col) => { g.fillStyle = ink; ell(g, x, y, rx + 2, ry + 2); g.fillStyle = col; ell(g, x, y, rx, ry); };
   g.fillStyle = who === "wizard" ? "#2e3560" : "#3b4a2a"; g.beginPath(); g.arc(48, 48, 46, 0, Math.PI * 2); g.fill();   // backdrop
-  if (who === "wizard") {
+  if (who === "tree") {   // the spirit of a hexed tree: a gnarled face in the bark
+    g.fillStyle = "#2a1f3a"; g.beginPath(); g.arc(48, 48, 46, 0, Math.PI * 2); g.fill();
+    g.fillStyle = "rgba(90,230,160,.5)"; for (const [x, y] of [[16, 30], [80, 24], [76, 70], [20, 74]]) ell(g, x, y, 2, 2);
+    blob(48, 30, 34, 22, "#2f5a36"); blob(30, 24, 14, 10, "#3d7045"); blob(66, 22, 14, 10, "#3d7045");   // leaves
+    blob(48, 70, 20, 30, "#5a3f26");                                                                      // trunk
+    g.strokeStyle = "#3e2a17"; g.lineWidth = 2; for (const x of [38, 47, 57]) { g.beginPath(); g.moveTo(x, 50); g.quadraticCurveTo(x + 3, 70, x - 1, 96); g.stroke(); }
+    g.fillStyle = "#1c120a"; ell(g, 40, 62, 5, 4); ell(g, 56, 62, 5, 4);
+    g.fillStyle = "#c08cff"; ell(g, 40, 62, 2.6, 2); ell(g, 56, 62, 2.6, 2);                              // glowing eyes
+    g.fillStyle = "#1c120a"; g.beginPath(); g.moveTo(40, 78); g.quadraticCurveTo(48, 72, 56, 78); g.quadraticCurveTo(48, 86, 40, 78); g.fill();   // a scowl
+    g.strokeStyle = "#1c120a"; g.lineWidth = 2.4; g.beginPath(); g.moveTo(34, 54); g.lineTo(44, 58); g.moveTo(62, 54); g.lineTo(52, 58); g.stroke();   // brows
+  } else if (who === "wizard") {
     g.fillStyle = "rgba(255,240,180,.8)"; for (const [x, y] of [[18, 22], [78, 30], [70, 12], [24, 70]]) star(g, x, y, 3);
     blob(48, 92, 30, 26, "#5b3f9e");                                   // robe
     blob(48, 52, 15, 16, "#f0c9a0");                                   // face

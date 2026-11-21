@@ -101,10 +101,10 @@ function tStats(t) {
   const lit = t.x != null && !!lightAt(t.x, t.y), dim = (evOn("fog") || vsOn("fog") ? .8 : 1) * (sRule("gloom") || 1) * (t.x != null && inMist(t.x, t.y) ? .8 : 1);
   const spDmg = (sp.dmg || 1) * (sp.dark ? (season && season.night ? 1.25 : 1.1) : 1), tier = archerTier(t) || {};
   return {
-    dmg: d.dmg * lvlDmg(n) * (1 + .06 * perk(TYPE_PERK[t.type]) + .1 * perk("crown") + .05 * dyn()) * (evOn("wizard") ? 1.3 : 1) * spDmg * (tier.dmg || 1),
-    range: d.range * Math.min(1.6, 1 + 0.04 * n) * (1 + TREE_BONUS * lookoutTrees(t).length + .04 * perk("eagle")) * (lit ? 1 : dim) * (sRule("sight") || 1) * (sp.range || 1) * (tier.range || 1),
+    dmg: d.dmg * lvlDmg(n) * (1 + .06 * perk(TYPE_PERK[t.type]) + .1 * perk("crown") + .05 * dyn()) * (evOn("wizard") ? 1.3 : 1) * (hexOn("rot") ? .85 : 1) * spDmg * (tier.dmg || 1),
+    range: d.range * Math.min(1.6, 1 + 0.04 * n) * (1 + TREE_BONUS * lookoutTrees(t).length + .04 * perk("eagle")) * (lit ? 1 : dim) * (sRule("sight") || 1) * (hexOn("murk") ? .85 : 1) * (sp.range || 1) * (tier.range || 1),
     rate: d.rate * Math.min(1.5, 1 + 0.03 * n) * (1 + .08 * perk("volley")) * (sp.rate || 1) * (tier.rate || 1),
-    slow: d.slow ? Math.min(0.8, d.slow + 0.02 * n + .03 * perk("chill")) : 0,
+    slow: d.slow ? Math.min(0.8, d.slow + 0.02 * n + .03 * perk("chill")) * (MAP.heat || 1) : 0,   // heat (Ember Peak) melts the frost
     armorMul: tier.armorMul || d.armorMul || 1, airMul: tier.airMul || 1, shot: tier.shot,
   };
 }

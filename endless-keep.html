@@ -276,6 +276,8 @@ ol.board .bd .more { font-size: .72rem; color: var(--fg-dim); }
 .upnext { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { display: inline-flex; align-items: center; gap: 5px; font-size: .82rem; font-weight: 700; padding: 2px 10px 2px 4px; border-radius: 999px; background: var(--btn); color: var(--fg); box-shadow: var(--btn-raise); }
 .chip.wish { color: var(--gold-ink); background: var(--gold); }
+.chip.hex { color: #f3e9ff; background: #5b3f9e; }
+.maplist .skull { margin-left: 6px; font-size: 1.25em; line-height: 1; color: var(--bad, #b3261e); }
 .chip.boss { color: var(--bad); box-shadow: var(--btn-raise), inset 0 0 0 1.5px var(--bad-line); }
 .chip.fly { box-shadow: var(--btn-raise), inset 0 0 0 1.5px var(--wing); }
 .chip.plain { padding-left: 10px; }
@@ -778,7 +780,7 @@ const TROLLPASS = { id: "trollpass", name: "Troll pass", builtin: true, unlock: 
   tint: "rgba(80,85,100,.18)", gloom: .45, tune: "trollpass", rocks: true, road: TROLL_ROAD, stones: scatter(TROLL_ROAD, 82, 23) };
 // forest: the share of open squares that start with a tree (each worth less firewood than a meadow tree)
 const GLOAMING = { id: "gloaming", name: "Gloaming Wood", builtin: true, unlock: "jasmine", need: "Defeat Jasmine the Witch to unlock it.",
-  about: "A dim wood where trees crowd every square. Chop your way to room for towers, and sell the firewood.", forest: .7, pond: false,
+  about: "A dim wood where trees crowd every square, and some of them are hexed: fell one and its curse falls on you.", forest: .7, hexTrees: .2, hard: true, pond: false,
   tint: "rgba(30,25,80,.26)", gloom: .35, flowers: .5, tune: "gloaming",
   road: cellsAlong([[20, 460], [260, 460], [260, 260], [460, 260], [460, 460], [620, 460], [620, 220], [740, 220], [740, 380], [780, 380]]) };
 // bog: water squares are pools of bog (the road crosses on boardwalks); mist: patches [x, y, radius] where towers
@@ -803,7 +805,7 @@ const HARBOUR = { id: "harbour", name: "Harbour cliffs", builtin: true, unlock: 
 // lava: thin streams (rivers: their lines, one square wide) that block building; the road crosses on stone bridges
 const EMBER_LAVA = [riverLine([5.5, 5.5, 6, 6.5, 6.5, 6, 5.5, 5.5, 6, 6.5, 7, 7, 6.5, 6.5]), riverLine([13.5, 13.5, 13, 12.5, 12.5, 13, 13.5, 14, 14, 13.5, 13, 13, 13.5, 13.5])];
 const EMBER = { id: "ember", name: "Ember Peak", builtin: true, unlock: "greatwyrm", need: "Raise a dragon into a Great wyrm to unlock it.",
-  about: "Over the volcano's shoulder, between streams of lava. Wyverns nest up here, and bats come thick and fast.", foes: { wyvern: 2.2, bat: 1.5 },
+  about: "Over the volcano's shoulder, between streams of lava. Wyverns nest up here, bats come thick and fast, and the heat takes the bite out of frost.", foes: { wyvern: 2.2, bat: 1.5 }, heat: .6,
   lava: true, rivers: EMBER_LAVA, water: EMBER_LAVA.flatMap(l => riverCells(l, 23)), pond: false, bare: true, trees: .3, flowers: .15,
   tint: "rgba(120,40,20,.16)", gloom: .45, tune: "ember",
   road: cellsAlong([[20, 180], [660, 180], [660, 300], [100, 300], [100, 460], [740, 460], [740, 380], [780, 380]]) };
@@ -970,7 +972,7 @@ function newRun() {
 }
 function makeSave() {
   return { v: 1, level: S.level, gold: Math.floor(S.gold), hp: S.hp, maxHp: S.maxHp, walls: S.walls, treasury: S.treasury, scav: S.scav || 0, fort: S.fort,
-           dragon: S.dragon, cleared: [...TREES, ...forestTrees()].filter(t => !S.trees.some(x => x.id === t.id && !x.fall)).map(t => t.id), towers: S.towers.map(t => [t.type, t.lvl, t.spent, Math.round(t.x), Math.round(t.y), Math.round(t.dmg || 0), t.kills || 0, t.slowed || 0, t.name || ""]), planted: S.trees.filter(t => t.planted != null && !t.fall).map(t => [t.x, t.y, t.planted, t.tone, Math.max(0, t.max - t.hp), t.boost || 0]), stats: S.stats, rv: S.rv, perks: S.perks, dyn: S.dyn || 0, windUsed: !!S.windUsed, wish: S.wish || null, plan: S.plan, planL: S.planL, grid: CELL, map: S.map || null, mid: S.mid || null, ev: S.ev || null, lbt: S.lbt || null, name: playerName, savedAt: Date.now() };
+           dragon: S.dragon, cleared: [...TREES, ...forestTrees()].filter(t => !S.trees.some(x => x.id === t.id && !x.fall)).map(t => t.id), towers: S.towers.map(t => [t.type, t.lvl, t.spent, Math.round(t.x), Math.round(t.y), Math.round(t.dmg || 0), t.kills || 0, t.slowed || 0, t.name || ""]), planted: S.trees.filter(t => t.planted != null && !t.fall).map(t => [t.x, t.y, t.planted, t.tone, Math.max(0, t.max - t.hp), t.boost || 0]), stats: S.stats, rv: S.rv, perks: S.perks, dyn: S.dyn || 0, windUsed: !!S.windUsed, wish: S.wish || null, hex: S.hex || null, plan: S.plan, planL: S.planL, grid: CELL, map: S.map || null, mid: S.mid || null, ev: S.ev || null, lbt: S.lbt || null, name: playerName, savedAt: Date.now() };
 }
 // a new run on map m: a built-in map is remembered by its id (S.mid, none for the meadow), your own by its road (S.map)
 function startOn(m) {
@@ -1006,6 +1008,7 @@ function restore(sv) {
   S.stats = { ...S.stats, ...(sv.stats || {}) };
   S.rv = Number.isInteger(sv.rv) && sv.rv >= 1 && sv.rv <= 999 ? sv.rv : RULES_VERSION;  // a game keeps the rules it started under
   S.perks = normMeta({ perks: sv.perks }).perks; S.dyn = Math.max(0, Math.min(99, Math.floor(+sv.dyn || 0))); S.windUsed = !!sv.windUsed;
+  if (sv.hex && HEXES[sv.hex.id]) S.hex = { id: sv.hex.id, until: int(sv.hex.until, 0, 1e6, 0) };
   if (sv.wish && WISHES[sv.wish.id]) S.wish = { id: sv.wish.id, n: int(sv.wish.n, 1, 9, WISHES[sv.wish.id]), until: int(sv.wish.until, 0, 1e6, 0) };
   if (Array.isArray(sv.plan) && sv.planL === S.level && sv.plan.every(q => q && (q.k === "boss" || ENEMIES[q.k]))) { S.plan = sv.plan; S.planL = S.level; S.ev = sv.ev && EVENTS[sv.ev.id] && sv.ev.L === S.level ? { id: sv.ev.id, L: sv.ev.L, choice: sv.ev.choice || null } : null; }
   if (typeof sv.lbt === "string" && sv.lbt.length < 200) S.lbt = sv.lbt;   // the shared board's ticket for this run
@@ -1375,7 +1378,8 @@ function forestTrees() {
     const [x, y] = cellXY([c, q]);
     if (groundBlock(x, y) || taken.has(x + "," + y) || r() >= MAP.forest) continue;
     const s = .75 + r() * .4;
-    out.push({ id: 500 + c * ROWS + q, x, y, s, tone: r() < .2 ? 0 : 1, max: s > 1.05 ? 6 : 4, wood: 2 });
+    const id = 500 + c * ROWS + q;
+    out.push({ id, x, y, s, tone: r() < .2 ? 0 : 1, max: s > 1.05 ? 6 : 4, wood: 2, hex: hexedTree(id) });
   }
   return MAP.forestTrees = out;
 }
@@ -1584,6 +1588,7 @@ function drawLiveTree(t) {
     return;
   }
   drawTree(c, t.x + dx, t.y, t.s, t.tone);
+  if (t.hex) drawHexEyes(t);
   if (t.hp < t.max || picked) {
     const cy = t.y - 16 * t.s, rr = 17 * t.s;
     c.lineWidth = 3; c.strokeStyle = "rgba(0,0,0,.35)"; c.beginPath(); c.arc(t.x, cy, rr, 0, Math.PI * 2); c.stroke();
@@ -1609,6 +1614,7 @@ function chop(t) {
 }
 function fell(t, wood, byHand) {
   if (t.fall) return;
+  hexFalls(t);
   t.fall = .001; t.dir = Math.random() < .5 ? -1 : 1; sfx("timber");
   if (byHand) { S.stats.chopped++; if (S.stats.chopped >= 20) unlock("lumberjack"); }
   if (wood) { earn(wood); S.texts.push({ x: t.x, y: t.y - 30, txt: "+" + wood + " gold (firewood)", life: 1.2, col: "#ffe08a" }); }
@@ -1680,6 +1686,7 @@ function makeFoe(d, path, L) {
               armor: d.armor, gold: d.gold, fly: !!d.fly, r: d.r, col: cols ? cols[(Math.random() * cols.length) | 0] : d.col, dmg: d.dmg, regen: d.regen || 0, boss: !!d.boss, hex: d.hex || 0, hexCd: 0,
               slowT: 0, slowA: 0, burnT: 0, burnDps: 0, t: Math.random() * 6, face: 1, dead: false, split: d.split || null, rise: d.rise || 0, back: d.back || 0 };
   if (evOn("swift")) e.spd *= 1.2;
+  if (hexOn("hurry")) e.spd *= 1.15;
   if (evOn("ironclad")) e.armor = Math.min(.75, e.armor + .25);
   [e.x, e.y] = posAt(path, 0);
   return e;
@@ -1728,7 +1735,7 @@ function hurt(e, amt, magic, src, armorMul = 1) {
 function earn(g) { S.gold += g; S.stats.gold += g; }
 function kill(e, src) {
   e.dead = true;
-  const g = Math.max(1, Math.round(e.gold * goldScale(S.level) * (1 + .04 * perk("bounty") + .1 * perk("chest") + .05 * dyn() + SCAV.pct * (S.scav || 0)) * (evOn("goldrush") ? 2 : 1) * ((dragonSecret(src) || {}).gold || 1) * (S.vs && S.vs.live ? VS_TUNE.killPay : 1)));
+  const g = Math.max(1, Math.round(e.gold * goldScale(S.level) * (1 + .04 * perk("bounty") + .1 * perk("chest") + .05 * dyn() + SCAV.pct * (S.scav || 0)) * (evOn("goldrush") ? 2 : 1) * (hexOn("pinch") ? .7 : 1) * ((dragonSecret(src) || {}).gold || 1) * (S.vs && S.vs.live ? VS_TUNE.killPay : 1)));
   earn(g); S.stats.kills++;
   if (e.split) burst(e);
   const bk = e.k === "slimelet" ? "slime" : e.k;
@@ -1845,6 +1852,7 @@ function levelRewards(L) {
     for (let i = 0; i < 8; i++) S.fx.push({ x: t.x + (Math.random() - .5) * 20 * t.s, y: t.y - 16 * t.s, vx: (Math.random() - .5) * 40, vy: -30 - Math.random() * 30, life: .8, max: .8, col: "#c9f29a", r: 2.2, g: 40 });
   }
   S.stats.grown = (S.stats.grown || 0) + grew;
+  if (S.hex && S.hex.until <= L) { msg += ` · The curse of ${HEXES[S.hex.id].name.toLowerCase()} has lifted`; S.hex = null; }
   for (const t of S.trees) if (t.planted == null && !t.fall && growWild(t, L + 1))
     for (let i = 0; i < 8; i++) S.fx.push({ x: t.x + (Math.random() - .5) * 20 * t.s, y: t.y - 16 * t.s, vx: (Math.random() - .5) * 40, vy: -30 - Math.random() * 30, life: .8, max: .8, col: "#c9f29a", r: 2.2, g: 40 });
   if (grew) msg += ` · ${grew === 1 ? "A tree has" : grew + " trees have"} grown`;
@@ -2350,6 +2358,7 @@ function renderPanel() {
       return;
     }
     p.append(el("h3", "", planted ? GROWTH[gi].name : tr.s > 1.1 ? "Old oak" : "Young tree"));
+    if (tr.hex) p.append(el("p", "hint", "This tree is hexed: it's watching you. Fell it and its curse falls on you for three levels."));
     if (next) p.append(el("p", "hint", `Leave it ${lv(left)} more and it becomes ${next.name === "Mighty oak" ? "a" : "an"} ${next.name.toLowerCase()} worth ${Math.round(next.wood * goldScale(S.level + left))} gold of firewood.`));
     p.append(el("p", "hint", `Any tower within a short walk of this tree gets +5% range from it as a lookout.`));
     p.append(el("p", "hint", `Chop it yourself for all ${woodValue(tr)} gold of firewood (${tr.hp} more chop${tr.hp === 1 ? "" : "s"}), or let a woodcutter clear it straight away for a share: they keep ${Math.round(cutterFee() * 100)}%.`));
@@ -2422,7 +2431,8 @@ function renderPanel() {
         (dark || fog ? `, and the tower sees through the ${dark && fog ? "darkness and fog" : dark ? "darkness" : "fog"} at full range.` : ".")));
     } else if (inMist(t.x, t.y)) p.append(el("p", "hint", "Marsh mist cuts this tower's range by 20%. Build a Lantern nearby to light it up."));
     else if (dark) p.append(el("p", "hint", `Night: darkness cuts this tower's range by ${Math.round((1 - dark) * 100)}%. Build a Lantern nearby to light it up.`));
-    if (snow) p.append(el("p", "hint", `Winter: falling snow cuts range by ${Math.round((1 - snow) * 100)}%.`)); }
+    if (snow) p.append(el("p", "hint", `Winter: falling snow cuts range by ${Math.round((1 - snow) * 100)}%.`));
+    if (MAP.heat && t.type === "frost") p.append(el("p", "hint", `The lava's heat: this spire chills ${Math.round((1 - MAP.heat) * 100)}% less here.`)); }
   if (t.type === "dragon") {
     const nf = el("div", "namefield"), lab = el("label", "", "Dragon's name"), r2 = el("div", "row2");
     const inp = document.createElement("input"); inp.id = "dragonName"; inp.maxLength = 14; inp.value = t.name || ""; inp.placeholder = "Name your dragon"; inp.autocomplete = "off";
@@ -2576,6 +2586,7 @@ function renderUpNext() {
   const L = S.level, plan = planFor();
   $("upTitle").textContent = S.phase === "wave" ? `Level ${L} (under way)` : `Coming in level ${L}`;
   { const n = wishLeft(); if (n) box.append(chip("wish", null, `Wish: ${PERKS[S.wish.id].name} ×${S.wish.n}, ${n} more level${n === 1 ? "" : "s"}`)); }
+  { const n = hexLeft(); if (n) box.append(chip("hex", null, `Curse: ${HEXES[S.hex.id].name} (${HEXES[S.hex.id].desc.toLowerCase().replace(/\.$/, "")}), ${n} more level${n === 1 ? "" : "s"}`)); }
   const ev = curEv();
   if (ev && EVENTS[ev.id].kind !== "choice") {   // a toll or a wizard asks in a popup instead
     const E = EVENTS[ev.id], bx = el("div", "event " + E.kind);
@@ -3142,7 +3153,8 @@ function openMaps() {
     const list = el("ul", "maplist"), cur = chosenMap();
     const row = (m, own) => {
       const open = own || mapOpen(m), li = el("li", m.id === cur.id ? "on" : open ? "" : "locked"), n = el("div", "mn");
-      n.append(el("b", "", m.name), el("small", "", own ? routeWord(readMap(m.road).paths.length) : open ? m.about : m.need));
+      n.append(el("b", "", m.name)); if (m.hard) { const k = el("span", "skull", "☠"); k.title = "A hard map"; k.setAttribute("aria-label", "(a hard map)"); n.firstChild.append(k); }
+      n.append(el("small", "", own ? routeWord(readMap(m.road).paths.length) : open ? m.about : m.need));
       const pick = el("button", m.id === cur.id ? "primary" : "", m.id === cur.id ? "Chosen" : open ? "Play this" : "Locked");
       pick.disabled = !open; pick.setAttribute("aria-pressed", m.id === cur.id ? "true" : "false");
       pick.addEventListener("click", () => { ls.set("ek_map", m.id); openMaps(); });
@@ -4091,6 +4103,7 @@ function drawGoo() {
 }
 
 //#include game/wishing-fish.js
+//#include game/hexes.js
 
 //#include game/replay.js
 
