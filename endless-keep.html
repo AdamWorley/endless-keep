@@ -1295,7 +1295,8 @@ function drawSea(g, Z, r) {
   g.strokeStyle = "rgba(255,255,255,.35)"; g.lineWidth = 2;
   for (let i = 0; i < 26; i++) { const x = r() * W, y = top + 16 + r() * (H - top - 22); g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + 8, y - 4, x + 16, y); g.stroke(); }
   // the cliff under the castle: a jagged sandstone face in layers, grass along its top, surf breaking at its foot
-  const x0 = CASTLE.x - 30, y0 = top - 24, edge = [[x0, y0], [x0 - 6, y0 + 18], [x0 + 3, y0 + 34], [x0 - 8, y0 + 52], [x0 + 1, y0 + 70], [x0 - 10, y0 + 88], [x0 - 4, H + 4]];
+  // its top lines up with the shore's cliff; the castle stands right at the edge, its front wall dropping into the rock
+  const x0 = CASTLE.x - 30, y0 = lip - 20, edge = [[x0, y0], [x0 - 6, y0 + 22], [x0 + 3, y0 + 44], [x0 - 8, y0 + 66], [x0 + 1, y0 + 88], [x0 - 10, y0 + 110], [x0 - 4, H + 4]];
   const face = () => { g.beginPath(); g.moveTo(W + 4, y0); edge.forEach(([x, y]) => g.lineTo(x, y)); g.lineTo(W + 4, H + 4); g.closePath(); };
   face(); g.fillStyle = Z.ink; g.lineWidth = 5; g.strokeStyle = Z.ink; g.stroke();
   const rock = g.createLinearGradient(0, y0, 0, H); rock.addColorStop(0, Z.night ? "#6a5d4b" : "#c2a37a"); rock.addColorStop(1, Z.night ? "#4a4034" : "#8f7454");
@@ -1306,8 +1307,7 @@ function drawSea(g, Z, r) {
   g.strokeStyle = Z.ink; g.lineWidth = 1.4;   // cracks
   for (const [x, y, dx, dy] of [[x0 + 30, y0 + 26, 6, 14], [x0 + 82, y0 + 50, -5, 16], [x0 + 56, y0 + 76, 4, 12], [x0 + 110, y0 + 28, -3, 10]]) { g.beginPath(); g.moveTo(x, y); g.lineTo(x + dx, y + dy * .5); g.lineTo(x + dx * .4, y + dy); g.stroke(); }
   g.restore();
-  g.fillStyle = Z.ink; g.beginPath(); g.roundRect(x0 - 4, y0 - 6, W - x0 + 8, 12, 5); g.fill();   // a grassy lip
-  g.fillStyle = Z.grass[1]; g.beginPath(); g.roundRect(x0 - 2, y0 - 5, W - x0 + 6, 9, 4); g.fill();
+  g.fillStyle = Z.ink; g.fillRect(x0 - 4, lip - 25, W - x0 + 8, 7); g.fillStyle = Z.grass[1]; g.fillRect(x0 - 3, lip - 24, W - x0 + 7, 5);   // the grassy edge, level with the shore's
   g.fillStyle = "rgba(255,255,255,.75)";   // surf where the sea meets the rock
   for (let i = 3; i < edge.length; i++) { const [x, y] = edge[i]; ell(g, x - 5, y, 7, 3); ell(g, x - 10, y + 8, 5, 2.2); }
 }
@@ -1501,13 +1501,14 @@ function plantSapling(x, y) {
 function drawCastle() {
   const c = ctx, { x, y, w, h } = CASTLE, hurt = S && S.hp / S.maxHp <= DANGER;
   if (S && S.fort.moat) {  // water all round the castle (off the board's right edge too), with a plank bridge where the road crosses
-    const mw = 10 + S.fort.moat * 4, mx = x - mw - 4, top = y + 26, bot = y + h + 8 + mw * .8, R = W + 20, isle = top + mw * .5;   // the far side looks thinner
+    const mw = 10 + S.fort.moat * 4, mx = x - mw - 4, top = y + 26, bot = MAP.sea ? SHORE_Y - 22 : y + h + 8 + mw * .8, R = W + 20, isle = top + mw * .5;   // the far side looks thinner; over a cliff, the sea is the moat's front
     c.fillStyle = season.edge; c.beginPath(); c.roundRect(mx - 3, top - 3, R - mx, bot - top + 6, 10); c.fill();
     c.fillStyle = season.frozen ? "#cfe8f1" : season.pond; c.beginPath(); c.roundRect(mx, top, R - mx, bot - top, 8); c.fill();
-    c.fillStyle = season.edge; c.beginPath(); c.roundRect(x - 3, isle - 3, R - x, y + h + 9 - isle, 8); c.fill();   // the castle's island
-    c.fillStyle = season.grass[1]; c.beginPath(); c.roundRect(x, isle, R - x, y + h + 3 - isle, 6); c.fill();
+    const foot = MAP.sea ? bot + 3 : y + h + 9;   // over a cliff, the island runs to the cliff's edge
+    c.fillStyle = season.edge; c.beginPath(); c.roundRect(x - 3, isle - 3, R - x, foot - isle, 8); c.fill();   // the castle's island
+    c.fillStyle = season.grass[1]; c.beginPath(); c.roundRect(x, isle, R - x, foot - 6 - isle, 6); c.fill();
     c.fillStyle = "rgba(255,255,255,.3)"; c.fillRect(mx + 2, y + 50 + Math.sin(time * 1.5) * 4, 2, 18); c.fillRect(mx + mw - 5, y + 150 + Math.cos(time * 1.3) * 4, 2, 14);
-    c.fillRect(x + 30 + Math.sin(time * 1.2) * 6, y + h + 10 + mw * .3, 16, 2); c.fillRect(x + 90 + Math.cos(time * 1.4) * 6, y + h + 12 + mw * .4, 12, 2);
+    if (!MAP.sea) c.fillRect(x + 30 + Math.sin(time * 1.2) * 6, y + h + 10 + mw * .3, 16, 2); if (!MAP.sea) c.fillRect(x + 90 + Math.cos(time * 1.4) * 6, y + h + 12 + mw * .4, 12, 2);
     c.fillStyle = "#7a5532"; c.fillRect(mx - 5, GATE_Y - CELL / 2, mw + 10, CELL);
     c.strokeStyle = "#5e4026"; c.lineWidth = 1.5; for (let i = 1; i < 6; i++) { c.beginPath(); c.moveTo(mx - 5, GATE_Y - CELL / 2 + i * 7); c.lineTo(mx + mw + 5, GATE_Y - CELL / 2 + i * 7); c.stroke(); }
   }
