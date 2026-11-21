@@ -3,7 +3,7 @@
 // whether to pay a toll or a wizard, and what to do with trees.
 //
 // Income is shared out between three pots by gene-controlled shares that change with the stage of the game
-// (era): towers, castle (walls, archers, mages, moat, masons) and economy (treasury, saplings). Each pot is spent on
+// (era): towers, castle (walls, archers, mages, moat, masons, and sea nets on Harbour cliffs) and economy (treasury, saplings). Each pot is spent on
 // its best option, so a strategy can save up for something big. Repairs come first when the castle is low.
 
 export const TYPES = ["archer", "mage", "frost", "catapult", "lantern", "dragon"];
@@ -30,6 +30,7 @@ GENES.push(
   ["wizard", 0, 1],             // the same for the wandering wizard
   ["lanternDark", 0, 4],        // how much more a Lantern is worth on a dark or foggy level
   ["w.mages", -4, 4],           // castle mages (rules v5); last, so older saved genomes still line up
+  ["w.nets", -4, 4],            // sea nets (Harbour cliffs only); after mages for the same reason
 );
 export const GENE_INDEX = Object.fromEntries(GENES.map((g, i) => [g[0], i]));
 
@@ -50,7 +51,8 @@ export function decode(g, { ban = [] } = {}) {
   });
   return {
     era, roadBias: v("roadBias"), patience: v("patience"), repairAt: v("repairAt"),
-    castle: { walls: Math.exp(v("w.walls")), archers: Math.exp(v("w.archers")), moat: Math.exp(v("w.moat")), masons: Math.exp(v("w.masons")), mages: Math.exp(v("w.mages") ?? 0) },
+    castle: { walls: Math.exp(v("w.walls")), archers: Math.exp(v("w.archers")), moat: Math.exp(v("w.moat")), masons: Math.exp(v("w.masons")), mages: Math.exp(v("w.mages") ?? 0),
+              nets: Math.exp(v("w.nets") ?? v("w.moat")) },   // a genome from before the nets values them as it does the moat
     treasuryPayback: v("treasuryPayback"), saplings: Math.round(v("saplings")), harvestStage: Math.round(v("harvestStage")),
     chopAll: v("chopAll") > .5, toll: v("toll"), wizard: v("wizard"), lanternDark: v("lanternDark"), ban,
   };
@@ -160,7 +162,7 @@ export function buildPhase(G, P, M) {
   // castle: the item with the best weight per gold, saving up for it
   for (let guard = 0; guard < 30; guard++) {
     const opts = [["walls", G.wallCost(), () => { S.walls++; S.maxHp += 5; S.hp += 5; }]];
-    for (const k of ["archers", "mages", "moat", "masons"]) { const f = G.FORT[k], n = S.fort[k] || 0; if (n < f.max) opts.push([k, f.cost(n), () => { S.fort[k]++; }]); }
+    for (const k of ["archers", "mages", "moat", "masons", ...(G.FORT.nets && G.MAP.sea ? ["nets"] : [])]) { const f = G.FORT[k], n = S.fort[k] || 0; if (n < f.max) opts.push([k, f.cost(n), () => { S.fort[k]++; }]); }
     let best = null;
     for (const [k, c, fn] of opts) { const sc = P.castle[k] / c; if (!best || sc > best.sc) best = { k, c, fn, sc }; }
     if (!best || pot.castle < best.c || S.gold < best.c) break;
