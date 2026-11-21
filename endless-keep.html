@@ -1609,11 +1609,17 @@ function drawCastle() {
   if (season.night) { c.fillStyle = "rgba(243,215,122,.22)"; ell(c, x + 83, y + 105, 14, 14); ell(c, x + 53, y + 97, 14, 14); }
   // sea nets: rope mesh hung down the cliff under the castle, and a few poles along its top
   if (S && S.fort.nets && MAP.sea) {
-    const top = SHORE_Y - 20, bot = top + 26 + 10 * S.fort.nets, x0 = x - 24;
-    c.save(); c.strokeStyle = "rgba(70,52,30,.75)"; c.lineWidth = 1.2; c.beginPath();
-    for (let i = 0; i <= 14; i++) { const nx = x0 + i * 10; c.moveTo(nx, top); c.lineTo(nx + 18, bot); c.moveTo(nx + 18, top); c.lineTo(nx, bot); }
-    c.moveTo(x0, bot); c.lineTo(W, bot); c.stroke();
-    c.fillStyle = "#6b4a2a"; for (let i = 0; i < 4; i++) c.fillRect(x0 + 4 + i * 38, top - 14, 3, 16);
+    const top = SHORE_Y - 20, x0 = x - 30, sag = 10 + 8 * S.fort.nets, poles = [x0 + 6, x0 + 50, x0 + 94, x0 + 138];
+    const rope = season.night ? "#c9b48a" : "#e8d6a8", ink = season.ink || "#33261a", bot = i => top + 22 + 10 * S.fort.nets + Math.sin(i * .9 + time * 1.5) * 2;
+    c.save(); c.lineCap = "round";
+    for (const [col, lw] of [[ink, 3.4], [rope, 1.8]]) {   // an inked mesh, rope-coloured, swaying a little at the hem
+      c.strokeStyle = col; c.lineWidth = lw; c.beginPath();
+      for (let i = 0; i <= 14; i++) { const nx = x0 + i * 11; c.moveTo(nx, top); c.lineTo(nx + 16, bot(i + 1)); c.moveTo(nx + 16, top); c.lineTo(nx, bot(i)); }
+      for (let i = 0; i < 4; i++) { c.moveTo(poles[i], top - 12); c.quadraticCurveTo(poles[i] + 22, top - 12 + sag * .4, poles[i] + 44, top - 12); }   // the top rope between the poles
+      c.stroke();
+    }
+    for (const px of poles) { c.fillStyle = ink; c.fillRect(px - 3, top - 18, 6, 22); c.fillStyle = "#8a5f34"; c.fillRect(px - 1.5, top - 17, 3, 20); }
+    for (let i = 0; i <= 7; i++) { c.fillStyle = ink; ell(c, x0 + 8 + i * 22, bot(i * 2) + 1, 5.5, 4.5); c.fillStyle = i % 2 ? "#f2f0e6" : "#e2683e"; ell(c, x0 + 8 + i * 22, bot(i * 2) + 1, 4, 3); }   // floats along the hem
     c.restore();
   }
   // archers on the battlements
