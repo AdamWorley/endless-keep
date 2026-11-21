@@ -1128,9 +1128,6 @@ function buildBg() {
   if (Z.snow) { road(); g.strokeStyle = "rgba(255,255,255,.35)"; g.lineWidth = 6; g.setLineDash([18, 30]); g.stroke(); g.setLineDash([]); }
   // flowers
   for (let i = 0; i < Z.nflowers * (MAP.flowers ?? 1); i++) { const x = r() * W, y = r() * H, c = Z.flowers[(r() * Z.flowers.length) | 0]; if (distRoad(x, y) < 34 || (x > 820 && y > 250)) continue; g.fillStyle = c; ell(g, x, y, Z.amb === "leaves" ? 2.6 : 1.8, Z.amb === "leaves" ? 1.5 : 1.8); }
-  // some maps have a light of their own: colour drains from the ground (gloom), then a tint washes over it
-  if (MAP.gloom) { g.save(); g.globalCompositeOperation = "saturation"; g.fillStyle = `rgba(128,128,128,${MAP.gloom})`; g.fillRect(0, 0, W, H); g.restore(); }
-  if (MAP.tint) { g.fillStyle = MAP.tint; g.fillRect(0, 0, W, H); }
   for (const q of MAP.stones || []) drawStone(g, ...cellXY(q), q[0] * 7 + q[1] * 3, Z);
   // the build grid, printed faintly across the whole map
   g.save(); g.globalAlpha = Z.night ? .3 : Z.snow ? .2 : .16; g.strokeStyle = Z.night ? "#9fb8a8" : Z.ink; g.lineWidth = 1; g.stroke(gridCells()); g.restore();
@@ -1764,21 +1761,9 @@ function deadZone(type, x, y) {
   ctx.fillStyle = "rgba(20,29,25,.22)"; ctx.strokeStyle = "rgba(255,240,200,.5)"; ctx.lineWidth = 1.2; ctx.setLineDash([4, 4]);
   ctx.beginPath(); ctx.arc(x, y, m, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.setLineDash([]);
 }
-function render() {
-  const sc = cv.width / W;
-  let ox = 0, oy = 0;  // a heavy blow shakes the board (in screen pixels)
-  if (S && hitFx.shake > 0) {
-    const m = HIT_AMP[hitFx.tier] * Math.min(1, hitFx.shake / .12) * sc;
-    ox = Math.round((Math.random() - .5) * m * 2); oy = Math.round((Math.random() - .5) * m * 2);
-    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = "#141d19"; ctx.fillRect(0, 0, cv.width, cv.height);
-  }
-  // the background is drawn pixel for pixel when it matches the board's size: no rescaling every frame
-  ctx.setTransform(1, 0, 0, 1, ox, oy);
-  if (bg.width === cv.width && bg.height === cv.height) ctx.drawImage(bg, 0, 0); else ctx.drawImage(bg, 0, 0, cv.width, cv.height);
-  if (fadeT > 0 && bgOld) { ctx.globalAlpha = Math.min(1, fadeT / 1.5); ctx.drawImage(bgOld, 0, 0, cv.width, cv.height); ctx.globalAlpha = 1; }
-  ctx.setTransform(sc, 0, 0, sc, ox, oy);
-  if (goo.length) drawGoo();
-  if (fish) drawFish();
+// what goes over the board's things: Lantern light, the selected tower's range and lookouts, the build grid and ghosts,
+// the keyboard cursor. On a map with a light of its own it's drawn after that light, so it keeps its colours
+function overlays() {
   // a Lantern's pool of light on the grass: faint by day, bright at night and in fog
   if (S) for (const l of S.towers) if (l.type === "lantern") {
     const r = glowReach(l), a = season.night || evOn("fog") || vsOn("fog") ? .24 : .09, gr = ctx.createRadialGradient(l.x, l.y, 0, l.x, l.y, r);
@@ -1801,7 +1786,6 @@ function render() {
     ctx.save(); ctx.globalAlpha = .4; ctx.strokeStyle = season.night ? "#d6e6da" : "#fff8dc"; ctx.lineWidth = 1.2; ctx.stroke(gridCells()); ctx.restore();
   }
   if (S && sel && sel.kind === "place") drawGhost(sel.x, sel.y, true, true);
-  const dragGhost = S && drag && drag.moved && drag.over;
   const hp = hoverPt && gridSnap(hoverPt.x, hoverPt.y);
   if (S && hoverPt && !(sel && sel.kind === "place" && sel.x === hp[0] && sel.y === hp[1]) && !towerAt(hoverPt.x, hoverPt.y) && !treeAt(hoverPt.x, hoverPt.y) && !hitCastle(hoverPt.x, hoverPt.y)) drawGhost(hp[0], hp[1], !canBuild(hp[0], hp[1]), false);
   if (kbd && document.activeElement === cv) {
@@ -1809,6 +1793,32 @@ function render() {
     ctx.strokeStyle = "#e9b949"; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(kbd.x, kbd.y, 18, 0, Math.PI * 2); ctx.stroke();
     ctx.beginPath(); for (const [a, b] of [[-26, -12], [12, 26]]) { ctx.moveTo(kbd.x + a, kbd.y); ctx.lineTo(kbd.x + b, kbd.y); ctx.moveTo(kbd.x, kbd.y + a); ctx.lineTo(kbd.x, kbd.y + b); } ctx.stroke();
   }
+}
+function dragRing() {
+  const rr = TOWERS[drag.type].range;
+  ctx.fillStyle = drag.ok ? "rgba(255,240,200,.12)" : "rgba(226,104,62,.12)"; ctx.strokeStyle = drag.ok ? "rgba(255,240,200,.7)" : "rgba(255,150,120,.8)";
+  ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(drag.x, drag.y, rr, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  deadZone(drag.type, drag.x, drag.y);
+  drawGhost(drag.x, drag.y, drag.ok, true);
+}
+function render() {
+  const sc = cv.width / W;
+  let ox = 0, oy = 0;  // a heavy blow shakes the board (in screen pixels)
+  if (S && hitFx.shake > 0) {
+    const m = HIT_AMP[hitFx.tier] * Math.min(1, hitFx.shake / .12) * sc;
+    ox = Math.round((Math.random() - .5) * m * 2); oy = Math.round((Math.random() - .5) * m * 2);
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = "#141d19"; ctx.fillRect(0, 0, cv.width, cv.height);
+  }
+  // the background is drawn pixel for pixel when it matches the board's size: no rescaling every frame
+  ctx.setTransform(1, 0, 0, 1, ox, oy);
+  if (bg.width === cv.width && bg.height === cv.height) ctx.drawImage(bg, 0, 0); else ctx.drawImage(bg, 0, 0, cv.width, cv.height);
+  if (fadeT > 0 && bgOld) { ctx.globalAlpha = Math.min(1, fadeT / 1.5); ctx.drawImage(bgOld, 0, 0, cv.width, cv.height); ctx.globalAlpha = 1; }
+  ctx.setTransform(sc, 0, 0, sc, ox, oy);
+  if (goo.length) drawGoo();
+  if (fish) drawFish();
+  const lit = !!(MAP.gloom || MAP.tint);   // a map with a light of its own: the board's things are drawn first, then the light, then the UI
+  if (!lit) overlays();
+  const dragGhost = S && drag && drag.moved && drag.over;
   drawCastle();
   // depth-sort towers and ground enemies by y; fliers on top
   const items = [];
@@ -1826,16 +1836,19 @@ function render() {
     S.enemies.forEach(e => !e.fly && items.push({ y: e.y, f: () => drawEnemy(e) }));
   }
   if (dragGhost) {
-    const rr = TOWERS[drag.type].range;
-    ctx.fillStyle = drag.ok ? "rgba(255,240,200,.12)" : "rgba(226,104,62,.12)"; ctx.strokeStyle = drag.ok ? "rgba(255,240,200,.7)" : "rgba(255,150,120,.8)";
-    ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(drag.x, drag.y, rr, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    deadZone(drag.type, drag.x, drag.y);
-    drawGhost(drag.x, drag.y, drag.ok, true);
+    if (!lit) dragRing();
     items.push({ y: drag.y, f: () => { ctx.globalAlpha = .8; drawTowerShape(ctx, drag.type, drag.x, drag.y, 0, 0, 1); ctx.globalAlpha = 1; } });
   }
   items.sort((a, b) => a.y - b.y).forEach(it => it.f());
+  if (S) S.enemies.forEach(e => e.fly && drawEnemy(e));
+  if (lit) {
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+    if (MAP.gloom) { ctx.globalCompositeOperation = "saturation"; ctx.fillStyle = `rgba(128,128,128,${MAP.gloom})`; ctx.fillRect(0, 0, cv.width, cv.height); ctx.globalCompositeOperation = "source-over"; }
+    if (MAP.tint) { ctx.fillStyle = MAP.tint; ctx.fillRect(0, 0, cv.width, cv.height); }
+    ctx.restore();
+    overlays(); if (dragGhost) dragRing();
+  }
   if (S) {
-    S.enemies.forEach(e => e.fly && drawEnemy(e));
     S.shots.forEach(drawShot);
     for (const f of S.fx) {
       const a = Math.max(0, f.life / f.max);
