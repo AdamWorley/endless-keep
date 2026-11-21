@@ -17,7 +17,7 @@ function fishTick(dt) {
   if (S.wish && !wishLeft()) { toast(`Your wish has faded: ${PERKS[S.wish.id].name} is back to normal.`); S.wish = null; schedulePersist(); renderUpNext(); }
   if (S.phase !== "wave" || fishL === S.level || S.vs || watchOnly() || !newRules() || !rules5()) return;
   fishL = S.level;
-  if (S.level < 3 || season.frozen || S.wish || Math.random() > .25) return;
+  if (S.level < 3 || season.frozen || MAP.pond === false || S.wish || Math.random() > .25) return;
   fish = { t: -(3 + Math.random() * 12), a0: Math.random() * 6.28, dir: Math.random() < .5 ? 1 : -1, x: POND.x, y: POND.y, face: 1 };   // surfaces 3-15 s into the level
 }
 function drawFishShape(c, x, y, s, face, wig) {

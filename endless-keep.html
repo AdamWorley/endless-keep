@@ -722,11 +722,12 @@ const DEFAULT_MAP = { id: "meadow", name: "Meadow road", builtin: true, about: "
   road: cellsAlong([[20, 140], [220, 140], [220, 420], [500, 420], [500, 140], [740, 140], [740, 380], [780, 380]]) };
 // built-in maps: each has its own road, scenery and tune, and its own boards in the Hall of Heroes. A map unlocks with an
 // achievement (unlock: its id). stones: headstones, [column, row], which block building and can't be cleared.
-// trees: the share of the meadow's starting trees that grow here. foes: how much more often a monster turns up
+// trees: the share of the meadow's starting trees that grow here. foes: how much more often a monster turns up.
+// gloom: how much colour drains from the ground; bare: trees without leaves; pond: false for no pond (and no golden fish)
 const GRAVEYARD = { id: "graveyard", name: "Hollow Hill graveyard", builtin: true, unlock: "wyrm", need: "Defeat the Bone Wyrm to unlock it.",
-  about: "Headstones block building, and skeleton knights turn up twice as often.", foes: { knight: 2 }, trees: .5, tint: "rgba(60,40,100,.3)", tune: "graveyard",
+  about: "Headstones block building, and skeleton knights turn up twice as often.", foes: { knight: 2 }, trees: .5, tint: "rgba(50,35,80,.32)", gloom: .6, bare: true, pond: false, flowers: .35, tune: "graveyard",
   road: cellsAlong([[100, 20], [100, 420], [300, 420], [300, 180], [540, 180], [540, 460], [700, 460], [700, 380], [780, 380]]),
-  stones: [[4, 3], [5, 3], [4, 5], [5, 5], [4, 7], [5, 7], [9, 6], [11, 6], [9, 8], [11, 8], [10, 10], [15, 1], [17, 1], [19, 1], [16, 3], [18, 3], [1, 12], [4, 12]] };
+  stones: [[4, 3], [5, 3], [4, 5], [5, 5], [4, 7], [5, 7], [9, 6], [11, 6], [9, 8], [11, 8], [10, 10], [15, 1], [17, 1], [19, 1], [16, 3], [18, 3], [1, 12], [4, 12], [9, 1], [11, 1]] };
 const MAPS = [DEFAULT_MAP, GRAVEYARD];
 for (const m of MAPS) m.stoneSet = new Set((m.stones || []).map(q => cellKey(...q)));
 // where a way in starts, just off the board: straight on from the road if that leaves the board, else over the nearest edge
@@ -1053,8 +1054,20 @@ const bg = document.createElement("canvas"); bg.width = W * 2; bg.height = H * 2
 function ell(c, x, y, rx, ry) { c.beginPath(); c.ellipse(x, y, Math.max(0.1, rx), Math.max(0.1, ry), 0, 0, Math.PI * 2); c.fill(); }
 function tri(c, a, b, d, e, f, g) { c.beginPath(); c.moveTo(a, b); c.lineTo(d, e); c.lineTo(f, g); c.closePath(); c.fill(); }
 function star(c, x, y, r) { c.beginPath(); for (let i = 0; i < 8; i++) { const q = i * Math.PI / 4, d = i % 2 ? r * .4 : r; c.lineTo(x + Math.cos(q) * d, y + Math.sin(q) * d); } c.closePath(); c.fill(); }
-function drawTree(g, x, y, s, tone, shadow = true) {
+// a bare, twisted tree (maps with bare: true): trunk and branches as [width, points], a few of the season's leaves on one tone
+const BARE = [[5, [[0, 2], [1, -12], [-1, -20]]], [2.6, [[1, -12], [9, -19], [12, -26]]], [2.6, [[0, -15], [-8, -21], [-13, -24]]],
+  [1.8, [[-1, -20], [-2, -28]]], [1.6, [[9, -19], [14, -18]]], [1.6, [[-8, -21], [-9, -28]]]];
+function drawBareTree(g, x, y, s, tone) {
+  const ink = season.ink || "#33261a", line = (w, col) => { g.strokeStyle = col; g.lineWidth = w; for (const [bw, pts] of BARE) { g.lineWidth = (bw + w) * s; g.beginPath(); pts.forEach(([a, b], i) => i ? g.lineTo(x + a * s, y + b * s) : g.moveTo(x + a * s, y + b * s)); g.stroke(); } };
+  g.save(); g.lineCap = g.lineJoin = "round";
+  line(2.4, ink); line(0, season.night ? "#3b3330" : "#5b4b42");
+  g.restore();
+  if (tone) { g.fillStyle = season.trees[1][1]; g.globalAlpha = .75; ell(g, x + 12 * s, y - 26 * s, 3 * s, 2.2 * s); ell(g, x - 13 * s, y - 24 * s, 3 * s, 2.2 * s); ell(g, x - 9 * s, y - 28 * s, 2.4 * s, 1.8 * s); g.globalAlpha = 1; }
+  if (season.snow) { g.fillStyle = "#f7fafc"; ell(g, x + 9 * s, y - 20 * s, 3 * s, 1.3 * s); ell(g, x - 8 * s, y - 22 * s, 3 * s, 1.3 * s); ell(g, x - 1 * s, y - 21 * s, 2.5 * s, 1.2 * s); }
+}
+function drawTree(g, x, y, s, tone, shadow = true, bare = MAP.bare) {
   if (shadow) { g.fillStyle = "rgba(20,40,20,.28)"; ell(g, x + 4, y + 4, 16 * s, 7 * s); }
+  if (bare) return drawBareTree(g, x, y, s, tone);
   const ink = season.ink || "#33261a", o = 1.6;
   g.fillStyle = ink; g.fillRect(x - 2.5 * s - o, y - 8 * s, 5 * s + 2 * o, 10 * s + o);
   ell(g, x, y - 16 * s, 15 * s + o, 13 * s + o);
@@ -1092,14 +1105,15 @@ function buildBg() {
   for (let i = 0; i < 260; i++) { g.fillStyle = r() < .5 ? Z.dark : Z.light; ell(g, r() * W, r() * H, 10 + r() * 40, 6 + r() * 18); }
   g.strokeStyle = Z.blade; g.lineWidth = 1;
   for (let i = 0; i < 900; i++) { const x = r() * W, y = r() * H; g.beginPath(); g.moveTo(x, y); g.lineTo(x + (r() - .5) * 3, y - 3 - r() * 3); g.stroke(); }
-  if (MAP.tint) { g.fillStyle = MAP.tint; g.fillRect(0, 0, W, H); }   // some maps have a light of their own
   // a little pond
+  if (MAP.pond !== false) {
   g.fillStyle = Z.ink; ell(g, 400, 80, 67, 31);
   g.fillStyle = Z.rim; ell(g, 400, 80, 64, 28);
   g.fillStyle = Z.pond; ell(g, 400, 80, 58, 24);
   g.fillStyle = "rgba(255,255,255,.35)"; ell(g, 384, 72, 22, 5);
   if (Z.frozen) { g.strokeStyle = "rgba(255,255,255,.8)"; g.lineWidth = 1; g.beginPath(); g.moveTo(370, 78); g.lineTo(392, 86); g.lineTo(404, 79); g.moveTo(392, 86); g.lineTo(398, 96); g.moveTo(410, 70); g.lineTo(428, 76); g.stroke(); }
   if (Z.moon) { g.fillStyle = "rgba(255,248,210,.85)"; ell(g, 414, 84, 9, 4); g.fillStyle = "rgba(255,248,210,.25)"; ell(g, 414, 84, 20, 7); }
+  }
   // road
   g.lineJoin = "miter"; g.lineCap = "square";   // square ends: each piece of road fills its squares, corners included
   const road = () => { g.beginPath(); for (const [x1, y1, x2, y2] of MAPINFO.segs) { g.moveTo(x1, y1); g.lineTo(x2 === x1 && y2 === y1 ? x2 + .01 : x2, y2); } };
@@ -1113,7 +1127,10 @@ function buildBg() {
   for (let i = 0; i < 180; i++) { const q = MAPINFO.cells[(r() * MAPINFO.cells.length) | 0], [x, y] = cellXY(q); g.fillStyle = r() < .5 ? "rgba(120,90,55,.45)" : "rgba(240,220,170,.6)"; ell(g, x + (r() - .5) * 26, y + (r() - .5) * 26, 1.5 + r() * 2, 1 + r() * 1.5); }
   if (Z.snow) { road(); g.strokeStyle = "rgba(255,255,255,.35)"; g.lineWidth = 6; g.setLineDash([18, 30]); g.stroke(); g.setLineDash([]); }
   // flowers
-  for (let i = 0; i < Z.nflowers; i++) { const x = r() * W, y = r() * H, c = Z.flowers[(r() * Z.flowers.length) | 0]; if (distRoad(x, y) < 34 || (x > 820 && y > 250)) continue; g.fillStyle = c; ell(g, x, y, Z.amb === "leaves" ? 2.6 : 1.8, Z.amb === "leaves" ? 1.5 : 1.8); }
+  for (let i = 0; i < Z.nflowers * (MAP.flowers ?? 1); i++) { const x = r() * W, y = r() * H, c = Z.flowers[(r() * Z.flowers.length) | 0]; if (distRoad(x, y) < 34 || (x > 820 && y > 250)) continue; g.fillStyle = c; ell(g, x, y, Z.amb === "leaves" ? 2.6 : 1.8, Z.amb === "leaves" ? 1.5 : 1.8); }
+  // some maps have a light of their own: colour drains from the ground (gloom), then a tint washes over it
+  if (MAP.gloom) { g.save(); g.globalCompositeOperation = "saturation"; g.fillStyle = `rgba(128,128,128,${MAP.gloom})`; g.fillRect(0, 0, W, H); g.restore(); }
+  if (MAP.tint) { g.fillStyle = MAP.tint; g.fillRect(0, 0, W, H); }
   for (const q of MAP.stones || []) drawStone(g, ...cellXY(q), q[0] * 7 + q[1] * 3, Z);
   // the build grid, printed faintly across the whole map
   g.save(); g.globalAlpha = Z.night ? .3 : Z.snow ? .2 : .16; g.strokeStyle = Z.night ? "#9fb8a8" : Z.ink; g.lineWidth = 1; g.stroke(gridCells()); g.restore();
@@ -1281,7 +1298,7 @@ function groundBlock(x, y) {
   if (x < 22 || x > W - 22 || y < 44 || y > H - 12) return "edge";
   if (onRoad(x, y)) return "road";
   if (x > CASTLE.x - 30 && y > CASTLE.y - 50) return "castle";
-  if (((x - 400) / 82) ** 2 + ((y - 80) / 44) ** 2 < 1) return "pond";
+  if (MAP.pond !== false && ((x - 400) / 82) ** 2 + ((y - 80) / 44) ** 2 < 1) return "pond";
   if (MAP.stoneSet && MAP.stoneSet.has(cellKey(Math.floor(x / CELL), Math.floor(y / CELL)))) return "stone";
   return "";
 }
@@ -3065,11 +3082,11 @@ function badgeImg(id) {
     if (id === "whisperer") { g.fillStyle = "#e9b949"; const nSecret = Object.keys(SECRET_DRAGONS).length; for (let i = 0; i < nSecret; i++) { const a = -Math.PI / 2 + i * Math.PI * 2 / nSecret; ell(g, 26 + Math.cos(a) * 21, 26 + Math.sin(a) * 21, 2, 2); } }
   }
   else if (id === "rich") { for (const [x, y] of [[18, 36], [34, 36], [26, 28], [26, 18]]) { g.fillStyle = "#a8790c"; ell(g, x, y + 2, 10, 5); g.fillStyle = "#f2c94c"; ell(g, x, y, 10, 5); } }
-  else if (id === "lumberjack") { const keep = season; season = SEASONS[1]; drawTree(g, 26, 46, 1.3, 0); season = keep; g.strokeStyle = "#8a8f96"; g.lineWidth = 3; g.beginPath(); g.moveTo(36, 48); g.lineTo(46, 30); g.stroke(); g.fillStyle = "#c9ced4"; tri(g, 42, 28, 50, 31, 45, 37); }
+  else if (id === "lumberjack") { const keep = season; season = SEASONS[1]; drawTree(g, 26, 46, 1.3, 0, true, false); season = keep; g.strokeStyle = "#8a8f96"; g.lineWidth = 3; g.beginPath(); g.moveTo(36, 48); g.lineTo(46, 30); g.stroke(); g.fillStyle = "#c9ced4"; tri(g, 42, 28, 50, 31, 45, 37); }
   else if (id === "slayer") medal(g, "10k");
   else if (id === "wish") { g.fillStyle = "#2a4a5a"; ell(g, 26, 26, 25, 25); g.fillStyle = "#6fb3c9"; ell(g, 26, 32, 19, 8); drawFishShape(g, 26, 24, 1.5, 1, 0); }
   else if (id === "laststand") medal(g, "1\u2665", "#b8322a");
-  else if (id === "greenthumb") { const keep = season; season = SEASONS[0]; drawTree(g, 26, 46, 1.3, 0); season = keep; }
+  else if (id === "greenthumb") { const keep = season; season = SEASONS[0]; drawTree(g, 26, 46, 1.3, 0, true, false); season = keep; }
   else if (id === "allfive") {
     g.fillStyle = "#2a3a32"; ell(g, 26, 26, 25, 25);
     Object.keys(TOWERS).forEach((type, i) => { const a = -Math.PI / 2 + i * Math.PI * 2 / 5; g.drawImage(towerIcon(type), 26 + Math.cos(a) * 14 - 13, 26 + Math.sin(a) * 14 - 15, 26, 26); });
