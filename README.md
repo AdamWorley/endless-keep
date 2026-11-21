@@ -10,7 +10,7 @@ records every monster you've met, and two players can face off online as the Kee
 
 | Path | What it is |
 |---|---|
-| `endless-keep.html`, `game/` | The game: HTML, CSS and JavaScript with no dependencies. Self-contained parts of the script live in `game/` (towers and their art, monsters and their art, special dragons, bestiary lore, the name filter, the wishing fish, the bot replay viewer), each marked in the page by a `//#include game/…` line. The build (`pwa/inline.mjs`) puts them back, so players still get one body-only page, which can also run as a Claude artifact. |
+| `endless-keep.html`, `game/` | The game: HTML, CSS and JavaScript with no dependencies. Self-contained parts of the script live in `game/` (towers and their art, monsters and their art, waves, the castle economy, special dragons, bestiary lore, the name filter, the wishing fish, the bot replay viewer), each marked in the page by a `//#include game/…` line. The build (`pwa/inline.mjs`) puts them back, so players still get one body-only page, which can also run as a Claude artifact. |
 | `pwa/` | Turns the game into an installable app: `build.sh` wraps the page in a full document with the manifest, icons and offline service worker, writing to `dist/`. `check.mjs` sanity-checks a build. `serve.py` serves `dist/` locally. |
 | `leaderboard/` | The shared Hall of Heroes: a small Cloudflare Worker with a D1 (SQLite) database. See [`leaderboard/README.md`](leaderboard/README.md). |
 | `wrangler.jsonc`, `package.json` | The Cloudflare Pages project that serves the built game from `dist/` (static files only, no server code). |
