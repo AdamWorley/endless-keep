@@ -723,13 +723,43 @@ const DEFAULT_MAP = { id: "meadow", name: "Meadow road", builtin: true, about: "
 // built-in maps: each has its own road, scenery and tune, and its own boards in the Hall of Heroes. A map unlocks with an
 // achievement (unlock: its id). stones: headstones, [column, row], which block building and can't be cleared.
 // trees: the share of the meadow's starting trees that grow here. foes: how much more often a monster turns up.
-// gloom: how much colour drains from the ground; bare: trees without leaves; pond: false for no pond (and no golden fish)
+// gloom: how much colour drains from the ground; bare: trees without leaves; pond: false for no pond (and no golden fish).
+// water: river squares, which block building (roads cross them on bridges); fishAt: where the golden fish swims instead
 const GRAVEYARD = { id: "graveyard", name: "Hollow Hill graveyard", builtin: true, unlock: "wyrm", need: "Defeat the Bone Wyrm to unlock it.",
   about: "Headstones block building, and skeleton knights turn up twice as often.", foes: { knight: 2 }, trees: .5, tint: "rgba(50,35,80,.32)", gloom: .6, bare: true, pond: false, flowers: .35, tune: "graveyard",
   road: cellsAlong([[100, 20], [100, 420], [300, 420], [300, 180], [540, 180], [540, 460], [700, 460], [700, 380], [780, 380]]),
   stones: [[4, 3], [5, 3], [4, 5], [5, 5], [4, 7], [5, 7], [9, 6], [11, 6], [9, 8], [11, 8], [10, 10], [15, 1], [17, 1], [19, 1], [16, 3], [18, 3], [1, 12], [4, 12], [9, 1], [11, 1]] };
-const MAPS = [DEFAULT_MAP, GRAVEYARD];
-for (const m of MAPS) m.stoneSet = new Set((m.stones || []).map(q => cellKey(...q)));
+// a river two squares wide, from the top of the board to the bottom: through these columns, row by row (its middle
+// runs between column c and c + 1), smoothed into a curve. Its squares are the ones whose middle is under the water
+// as drawn, so a tower never stands in the river
+function riverLine(cols) {
+  const pts = [[(cols[0] + 1) * CELL, -CELL], ...cols.map((c, r) => [(c + 1) * CELL, r * CELL + CELL / 2]), [(cols[cols.length - 1] + 1) * CELL, H + CELL]], out = [pts[0]];
+  let [px, py] = pts[0];
+  for (let i = 1; i < pts.length - 1; i++) {   // each bend is a quadratic curve from one halfway point to the next
+    const [cx, cy] = pts[i], [ex, ey] = [(cx + pts[i + 1][0]) / 2, (cy + pts[i + 1][1]) / 2];
+    for (let k = 1; k <= 8; k++) { const t = k / 8, u = 1 - t; out.push([u * u * px + 2 * u * t * cx + t * t * ex, u * u * py + 2 * u * t * cy + t * t * ey]); }
+    [px, py] = [ex, ey];
+  }
+  out.push(pts[pts.length - 1]);
+  return out;
+}
+function riverCells(line) {
+  const out = [];
+  for (let c = 0; c < COLS; c++) for (let r = 0; r < ROWS; r++) {
+    const [x, y] = cellXY([c, r]);
+    if (line.some((p, i) => i && distSeg(x, y, { x1: line[i - 1][0], y1: line[i - 1][1], x2: p[0], y2: p[1] }) < CELL + 4)) out.push([c, r]);
+  }
+  return out;
+}
+const MILLFORD_RIVER = riverLine([11, 11, 10, 10, 9, 9, 9, 10, 10, 11, 11, 10, 10, 10]);
+const MILLFORD = { id: "millford", name: "Millford crossing", builtin: true, unlock: "lv25", need: "Reach level 25 to unlock it.",
+  about: "A river splits the road in two, and monsters take turns between the bridges.", tune: "millford", pond: false, trees: .8,
+  water: riverCells(MILLFORD_RIVER), river: MILLFORD_RIVER,
+  fishAt: { x: 400, y: 262, rx: 12, ry: 24, where: "river" },
+  road: [...cellsAlong([[20, 60], [180, 60], [180, 180], [540, 180], [540, 420], [180, 420], [180, 500], [20, 500]]),
+         ...cellsAlong([[540, 300], [660, 300], [660, 100], [740, 100], [740, 380], [780, 380]])] };
+const MAPS = [DEFAULT_MAP, GRAVEYARD, MILLFORD];
+for (const m of MAPS) { m.stoneSet = new Set((m.stones || []).map(q => cellKey(...q))); m.waterSet = new Set((m.water || []).map(q => cellKey(...q))); }
 // where a way in starts, just off the board: straight on from the road if that leaves the board, else over the nearest edge
 function entryOut([c, r], from) {
   const [x, y] = cellXY([c, r]), off = (a, b) => a < 0 || b < 0 || a >= COLS || b >= ROWS;
@@ -1005,6 +1035,11 @@ const TUNES = {
     boss: [[50, [62, 65, 69, 74]], [46, [58, 62, 65, 70]], [43, [55, 58, 62, 67]], [45, [57, 61, 64, 69]]],
     melody: [74, 77, 79, 81, 82, 86], beat: .3, bar: 12, bass2: 6, pat: [0, null, 1, null, 2, null], lift: [10], mel: [3, 9],
     wave: "sine", ring: 1.2, vol: .03, up: 12, bell: true },
+  millford: {   // G  C  Em  D, and Em  C  G  D for bosses: a quick plucked jig in 6/8
+    calm: [[43, [55, 59, 62, 67]], [48, [60, 64, 67, 72]], [40, [52, 55, 59, 64]], [50, [62, 66, 69, 74]]],
+    boss: [[40, [52, 55, 59, 64]], [48, [60, 64, 67, 72]], [43, [55, 59, 62, 67]], [50, [62, 66, 69, 74]]],
+    melody: [79, 81, 83, 86, 88, 91], beat: .19, bar: 12, bass2: 6, pat: [0, 1, 2, 3, 2, 1], lift: [9], mel: [3, 9],
+    wave: "triangle", ring: .45, vol: .022, up: 0 },
 };
 function mNote(f, t, dur, vol, type, slow) {
   const o = AC.createOscillator(), g = AC.createGain();
@@ -1078,6 +1113,27 @@ function drawTree(g, x, y, s, tone, shadow = true, bare = MAP.bare) {
   g.fillStyle = tones[2]; ell(g, x - 6 * s, y - 24 * s, 5 * s, 4 * s);
   if (season.snow) { g.fillStyle = "#f7fafc"; ell(g, x - 1 * s, y - 26 * s, 10 * s, 4.5 * s); ell(g, x + 7 * s, y - 15 * s, 5 * s, 2.5 * s); }
 }
+// the river along its line (see riverLine); frozen (pale) in winter
+function drawRiver(g, Z) {
+  const line = () => { g.beginPath(); MAP.river.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); };
+  g.save(); g.lineCap = g.lineJoin = "round";
+  line(); g.strokeStyle = Z.ink; g.lineWidth = 2 * CELL + 2; g.stroke();
+  line(); g.strokeStyle = Z.rim; g.lineWidth = 2 * CELL - 4; g.stroke();
+  line(); g.strokeStyle = Z.pond; g.lineWidth = 2 * CELL - 14; g.stroke();
+  line(); g.strokeStyle = Z.frozen ? "rgba(255,255,255,.7)" : "rgba(255,255,255,.3)"; g.lineWidth = 2; g.setLineDash(Z.frozen ? [10, 26] : [14, 34]); g.translate(-10, 0); g.stroke();
+  g.translate(20, 0); g.setLineDash([8, 40]); g.stroke(); g.restore();
+}
+// a wooden bridge where a road square crosses the water: planks across the road, a rail on each side
+function drawBridge(g, [c, r], Z) {
+  const [x, y] = cellXY([c, r]), across = MAPINFO.set.has(cellKey(c - 1, r)) || MAPINFO.set.has(cellKey(c + 1, r));
+  g.save(); g.translate(x, y); if (!across) g.rotate(Math.PI / 2);
+  g.fillStyle = Z.ink; g.fillRect(-21, -17, 42, 34);
+  g.fillStyle = "#9a7448"; g.fillRect(-20, -15, 40, 30);
+  g.fillStyle = "#7a5634"; for (let i = -20; i < 20; i += 6.7) g.fillRect(i, -15, 1.4, 30);    // gaps between planks
+  g.fillStyle = "#5e4128"; g.fillRect(-21, -18, 42, 4); g.fillRect(-21, 14, 42, 4);           // rails
+  if (Z.snow) { g.fillStyle = "rgba(255,255,255,.8)"; g.fillRect(-21, -19, 42, 2); g.fillRect(-21, 13, 42, 2); }
+  g.restore();
+}
 // a headstone, in one of three shapes, leaning a little; it takes the season's ink, snow and moonlight
 function drawStone(g, x, y, k, Z) {
   const lean = ((k % 5) - 2) * .04, shape = k % 3, stone = Z.night ? "#7d8790" : "#a9aeb0", dark = Z.night ? "#5c656e" : "#868c90";
@@ -1114,6 +1170,7 @@ function buildBg() {
   if (Z.frozen) { g.strokeStyle = "rgba(255,255,255,.8)"; g.lineWidth = 1; g.beginPath(); g.moveTo(370, 78); g.lineTo(392, 86); g.lineTo(404, 79); g.moveTo(392, 86); g.lineTo(398, 96); g.moveTo(410, 70); g.lineTo(428, 76); g.stroke(); }
   if (Z.moon) { g.fillStyle = "rgba(255,248,210,.85)"; ell(g, 414, 84, 9, 4); g.fillStyle = "rgba(255,248,210,.25)"; ell(g, 414, 84, 20, 7); }
   }
+  if (MAP.river) drawRiver(g, Z);
   // road
   g.lineJoin = "miter"; g.lineCap = "square";   // square ends: each piece of road fills its squares, corners included
   const road = () => { g.beginPath(); for (const [x1, y1, x2, y2] of MAPINFO.segs) { g.moveTo(x1, y1); g.lineTo(x2 === x1 && y2 === y1 ? x2 + .01 : x2, y2); } };
@@ -1126,8 +1183,9 @@ function buildBg() {
   road(); g.strokeStyle = "rgba(170,130,80,.35)"; g.lineWidth = 10; g.setLineDash([2, 14]); g.stroke(); g.setLineDash([]);
   for (let i = 0; i < 180; i++) { const q = MAPINFO.cells[(r() * MAPINFO.cells.length) | 0], [x, y] = cellXY(q); g.fillStyle = r() < .5 ? "rgba(120,90,55,.45)" : "rgba(240,220,170,.6)"; ell(g, x + (r() - .5) * 26, y + (r() - .5) * 26, 1.5 + r() * 2, 1 + r() * 1.5); }
   if (Z.snow) { road(); g.strokeStyle = "rgba(255,255,255,.35)"; g.lineWidth = 6; g.setLineDash([18, 30]); g.stroke(); g.setLineDash([]); }
+  if (MAP.waterSet) for (const q of MAPINFO.cells) if (MAP.waterSet.has(cellKey(...q))) drawBridge(g, q, Z);
   // flowers
-  for (let i = 0; i < Z.nflowers * (MAP.flowers ?? 1); i++) { const x = r() * W, y = r() * H, c = Z.flowers[(r() * Z.flowers.length) | 0]; if (distRoad(x, y) < 34 || (x > 820 && y > 250)) continue; g.fillStyle = c; ell(g, x, y, Z.amb === "leaves" ? 2.6 : 1.8, Z.amb === "leaves" ? 1.5 : 1.8); }
+  for (let i = 0; i < Z.nflowers * (MAP.flowers ?? 1); i++) { const x = r() * W, y = r() * H, c = Z.flowers[(r() * Z.flowers.length) | 0]; if (distRoad(x, y) < 34 || (x > 820 && y > 250) || (MAP.waterSet && MAP.waterSet.has(cellKey(Math.floor(x / CELL), Math.floor(y / CELL))))) continue; g.fillStyle = c; ell(g, x, y, Z.amb === "leaves" ? 2.6 : 1.8, Z.amb === "leaves" ? 1.5 : 1.8); }
   for (const q of MAP.stones || []) drawStone(g, ...cellXY(q), q[0] * 7 + q[1] * 3, Z);
   // the build grid, printed faintly across the whole map
   g.save(); g.globalAlpha = Z.night ? .3 : Z.snow ? .2 : .16; g.strokeStyle = Z.night ? "#9fb8a8" : Z.ink; g.lineWidth = 1; g.stroke(gridCells()); g.restore();
@@ -1297,6 +1355,7 @@ function groundBlock(x, y) {
   if (x > CASTLE.x - 30 && y > CASTLE.y - 50) return "castle";
   if (MAP.pond !== false && ((x - 400) / 82) ** 2 + ((y - 80) / 44) ** 2 < 1) return "pond";
   if (MAP.stoneSet && MAP.stoneSet.has(cellKey(Math.floor(x / CELL), Math.floor(y / CELL)))) return "stone";
+  if (MAP.waterSet && MAP.waterSet.has(cellKey(Math.floor(x / CELL), Math.floor(y / CELL)))) return "river";
   return "";
 }
 function canBuild(x, y) {
@@ -2359,7 +2418,7 @@ function renderUpNext() {
 }
 
 /* ---------- defender bar: tap for details, drag to build ---------- */
-const BUILD_MSG = { road: "Towers can't go on the road.", pond: "Towers can't go in the pond.", tower: "Too close to another tower.", tree: "A tree is in the way. Tap it to chop it down.", stone: "A headstone is in the way.", edge: "Too close to the edge.", castle: "That's the castle!" };
+const BUILD_MSG = { road: "Towers can't go on the road.", pond: "Towers can't go in the pond.", tower: "Too close to another tower.", tree: "A tree is in the way. Tap it to chop it down.", stone: "A headstone is in the way.", river: "Towers can't go in the river.", edge: "Too close to the edge.", castle: "That's the castle!" };
 function placeTower(k, x, y) {
   const d = TOWERS[k];
   { const lk = lockOf(k); if (lk) { toast(lk.why); return false; } }

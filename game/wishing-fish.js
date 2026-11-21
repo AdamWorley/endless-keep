@@ -5,20 +5,22 @@
    wish: one of three heirlooms' bonuses for the rest of this level and the next WISH_LEVELS. It runs on real time in
    the frame loop, outside the game's own update, so it's as easy to catch at 3x speed and the bots never meet it. */
 const POND = { x: 400, y: 80, rx: 44, ry: 13 }, FISH_STAY = 8;
+// where the fish swims: the meadow's pond, or a map's own water (fishAt, with where: "river"); none on a map without either
+const fishPool = () => MAP.fishAt || (MAP.pond === false ? null : POND);
 let fish = null, fishL = 0;   // fishL: the level the fish has already been decided for
 function fishTick(dt) {
   if (fish) {
     fish.t += dt;
-    if (fish.t >= 0 && !fish.told) { fish.told = true; toast("A golden fish is up in the pond! Tap the pond (or press W) before it dives to make a wish."); }
+    if (fish.t >= 0 && !fish.told) { fish.told = true; toast(`A golden fish is up in the ${fishPool().where || "pond"}! Tap the ${fishPool().where || "pond"} (or press W) before it dives to make a wish.`); }
     if (fish.gone) { if (fish.t > fish.goneAt + .8) fish = null; }
     else if (fish.t > FISH_STAY) { fish.gone = true; fish.goneAt = fish.t; }
-    else { const a = fish.a0 + fish.t * .7 * fish.dir; fish.x = POND.x + Math.cos(a) * POND.rx; fish.y = POND.y + Math.sin(a) * POND.ry; fish.face = -Math.sin(a) * fish.dir >= 0 ? 1 : -1; }
+    else { const P = fishPool(), a = fish.a0 + fish.t * .7 * fish.dir; fish.x = P.x + Math.cos(a) * P.rx; fish.y = P.y + Math.sin(a) * P.ry; fish.face = -Math.sin(a) * fish.dir >= 0 ? 1 : -1; }
   }
   if (S.wish && !wishLeft()) { toast(`Your wish has faded: ${PERKS[S.wish.id].name} is back to normal.`); S.wish = null; schedulePersist(); renderUpNext(); }
   if (S.phase !== "wave" || fishL === S.level || S.vs || watchOnly() || !newRules() || !rules5()) return;
   fishL = S.level;
-  if (S.level < 3 || season.frozen || MAP.pond === false || S.wish || Math.random() > .25) return;
-  fish = { t: -(3 + Math.random() * 12), a0: Math.random() * 6.28, dir: Math.random() < .5 ? 1 : -1, x: POND.x, y: POND.y, face: 1 };   // surfaces 3-15 s into the level
+  if (S.level < 3 || season.frozen || !fishPool() || S.wish || Math.random() > .25) return;
+  fish = { t: -(3 + Math.random() * 12), a0: Math.random() * 6.28, dir: Math.random() < .5 ? 1 : -1, x: fishPool().x, y: fishPool().y, face: 1 };   // surfaces 3-15 s into the level
 }
 function drawFishShape(c, x, y, s, face, wig) {
   c.save(); c.translate(x, y); c.scale(face * s, s);
@@ -42,10 +44,11 @@ function drawFish() {
   if (sp) { c.fillStyle = "#fff"; ell(c, fish.x + 2, fish.y - 6, 1.6, 1.6); }
   c.restore();
 }
-// the pond can't be built on anyway, so while the fish is up a tap anywhere on the pond (or near the fish) catches it
+// the water can't be built on anyway, so while the fish is up a tap anywhere on it (or near the fish) catches it
 function fishHit(x, y, pad = 0) {
   if (!fish || fish.gone || fish.t < 0) return false;
-  return Math.hypot(x - fish.x, y - fish.y) < 26 + pad || ((x - 400) / (82 + pad)) ** 2 + ((y - 80) / (44 + pad)) ** 2 < 1;
+  const P = fishPool();
+  return Math.hypot(x - fish.x, y - fish.y) < 26 + pad || ((x - P.x) / (P.rx + 38 + pad)) ** 2 + ((y - P.y) / (P.ry + 31 + pad)) ** 2 < 1;
 }
 function catchFish() {
   if (!fish || fish.gone || fish.t < 0) return;
