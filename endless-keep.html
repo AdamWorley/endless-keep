@@ -1629,6 +1629,7 @@ function groundBlock(x, y) {
   if (x < 22 || x > W - 22 || y < 44 || y > H - 12) return "edge";
   if (onRoad(x, y)) return "road";
   if (x > CASTLE.x - 30 && y > CASTLE.y - 50) return "castle";
+  if (MAP.sea && Math.floor(y / CELL) === 10 && x < CASTLE.x - 30) return "cliff";   // the row the shore's cliff runs along
   if (MAP.pond !== false && ((x - 400) / 82) ** 2 + ((y - 80) / 44) ** 2 < 1) return "pond";
   if (MAP.stoneSet && MAP.stoneSet.has(cellKey(Math.floor(x / CELL), Math.floor(y / CELL)))) return MAP.rocks ? "rock" : "stone";
   if (MAP.waterSet && MAP.waterSet.has(cellKey(Math.floor(x / CELL), Math.floor(y / CELL)))) return MAP.bog ? "bog" : MAP.sea ? "sea" : MAP.lava ? "lava" : "river";
@@ -2706,7 +2707,7 @@ function renderUpNext() {
 }
 
 /* ---------- defender bar: tap for details, drag to build ---------- */
-const BUILD_MSG = { road: "Towers can't go on the road.", pond: "Towers can't go in the pond.", tower: "Too close to another tower.", tree: "A tree is in the way. Tap it to chop it down.", stone: "A headstone is in the way.", rock: "A boulder is in the way.", river: "Towers can't go in the river.", bog: "A tower would sink in the bog.", sea: "Towers can't go in the sea.", lava: "Towers can't go in the lava.", edge: "Too close to the edge.", castle: "That's the castle!" };
+const BUILD_MSG = { road: "Towers can't go on the road.", pond: "Towers can't go in the pond.", tower: "Too close to another tower.", tree: "A tree is in the way. Tap it to chop it down.", stone: "A headstone is in the way.", rock: "A boulder is in the way.", river: "Towers can't go in the river.", bog: "A tower would sink in the bog.", sea: "Towers can't go in the sea.", cliff: "Too close to the cliff edge.", lava: "Towers can't go in the lava.", edge: "Too close to the edge.", castle: "That's the castle!" };
 function placeTower(k, x, y) {
   const d = TOWERS[k];
   { const lk = lockOf(k); if (lk) { toast(lk.why); return false; } }
