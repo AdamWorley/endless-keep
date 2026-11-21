@@ -4424,9 +4424,11 @@ function vsBudget(L) {
   return Math.round((Math.min(8 + Math.floor(L * .9), 45) - (L % 10 === 0 ? 4 : 0)) * avg);
 }
 function vsSend(m) { try { if (NET.conn && NET.conn.open) NET.conn.send(m); } catch {} }
+// the browser refuses the file unless it matches this hash, so a changed copy on the CDN can't run in the game
+// (when moving to a new PeerJS version: openssl dgst -sha384 -binary peerjs.min.js | openssl base64 -A)
 function loadPeer() {
   if (window.Peer) return Promise.resolve();
-  return new Promise((ok, fail) => { const sc = document.createElement("script"); sc.src = "https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"; sc.onload = ok; sc.onerror = () => fail(new Error("load")); document.head.append(sc); });
+  return new Promise((ok, fail) => { const sc = document.createElement("script"); sc.src = "https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"; sc.integrity = "sha384-nlUQ8ZqCbvStErob+biJNzSgltf6urV3VGqhfIfzhmg9RXmpeRm76ELw0pYnKlTR"; sc.crossOrigin = "anonymous"; sc.onload = ok; sc.onerror = () => fail(new Error("load")); document.head.append(sc); });
 }
 function netClose() {
   clearInterval(NET.timer); NET.timer = 0;
