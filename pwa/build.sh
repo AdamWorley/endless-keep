@@ -19,6 +19,17 @@ mkdir -p "$OUT"
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Endless Keep">
+<link rel="canonical" href="https://keep.watchtogether.uk/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Endless Keep">
+<meta property="og:title" content="Endless Keep">
+<meta property="og:description" content="Hold the castle against endless waves of goblins, trolls and dragons.">
+<meta property="og:url" content="https://keep.watchtogether.uk/">
+<meta property="og:image" content="https://keep.watchtogether.uk/og-image.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Towers defend a winding road through autumn woods as goblins march on a castle, under the gold Endless Keep title.">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="icon" href="icon-192.png" type="image/png" sizes="192x192">
@@ -31,7 +42,7 @@ HEAD
   node inline.mjs ../endless-keep.html   # the page with its game/ pieces put back in: still one file
   printf '\n</body>\n</html>\n'
 } > "$OUT/index.html"
-cp manifest.webmanifest sw.js icon.svg icon-192.png icon-512.png apple-touch-icon.png "$OUT/"
+cp manifest.webmanifest sw.js og-image.jpg icon.svg icon-192.png icon-512.png apple-touch-icon.png "$OUT/"
 # bump the cache name so installed copies pick up the new build
 # (BUILD_ID if given, else the UTC time plus, on Cloudflare Pages, the commit; works with macOS and Linux sed)
 SHA=$(printf '%s' "${CF_PAGES_COMMIT_SHA:-}" | cut -c1-7)
