@@ -773,7 +773,12 @@ const TROLL_ROAD = cellsAlong([[20, 500], [620, 500], [620, 340], [100, 340], [1
 const TROLLPASS = { id: "trollpass", name: "Troll pass", builtin: true, unlock: "trollking", need: "Defeat the Troll King to unlock it.",
   about: "A long climb up the mountain, with boulders everywhere and trolls on every bend.", foes: { troll: 2 }, trees: .35, flowers: .4,
   tint: "rgba(80,85,100,.18)", gloom: .45, tune: "trollpass", rocks: true, road: TROLL_ROAD, stones: scatter(TROLL_ROAD, 82, 23) };
-const MAPS = [DEFAULT_MAP, GRAVEYARD, MILLFORD, TROLLPASS];
+// forest: the share of open squares that start with a tree (each worth less firewood than a meadow tree)
+const GLOAMING = { id: "gloaming", name: "Gloaming Wood", builtin: true, unlock: "jasmine", need: "Defeat Jasmine the Witch to unlock it.",
+  about: "A dim wood where trees crowd every square. Chop your way to room for towers, and sell the firewood.", forest: .7, pond: false,
+  tint: "rgba(30,25,80,.26)", gloom: .35, flowers: .5, tune: "gloaming",
+  road: cellsAlong([[20, 460], [260, 460], [260, 260], [460, 260], [460, 460], [620, 460], [620, 220], [740, 220], [740, 380], [780, 380]]) };
+const MAPS = [DEFAULT_MAP, GRAVEYARD, MILLFORD, TROLLPASS, GLOAMING];
 for (const m of MAPS) { m.stoneSet = new Set((m.stones || []).map(q => cellKey(...q))); m.waterSet = new Set((m.water || []).map(q => cellKey(...q))); }
 // where a way in starts, just off the board: straight on from the road if that leaves the board, else over the nearest edge
 function entryOut([c, r], from) {
@@ -936,7 +941,7 @@ function newRun() {
 }
 function makeSave() {
   return { v: 1, level: S.level, gold: Math.floor(S.gold), hp: S.hp, maxHp: S.maxHp, walls: S.walls, treasury: S.treasury, scav: S.scav || 0, fort: S.fort,
-           dragon: S.dragon, cleared: TREES.filter(t => !S.trees.some(x => x.id === t.id && !x.fall)).map(t => t.id), towers: S.towers.map(t => [t.type, t.lvl, t.spent, Math.round(t.x), Math.round(t.y), Math.round(t.dmg || 0), t.kills || 0, t.slowed || 0, t.name || ""]), planted: S.trees.filter(t => t.planted != null && !t.fall).map(t => [t.x, t.y, t.planted, t.tone, Math.max(0, t.max - t.hp), t.boost || 0]), stats: S.stats, rv: S.rv, perks: S.perks, dyn: S.dyn || 0, windUsed: !!S.windUsed, wish: S.wish || null, plan: S.plan, planL: S.planL, grid: CELL, map: S.map || null, mid: S.mid || null, ev: S.ev || null, lbt: S.lbt || null, name: playerName, savedAt: Date.now() };
+           dragon: S.dragon, cleared: [...TREES, ...forestTrees()].filter(t => !S.trees.some(x => x.id === t.id && !x.fall)).map(t => t.id), towers: S.towers.map(t => [t.type, t.lvl, t.spent, Math.round(t.x), Math.round(t.y), Math.round(t.dmg || 0), t.kills || 0, t.slowed || 0, t.name || ""]), planted: S.trees.filter(t => t.planted != null && !t.fall).map(t => [t.x, t.y, t.planted, t.tone, Math.max(0, t.max - t.hp), t.boost || 0]), stats: S.stats, rv: S.rv, perks: S.perks, dyn: S.dyn || 0, windUsed: !!S.windUsed, wish: S.wish || null, plan: S.plan, planL: S.planL, grid: CELL, map: S.map || null, mid: S.mid || null, ev: S.ev || null, lbt: S.lbt || null, name: playerName, savedAt: Date.now() };
 }
 // a new run on map m: a built-in map is remembered by its id (S.mid, none for the meadow), your own by its road (S.map)
 function startOn(m) {
@@ -1060,10 +1065,16 @@ const TUNES = {
     boss: [[45, [57, 60, 64, 69]], [41, [53, 57, 60, 65]], [43, [55, 59, 62, 67]], [40, [52, 55, 59, 64]]],
     melody: [69, 72, 74, 76, 79, 81], beat: .44, bar: 8, bass2: 4, pat: [0, null, 1, 2, null, 3, 2, null], lift: [], mel: [1, 5],
     wave: "square", ring: 1.1, vol: .011, up: 0, drone: true },
+  gloaming: {   // Dm  G  Dm  C, and Dm  Bb  C  Am for bosses: a breathy D Dorian flute with a wavering vibrato
+    calm: [[50, [62, 65, 69, 72]], [43, [59, 62, 67, 71]], [50, [62, 65, 69, 74]], [48, [60, 64, 67, 72]]],
+    boss: [[50, [62, 65, 69, 74]], [46, [58, 62, 65, 70]], [48, [60, 64, 67, 72]], [45, [57, 60, 64, 69]]],
+    melody: [74, 76, 77, 79, 81, 83], beat: .3, bar: 8, bass2: 4, pat: [0, 2, 1, 3, null, 2, 1, null], lift: [], mel: [4],
+    wave: "sine", ring: .9, vol: .03, up: 12, wobble: true },
 };
-function mNote(f, t, dur, vol, type, slow) {
+function mNote(f, t, dur, vol, type, slow, wobble) {
   const o = AC.createOscillator(), g = AC.createGain();
   o.type = type; o.frequency.value = f;
+  if (wobble) { const l = AC.createOscillator(), d = AC.createGain(); l.frequency.value = 4.5 + Math.random(); d.gain.value = f * .012; l.connect(d).connect(o.frequency); l.start(t); l.stop(t + dur + .05); }
   g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + (slow ? 1.1 : .012)); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
   o.connect(g).connect(mBus); o.start(t); o.stop(t + dur + .05);
 }
@@ -1085,7 +1096,7 @@ function musicTick() {
     if (step === 0) { mNote(mtof(bass), t, beat * 8, .05, "sine", true); ch.slice(0, 3).forEach(m => mNote(mtof(m - 12), t, beat * 16, .012, "sine", true)); if (T.bell) mNote(mtof(bass - 12), t, 2.2, .03, "sine"); if (T.drone) mNote(mtof(45 - 12), t, beat * T.bar + .6, .03, "sawtooth", true); }
     if (step === T.bass2) mNote(mtof(bass), t, beat * 8, .04, "sine", true);
     const n = T.pat[step % T.pat.length];
-    if (n != null) mNote(mtof(ch[n] + T.up + (T.lift.includes(step) ? 12 : 0)), t, T.ring, T.vol, T.wave);
+    if (n != null) mNote(mtof(ch[n] + T.up + (T.lift.includes(step) ? 12 : 0)), t, T.ring, T.vol, T.wave, false, T.wobble);
     if (!boss && T.mel.includes(step) && Math.random() < .45) mNote(mtof(T.melody[(Math.random() * T.melody.length) | 0] + T.up), t, 2.4, .022, "sine", true);
     mNext += beat; mStep++;
   }
@@ -1247,7 +1258,21 @@ const TREES = (() => {
   return out.map(t => { const [x, y] = gridSnap(t.x, t.y); return { ...t, x, y }; })
     .filter(t => { const k = t.x + "," + t.y; if (used.has(k) || groundBlock(t.x, t.y)) return false; used.add(k); return true; });
 })();
-const freshTrees = () => TREES.filter(t => !groundBlock(t.x, t.y) && (MAP.trees == null || (t.id * 37) % 100 < MAP.trees * 100)).map(t => ({ ...t, hp: t.max, shake: 0, fall: 0, dir: 1 }));
+// a forest map's own trees, one on most open squares (seeded, so the same for everyone); ids 500 + square, so saves
+// know which were cleared
+function forestTrees() {
+  if (!MAP.forest) return [];
+  if (MAP.forestTrees) return MAP.forestTrees;
+  const r = rng(31), out = [], taken = new Set(TREES.map(t => t.x + "," + t.y));
+  for (let c = 0; c < COLS; c++) for (let q = 0; q < ROWS; q++) {
+    const [x, y] = cellXY([c, q]);
+    if (groundBlock(x, y) || taken.has(x + "," + y) || r() >= MAP.forest) continue;
+    const s = .75 + r() * .4;
+    out.push({ id: 500 + c * ROWS + q, x, y, s, tone: r() < .2 ? 0 : 1, max: s > 1.05 ? 6 : 4, wood: 2 });
+  }
+  return MAP.forestTrees = out;
+}
+const freshTrees = () => [...forestTrees(), ...TREES].filter(t => !groundBlock(t.x, t.y) && (MAP.trees == null || (t.id * 37) % 100 < MAP.trees * 100)).map(t => ({ ...t, hp: t.max, shake: 0, fall: 0, dir: 1 }));
 // a woodcutter clears a tree at once and sells the firewood, keeping a share as their fee (smaller with Lumber rights)
 const cutterFee = () => Math.max(.1, .5 - .08 * perk("lumber"));
 const cutterPay = t => Math.round(woodValue(t) * (1 - cutterFee()));
