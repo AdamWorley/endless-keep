@@ -70,6 +70,26 @@ Options: `--pop 40 --gens 25 --seeds 4 --elite 4 --mutate 0.15 --max-level 150 -
 Games step at 1/30 of a second. The real game steps at about 1/60 (three times a frame at 3× speed), which is
 close enough and twice as slow to run. A game of 80+ levels takes about 10 seconds. Runs use every core but one.
 
+## Two players: the bot Dark Lord
+
+Live two-player matches (Keeper vs Dark Lord, on one clock of 8, 15 or 25 minutes) have their own bots. The
+rules live in the game (`VS_TUNE` and `hostMsg` in `endless-keep.html`); the bot Dark Lord sends the same messages
+a human Dark Lord's phone would. The Keeper side is an evolved solo strategy that builds every few seconds.
+
+```sh
+# evolve a Dark Lord against every Keeper strategy at every match length (saved to bot/darklords/dark-lord.json)
+node bot/evolve-dl.mjs --name dark-lord --gens 12
+
+# how often it wins, per Keeper and match length. Fair is 40-60% at every length
+node bot/versus.mjs --seeds 6
+
+# try other rules without editing the game: any VS_TUNE number
+node bot/versus.mjs --tune gateMax=0,drip=.8
+```
+
+- `darklord.mjs`: the Dark Lord's genes and moves (gates where towers reach least, spells, bosses, surges, counter-picking fliers and armour).
+- `match.mjs`: plays one match. `versus.mjs`: the fairness test. `evolve-dl.mjs`: evolution.
+
 ## Files
 
 - `sim.mjs`: loads the game into a sandbox and exposes the game functions the bot needs.

@@ -58,11 +58,16 @@ export function decode(g, { ban = [] } = {}) {
 
 /* ---------- the map, worked out once per game ---------- */
 // every grid cell, with how much of the road each tower type would cover from there (weighted along the road)
-function mapInfo(G, P) {
+// entries: where monsters join the road (two players: the road's start and each Dark Gate), and how much of the
+// traffic each brings; a stretch of road counts for the traffic that passes it. Solo games have one entry at the start
+export function mapInfo(G, P, entries = [{ d: 0, w: 1 }]) {
   const cells = [];
   for (let x = G.CELL / 2; x < G.W; x += G.CELL) for (let y = G.CELL / 2; y < G.H; y += G.CELL) cells.push({ x, y });
   const road = [];
-  for (let d = 0; d < G.ROAD.len; d += 8) { const [x, y] = G.posAt(G.ROAD, d); road.push({ x, y, w: Math.exp(P.roadBias * (d / G.ROAD.len - .5)) }); }
+  for (let d = 0; d < G.ROAD.len; d += 8) {
+    const [x, y] = G.posAt(G.ROAD, d), pass = entries.reduce((a, e) => a + (e.d <= d ? e.w : 0), 0);
+    road.push({ x, y, w: Math.exp(P.roadBias * (d / G.ROAD.len - .5)) * pass });
+  }
   const total = road.reduce((a, r) => a + r.w, 0);
   const cov = {};
   for (const t of TYPES) {

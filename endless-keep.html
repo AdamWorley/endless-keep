@@ -967,7 +967,7 @@ const dragonAt = () => perk("egg") ? 5 : 10;
 // why a defender can't be built yet: tag for the bar, words for the panel. Lanterns came with rules v4, so older saved games don't get them
 // rules v5: Lanterns unlock on the first night level (41), when you first need them
 function nightFrom() { return 10 * SEASONS.findIndex(z => z.night) + 1; }
-const lanternLocked = () => rules5() && S && S.level < nightFrom();
+const lanternLocked = () => rules5() && S && (S.vs && S.vs.live ? vsSeason() < SEASONS.findIndex(z => z.night) : S.level < nightFrom());
 const lockOf = k => k === "dragon" && !S.dragon ? { tag: `Level ${dragonAt()}`, why: `The Dragon Roost unlocks after level ${dragonAt()}.`, hint: `Unlocks after you clear level ${dragonAt()}.` }
   : k === "lantern" && lanternLocked() ? { tag: `Level ${nightFrom()}`, why: `Lanterns unlock when night first falls, at level ${nightFrom()}.`, hint: `Unlocks at level ${nightFrom()}, the first night.` }
   : k === "lantern" && !newRules() ? { tag: "New game", why: "Lanterns came after this game began. Start a new game to build them.", hint: "Lanterns came after this game began. Start a new game to build them." } : null;
@@ -1344,7 +1344,8 @@ const SEASONS = [
   { name: "Winter", msg: "Snow blankets the valley.", grass: ["#eef3f6", "#d5dfe7"], dark: "rgba(120,150,175,.12)", light: "rgba(255,255,255,.5)", blade: "rgba(140,160,180,.28)", rim: "#b9cbd6", pond: "#cfe8f1", frozen: true, edge: "#93846c", road: "#cfc4b2", ink: "#3e4650", flowers: ["#ffffff", "#e6f2ff"], nflowers: 120, trees: [["#2c5444", "#386a56", "#f4f8fb"], ["#2a4f48", "#355f57", "#f4f8fb"]], snow: true, amb: "snow", kind: "bad", walk: .85, sight: .9, chill: 1.5, rule: "Deep snow slows monsters on foot by 15%, but falling snow cuts tower range by 10%. Frost Spire chills last longer." },
   { name: "Night", msg: "Night falls, and fireflies light the meadow.", grass: ["#2f4c3b", "#22382c"], dark: "rgba(0,0,20,.18)", light: "rgba(120,160,140,.08)", blade: "rgba(10,25,15,.4)", rim: "#22382c", pond: "#24405a", moon: true, edge: "#5a4a32", road: "#8c7a58", ink: "#0c1610", flowers: ["#cfd9ff", "#9fb0e8"], nflowers: 90, trees: [["#17301f", "#1f3f2b", "#2c5a3e"], ["#163028", "#1d3d33", "#28544a"]], night: true, amb: "fireflies", kind: "bad", gloom: .85, rule: "Darkness cuts tower range by 15%, except for towers in a Lantern's light." },
 ];
-const seasonIdx = L => Math.floor((Math.max(1, L) - 1) / 10) % SEASONS.length;
+// two players (live match): the seasons turn with the match clock instead, so every match ends at night
+const seasonIdx = L => S && S.vs && S.vs.live ? vsSeason() : Math.floor((Math.max(1, L) - 1) / 10) % SEASONS.length;
 let seasonI = 0, season = SEASONS[0], bgOld = null, fadeT = 0, amb = [];
 
 /* ---------- seeded scenery ---------- */
@@ -1567,6 +1568,7 @@ function groundBlock(x, y) {
 function canBuild(x, y) {
   const g = groundBlock(x, y); if (g) return g;
   if (S && S.towers.some(t => Math.hypot(t.x - x, t.y - y) < CELL - 2)) return "tower";
+  if (S && S.vs && S.vs.gates && S.vs.gates.some(g => Math.hypot(g.e.x - x, g.e.y - y) < CELL - 2)) return "gate";
   if (S && S.trees.some(t => !t.fall && Math.hypot(t.x - x, t.y - y) < 30)) return "tree";
   return "";
 }
@@ -2295,6 +2297,7 @@ function hexMark(x, y, T) {
   c.restore();
 }
 function drawEnemy(e) {
+  if (e.k === "gate") return drawGate(e);
   const c = ctx, r = e.r, t = e.t;
   const bob = e.fly ? Math.sin(t * 5) * 3 : -Math.abs(Math.sin(t * 9)) * 2.5;
   const x = e.x, y = e.y + bob - (e.fly ? 22 : 0);
@@ -2356,15 +2359,19 @@ const VCOLS = {
 };
 function spawn(item) {
   let d;
-  if (item.k === "boss") { const b = bossFor(S.level); d = { ...b, boss: true }; d.k = b.key; }
+  if (item.k === "boss") { const b = bossFor(item.bl || S.level); d = { ...b, boss: true }; d.k = b.key; }
   else { d = { ...foeDef(item.k), k: item.k }; }
   if (!S.vsGuest && !meta.seen[d.k]) { meta.seen[d.k] = 1; beastDirty = true; }
   if (!S.vsGuest && d.back && !meta.back.includes(d.k)) { meta.back.push(d.k); beastDirty = true; }   // the bestiary keeps a returning boss secret until you've met it
   const L = S.level;
   let path = ROADS[(S.spawnN = (S.spawnN || 0) + 1) % ROADS.length];   // monsters on foot take turns between the paths
-  if (d.fly) { const sy = 60 + Math.random() * 440; path = mkPath([[-40, sy], [CASTLE.x + 20, CASTLE.y + 110 + (Math.random() - .5) * 60]]); }
+  const g = item.gate;   // two players: a Dark Gate beside the road, where monsters on foot join the road and fliers take off
+  if (d.fly) { const sy = 60 + Math.random() * 440; path = mkPath([g ? [g.x, g.y] : [-40, sy], [CASTLE.x + 20, CASTLE.y + 110 + (Math.random() - .5) * 60]]); }
+  else if (g) path = ROAD;
   const e = makeFoe(d, path, L);
   if (d.k === "slime" && slimeGrow(L) < 1) youngSlime(e, slimeGrow(L));
+  if (g && !d.fly) { e.d = g.d; [e.x, e.y] = posAt(path, e.d); }
+  if (item.bl) e.bl = item.bl;
   S.enemies.push(e);
 }
 function makeFoe(d, path, L) {
@@ -2421,7 +2428,7 @@ function hurt(e, amt, magic, src, armorMul = 1) {
 function earn(g) { S.gold += g; S.stats.gold += g; }
 function kill(e, src) {
   e.dead = true;
-  const g = Math.max(1, Math.round(e.gold * goldScale(S.level) * (1 + .04 * perk("bounty") + .1 * perk("chest") + .05 * dyn() + SCAV.pct * (S.scav || 0)) * (evOn("goldrush") ? 2 : 1) * ((dragonSecret(src) || {}).gold || 1)));
+  const g = Math.max(1, Math.round(e.gold * goldScale(S.level) * (1 + .04 * perk("bounty") + .1 * perk("chest") + .05 * dyn() + SCAV.pct * (S.scav || 0)) * (evOn("goldrush") ? 2 : 1) * ((dragonSecret(src) || {}).gold || 1) * (S.vs && S.vs.live ? VS_TUNE.killPay : 1)));
   earn(g); S.stats.kills++;
   if (e.split) burst(e);
   const bk = e.k === "slimelet" ? "slime" : e.k;
@@ -2430,7 +2437,7 @@ function kill(e, src) {
   for (let i = 0; i < (e.boss ? 30 : 8); i++) { const a = Math.random() * 6.28, sp = 30 + Math.random() * (e.boss ? 120 : 60); S.fx.push({ x: e.x, y: e.y - (e.fly ? 22 : 0), vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 20, life: .6, max: .6, col: e.boss ? "#ffd25e" : "rgba(240,235,220,.9)", r: e.boss ? 3.5 : 2.5, g: 60 }); }
   sfx("coin");
   if (e.boss) {
-    const twin = S.enemies.some(o => o.boss && !o.dead) || (S.born || []).some(o => o.boss), b = bossFor(S.level);
+    const twin = S.enemies.some(o => o.boss && !o.dead) || (S.born || []).some(o => o.boss), b = bossFor(e.bl || S.level);
     if (twin) { toast("One Elder Dragon down, one to go!"); sfx("clear"); }
     else { toast(`${b.name} defeated!`); sfx("clear"); S.stats.bosses++; unlock(e.k); }
   }
@@ -2438,6 +2445,9 @@ function kill(e, src) {
 function target(t, st) {
   const tx = t.x, ty = t.y; let best = null, bp = -1;
   const air = TOWERS[t.type].air, near = TOWERS[t.type].minRange || 0;
+  // two players: the Keeper can mark one Dark Gate, and every tower that reaches it (except the Frost Spire) shoots it first
+  const fg = S.vs && S.vs.focus != null && S.vs.gates && S.vs.gates.find(g => g.spot === S.vs.focus);
+  if (fg && !fg.e.dead && t.type !== "frost") { const dist = Math.hypot(fg.e.x - tx, fg.e.y - ty); if (dist <= st.range && dist >= near) return fg.e; }
   for (const e of S.enemies) {
     if (e.dead || (e.fly && !air) || e.d <= 0) continue;
     const ey = e.fly ? e.y - 22 : e.y, dist = Math.hypot(e.x - tx, ey - ty);
@@ -2568,13 +2578,10 @@ function startWave() {
   if (!S || S.phase !== "build") return;
   if (RP) return;   // a replay plays itself
   if (NET.role === "guest") return vsSend({ t: "ready" });
+  if (S.vs) return;   // a live two-player match has no levels to start: it runs on the clock
   audio();
-  if (S.vs) {  // both sides must be ready; if the Dark Lord has left, the dark forces march on by themselves
-    S.vs.ready.k = true;
-    if (S.vs.dl && !S.vs.ready.d) { updateHud(); renderUpNext(); return; }
-  }
-  S.queue = S.vs && S.vs.dl ? vsArmyQueue() : planFor().map(q => ({ ...q }));
-  if (S.vs) { S.vs.ready = { k: false, d: false }; vsSend({ t: "toast", msg: `Your army marches on level ${S.level}!` }); } S.phase = "wave"; S.spawnT = .5; S.waveHp = S.hp; S.stormT = 2;
+  S.queue = planFor().map(q => ({ ...q }));
+  S.phase = "wave"; S.spawnT = .5; S.waveHp = S.hp; S.stormT = 2;
   const ev = curEv();
   if (ev && ev.id === "toll") {  // the goblins keep their word, one way or the other
     if (!ev.choice) ev.choice = "refuse";
@@ -2587,19 +2594,18 @@ function startWave() {
   else { sfx("wave"); if (ev) toast(`${EVENTS[ev.id].name}! ${EVENTS[ev.id].kind === "choice" ? (ev.choice === "pay" ? "Paid." : "Refused.") : EVENTS[ev.id].desc(S.level)}`); }
   updateHud(); renderUpNext();
 }
-function clearWave() {
-  const L = S.level, bonus = Math.round((15 + 4 * L) * (1 + .1 * perk("chest") + .05 * dyn()));
-  earn(bonus); S.phase = "build"; S.level++; S.nextT = 5;
-  sfx("clear");
+// what holding level L pays, and the message that says so: the level bonus, the treasury, the masons' mending, a
+// dragon egg hatching and saplings growing. Solo games pay it when a level is cleared, live two-player matches as the clock passes each level
+function levelRewards(L) {
+  const bonus = Math.round((15 + 4 * L) * (1 + .1 * perk("chest") + .05 * dyn()));
+  earn(bonus);
   const tpay = S.treasury ? treasPay(S.treasury, L) : 0;
   if (tpay) earn(tpay);
-  const unhurt = S.hp >= S.waveHp, thread = S.hp === 1;  // judged before the masons patch the walls up
-  if (S.ev && S.ev.L === L) S.stats.events = (S.stats.events || 0) + 1;
   const mend = Math.min(S.maxHp - S.hp, S.fort.masons * masonMend() + perk("crown") + S.towers.reduce((a, t) => a + ((dragonSecret(t) || {}).mend || 0), 0));
   if (mend > 0) { S.hp += mend; S.texts.push({ x: CASTLE.x + 50, y: CASTLE.y + 30, txt: "+" + mend + " ♥", life: 1.4, col: "#9fe08a" }); }
-  let msg = `Level ${L} cleared! +${bonus + tpay} gold${tpay ? ` (${tpay} from the treasury)` : ""}`;
+  let msg = `Level ${L} ${S.vs ? "held" : "cleared"}! +${bonus + tpay} gold${tpay ? ` (${tpay} from the treasury)` : ""}`;
   if (L >= dragonAt() && !S.dragon) { S.dragon = true; msg = "A dragon egg has hatched! Dragon Roosts are now unlocked."; }
-  if (rules5() && L + 1 === nightFrom()) msg = "Night is coming. Lanterns are now unlocked: towers in their light see through the dark.";
+  if (rules5() && !S.vs && L + 1 === nightFrom()) msg = "Night is coming. Lanterns are now unlocked: towers in their light see through the dark.";
   let grew = 0;
   const spring = newRules() && SEASONS[seasonIdx(L)].grow;   // a level cleared in spring counts twice for saplings
   for (const t of S.trees) if (t.planted != null && !t.fall && (spring && t.planted <= L && (t.boost = (t.boost || 0) + spring), growTree(t))) {
@@ -2608,8 +2614,15 @@ function clearWave() {
   }
   S.stats.grown = (S.stats.grown || 0) + grew;
   if (grew) msg += ` · ${grew === 1 ? "A tree has" : grew + " trees have"} grown`;
-  toast(msg);
-  if (S.vs) { vsLevelCleared(L); updateHud(); renderUpNext(); renderPanel(); return; }
+  return msg;
+}
+function clearWave() {
+  const L = S.level;
+  const unhurt = S.hp >= S.waveHp, thread = S.hp === 1;  // judged before the masons patch the walls up
+  if (S.ev && S.ev.L === L) S.stats.events = (S.stats.events || 0) + 1;
+  S.phase = "build"; S.level++; S.nextT = 5;
+  sfx("clear");
+  toast(levelRewards(L));
   savePlayer(L);
   [10, 25, 50, 100].forEach(n => { if (L >= n) unlock("lv" + n); });
   if (L % 10 === 0 && unhurt) unlock("untouched");
@@ -2661,10 +2674,11 @@ function update(dt) {
   for (const t of S.trees) { if (t.shake > 0) t.shake -= dt; if (t.fall) t.fall += dt * 1.6; }
   if (S.trees.some(t => t.fall > 1.5)) S.trees = S.trees.filter(t => !(t.fall > 1.5));
   if (S.phase === "build" && auto && !S.vs) { S.nextT = Math.max(0, S.nextT - dt); if (S.nextT <= 0) { if (!evPending()) startWave(); else if ($("modal").hidden && $("startCard").hidden && !paused) askEvent(); } }
-  if (S.vs) for (const id in S.vs.spells) S.vs.spells[id] = Math.max(0, S.vs.spells[id] - dt);
+  if (S.vs) { vsTick(dt); if (S.phase === "over") return; }
   if (S.phase === "wave") {
     S.spawnT -= dt;
     while (S.queue.length && S.spawnT <= 0) { const it = S.queue.shift(); spawn(it); S.spawnT += it.gap; }
+    if (S.vs && !S.queue.length) S.spawnT = Math.max(0, S.spawnT);   // a live match: the next pack marches as soon as it's sent
   }
   for (const e of S.enemies) {
     if (e.dead) continue;
@@ -2682,7 +2696,7 @@ function update(dt) {
       const hpWas = S.hp, tier = hitTier(e.dmg, hpWas, hpWas - e.dmg, S.maxHp);
       e.dead = true; S.hp -= e.dmg; S.hitTotal = (S.hitTotal || 0) + e.dmg;
       castleHit(tier, true); sfx(tier === 3 ? "leakBig" : "leak");
-      if (S.vs) { const g = Math.round(e.gold * 1.5); S.vs.dread += g; S.hitDread = (S.hitDread || 0) + g; }  // the Dark Lord feeds on every blow to the castle
+      if (S.vs) { const g = Math.round(e.gold * VS_TUNE.hitPay); S.vs.dread += g; S.hitDread = (S.hitDread || 0) + g; }  // the Dark Lord feeds on every blow to the castle
       S.texts.push({ x: CASTLE.x + 40, y: CASTLE.y + 40, txt: "-" + e.dmg, life: 1.2, col: "#ff9a86" });
       if (S.hp <= 0) {
         if (perk("wind") && !S.windUsed) { S.windUsed = true; S.hp = Math.ceil(S.maxHp / 2); toast("Second wind! The castle springs back to half its hearts."); sfx("clear"); hitFx.saved = 1.4; hitFx.gate = hitFx.edge = 0; }
@@ -2732,9 +2746,22 @@ function update(dt) {
   S.fx = S.fx.filter(f => f.life > 0);
   for (const t of S.texts) { t.life -= dt; t.y -= 22 * dt; }
   S.texts = S.texts.filter(t => t.life > 0);
-  if (S.phase === "wave" && !S.queue.length && !S.enemies.length && !(S.born && S.born.length)) clearWave();
+  if (S.phase === "wave" && !S.vs && !S.queue.length && !S.enemies.length && !(S.born && S.born.length)) clearWave();
 }
 
+// a Dark Gate: a violet stone arch with a dark doorway (a placeholder look until the two-player screens are designed)
+function drawGate(e) {
+  const c = ctx, x = e.x, y = e.y;
+  c.fillStyle = "rgba(0,0,0,.25)"; ell(c, x, y + 12, 18, 6);
+  c.fillStyle = "#4a2a6e"; c.beginPath(); c.moveTo(x - 15, y + 12); c.lineTo(x - 15, y - 6); c.arc(x, y - 6, 15, Math.PI, 0); c.lineTo(x + 15, y + 12); c.closePath(); c.fill();
+  c.fillStyle = "#1a0f26"; c.beginPath(); c.moveTo(x - 8, y + 12); c.lineTo(x - 8, y - 4); c.arc(x, y - 4, 8, Math.PI, 0); c.lineTo(x + 8, y + 12); c.closePath(); c.fill();
+  c.fillStyle = "rgba(197,139,255,.55)"; ell(c, x, y + 2, 4, 6);
+  if (e.hp < e.max) {
+    const f = Math.max(0, e.hp / e.max);
+    c.fillStyle = "rgba(0,0,0,.5)"; c.fillRect(x - 17, y - 30, 34, 5);
+    c.fillStyle = "#c58bff"; c.fillRect(x - 16, y - 29, 32 * f, 3);
+  }
+}
 // a catapult can't aim at anything right beside it: show that blind spot inside its range ring
 function deadZone(type, x, y) {
   const m = TOWERS[type] && TOWERS[type].minRange; if (!m) return;
@@ -3270,17 +3297,14 @@ function chip(cls, icon, text) {
   const c = el("span", "chip " + cls); if (icon) c.append(icon); else c.classList.add("plain");
   c.append(document.createTextNode(text)); return c;
 }
+// the Keeper's view of a live match: the clock, the Dark Lord's latest moves, and what the Spyglass shows
 function renderVsUpNext() {
-  const V = S.vs, L = S.level, box = $("upNext"), later = $("upLater"); box.textContent = ""; later.textContent = ""; later.previousElementSibling.textContent = "Later";
-  $("upTitle").textContent = S.phase === "wave" ? `Level ${L} (under way)` : `Coming in level ${L}`;
-  if (L % 10 === 0) { const b = bossFor(L); box.append(chip("boss", enemyIcon(b.key, b), "Boss: " + b.name)); }
-  if (S.phase === "wave" && V.revealed) Object.entries(V.revealed).sort((a, b) => b[1] - a[1]).forEach(([k, n]) => box.append(chip(ENEMIES[k].fly ? "fly" : "", enemyIcon(k), `${n} × ${ENEMIES[k].name}`)));
-  else {
-    const bx = el("div", "event bad"); bx.append(el("b", "", V.dl ? "The Dark Lord plots…" : "The Dark Lord has left"),
-      el("span", "", !V.dl ? "Ordinary armies will march from now on." : V.ready.d ? "Their army is ready and waiting. Start the level when you are." : "They are raising an army in secret. You'll see it when it marches."));
-    box.append(bx);
-  }
-  later.append(chip("plain", null, `Hold until level ${V.len} to win`));
+  const V = S.vs, box = $("upNext"), later = $("upLater"); box.textContent = ""; later.textContent = ""; later.previousElementSibling.textContent = "Later";
+  $("upTitle").textContent = `${vsClock(vsLeft())} to hold`;
+  if (!V.dl) box.append(chip("plain", null, "The Dark Lord has left"));
+  V.log.slice(0, 3).forEach(n => box.append(chip("plain", null, n.msg)));
+  if (V.scout.k > 0) box.append(chip("plain", null, `Spyglass: ${Math.floor(V.dread).toLocaleString()} dread`));
+  later.append(chip("plain", null, `${SEASONS[Math.min(SEASONS.length - 1, V.season + 1)].name} next`));
   later.hidden = later.previousElementSibling.hidden = false;
 }
 function renderUpNext() {
@@ -3428,8 +3452,8 @@ function hudTick() {
   } else if (!waveBtn.classList.contains("primary")) waveBtn.classList.add("primary");
   const btn = waveBtn;
   let label;
-  if (S.phase === "build") label = S.vs && S.vs.dl ? (S.vs.ready.k ? "Waiting for the Dark Lord…" : S.vs.ready.d ? `Start level ${S.level} (they're ready)` : `Ready for level ${S.level}`)
-    : auto ? (evPending() && S.nextT <= 0 ? `Start level ${S.level} (choose first)` : `Start level ${S.level} (${Math.max(0, Math.ceil(S.nextT))})`) : `Start level ${S.level}`;
+  if (S.vs && S.vs.live && S.phase === "wave") label = `${vsClock(vsLeft())} to hold`;
+  else if (S.phase === "build") label = auto ? (evPending() && S.nextT <= 0 ? `Start level ${S.level} (choose first)` : `Start level ${S.level} (${Math.max(0, Math.ceil(S.nextT))})`) : `Start level ${S.level}`;
   else if (S.phase === "wave") label = `Level ${S.level} under way`;
   else label = "Game over";
   const key = [S.level, Math.floor(S.gold), S.hp, S.maxHp, label].join("|");
@@ -3437,7 +3461,7 @@ function hudTick() {
   if (key === hudCache) return; hudCache = key;
   if (S.gold >= 5000 && S.phase !== "over") unlock("rich");
   $("hLevel").textContent = S.level; $("hGold").textContent = Math.floor(S.gold).toLocaleString(); $("hHearts").textContent = `${S.hp}/${S.maxHp}`; heartsAlert();
-  btn.textContent = label; btn.disabled = S.phase !== "build" || !!(S.vs && S.vs.dl && S.vs.ready.k);
+  btn.textContent = label; btn.disabled = S.phase !== "build" || !!S.vs;
   refreshAfford();
 }
 let toastTimer = 0;
@@ -4336,6 +4360,37 @@ const NET = { role: null, peer: null, conn: null, timer: 0 };
 const watchOnly = () => NET.role === "guest" || !!RP;
 const PEER_PREFIX = "endless-keep-v1-";
 const VS_UNIT = k => ENEMIES[k].gold * 2;                       // dread cost of one monster
+/* A live match (the relaunch brief, .impeccable/surfaces/dark-lord-mode.md): no levels to start and no Ready button.
+   The match runs on one clock (8, 15 or 25 minutes) and the five seasons share it out, so every match ends at night.
+   Monster strength still follows levels: the level goes up by one every VS_TUNE.spl seconds (see vsSpl), and each level passed
+   pays the Keeper as clearing it would. Dread drips in all the time; the Dark Lord sends packs of monsters (each kind
+   then rests for a few seconds), raises Dark Gates beside the road (extra places to send from, and more dread, but the
+   Keeper's towers can knock them down), casts spells, and plays a boss each time the season changes.
+   Every number to tune is here, and the bots (bot/versus.mjs) change them to find a fair match. */
+const VS_TUNE = {
+  lens: [8, 15, 25],   // match lengths, minutes
+  spl: 30,             // seconds of match per level of monster strength (a solo level lasts about 30-40 s)
+  levels: 0,           // over 0: every match runs this many levels whatever its length (spl becomes the length / levels)
+  drip: 1,             // dread per level: this many normal levels' armies every spl seconds
+  start: 1,            // dread to start with, in levels' armies
+  cap: 1.5,            // the drip stops once this many levels' armies are banked: the Dark Lord can't go quiet and then flood the road
+  gateFly: 0,          // 1: fliers take off from a Dark Gate too; 0: they always come in from the edge of the map
+  hitPay: 1.5,         // dread for each monster that reaches the castle, times its gold
+  keepDrip: .8,        // the Keeper's gold drip: this share of what a normal level's monsters would pay, every spl seconds
+  killPay: .3,         // a kill pays this share of its usual gold, so holding monsters back doesn't starve the Keeper
+  pack: 4,             // one send is worth about this many goblins
+  cd: 5,               // seconds before the same kind of monster can be sent again
+  gateMax: 3,          // Dark Gates standing at once
+  gateCost: .8,        // a gate costs this many levels' armies of dread
+  gateHp: 60,          // a gate's health, in goblins
+  gateArmor: .3,
+  gateGold: 60,        // what knocking one down pays the Keeper, as a monster's gold (a goblin's is 4)
+  gateDrip: .15,       // each standing gate adds this much to the drip
+  spellCd: 20,         // seconds a spell rests after it wears off
+  scout: 8,            // seconds a Spyglass or Raven shows the other side's hand
+  spyCost: 40,         // the Keeper's Spyglass, gold (grows like monster gold)
+  ravenCost: 30,       // the Dark Lord's Raven, dread (grows with the level)
+};
 const SPELLS = {
   swift: { name: "Tailwind",     dur: 12, base: 30, desc: "Monsters move 20% faster for 12 seconds." },
   armor: { name: "Scrap armour", dur: 12, base: 35, desc: "+25% armour for every monster for 12 seconds. Magic still pierces it." },
@@ -4344,7 +4399,24 @@ const SPELLS = {
 };
 const spellCost = id => Math.round(SPELLS[id].base * (1 + S.level * .08));
 const vsOn = id => !!(S && S.vs && S.vs.spells && S.vs.spells[id] > 0);
-const vsAvail = () => Object.keys(ENEMIES).filter(k => foeFrom(k) <= S.level);
+const vsAvail = () => Object.keys(ENEMIES).filter(k => foeFrom(k) <= S.level && ENEMIES[k].w > 0);
+// one send: a few of a cheap monster or one big one, worth about VS_TUNE.pack goblins
+const vsPack = k => { const n = Math.max(1, Math.min(6, Math.round(VS_TUNE.pack * VS_UNIT("goblin") / VS_UNIT(k)))); return { n, cost: n * VS_UNIT(k) }; };
+const vsSpl = () => VS_TUNE.levels > 0 && S && S.vs ? S.vs.len / VS_TUNE.levels : VS_TUNE.spl;
+const vsSeason = () => Math.min(SEASONS.length - 1, Math.floor(SEASONS.length * S.vs.t / S.vs.len));
+const vsLeft = () => Math.max(0, S.vs.len - S.vs.t);
+// where Dark Gates may stand: beside the first half of the road, never on it, never on a tower
+function vsGateSpots() {
+  const out = [];
+  for (const f of [.12, .22, .32, .42, .52]) {
+    const d = ROAD.len * f, [x, y] = posAt(ROAD, d), [x2, y2] = posAt(ROAD, d + 4), ux = (x2 - x) / 4, uy = (y2 - y) / 4;
+    for (const side of [1, -1]) {
+      const gx = x - uy * 40 * side, gy = y + ux * 40 * side;
+      if (gx > 30 && gx < W - 30 && gy > 30 && gy < H - 30 && distRoad(gx, gy) > 22) { out.push({ x: Math.round(gx), y: Math.round(gy), d }); break; }
+    }
+  }
+  return out;
+}
 // the Dark Lord's budget matches what a normal level's army would be worth, so the Keeper faces a familiar challenge
 function vsBudget(L) {
   const avail = Object.keys(ENEMIES).filter(k => foeFrom(k) <= L), tw = avail.reduce((a, k) => a + ENEMIES[k].w, 0);
@@ -4384,9 +4456,9 @@ function openVersus() {
 }
 function hostSetup() {
   openModal(card => {
-    card.append(el("h2", "", "Host as the Keeper"), el("p", "", "How long should the match be? The Keeper wins by clearing the last level; the Dark Lord wins by bringing the castle down."));
+    card.append(el("h2", "", "Host as the Keeper"), el("p", "", "How long should the match be? The Keeper wins by holding the keep until the clock runs out; the Dark Lord wins by bringing the castle down."));
     const r = el("div", "row");
-    [10, 20, 30].forEach(n => { const b = el("button", n === 20 ? "primary" : "", `${n} levels`); b.addEventListener("click", () => hostWait(n)); r.append(b); });
+    VS_TUNE.lens.forEach(n => { const b = el("button", n === VS_TUNE.lens[1] ? "primary" : "", `${n} minutes`); b.addEventListener("click", () => hostWait(n)); r.append(b); });
     const x = el("button", "", "Back"); x.addEventListener("click", openVersus);
     card.append(r, x);
   });
@@ -4405,14 +4477,14 @@ async function hostWait(len) {
   netClose(); NET.role = "host";
   const peer = NET.peer = new Peer(PEER_PREFIX + code.toLowerCase());
   const giveUp = setTimeout(() => { if (!peer.open) status.textContent = netError(); }, 10000);
-  peer.on("open", () => { clearTimeout(giveUp); codeBox.textContent = code; status.textContent = `Match: ${len} levels. Waiting for the Dark Lord to join…`; });
+  peer.on("open", () => { clearTimeout(giveUp); codeBox.textContent = code; status.textContent = `Match: ${len} minutes. Waiting for the Dark Lord to join…`; });
   peer.on("error", e => { clearTimeout(giveUp); if (e.type === "unavailable-id") return hostWait(len); if (!(S && S.vs)) status.textContent = netError(e); });
   peer.on("connection", conn => {
     if (NET.conn && NET.conn.open) { conn.on("open", () => { conn.send({ t: "full" }); setTimeout(() => conn.close(), 500); }); return; }
     NET.conn = conn;
     conn.on("open", () => { modalDone = null; closeModal(); vsBegin(len); });
     conn.on("data", hostMsg);
-    conn.on("close", () => { if (S && S.vs && S.phase !== "over") { S.vs.dl = false; toast("The Dark Lord has left. The dark forces march on by themselves."); if (S.vs.ready.k && S.phase === "build") startWave(); renderUpNext(); } });
+    conn.on("close", () => { if (S && S.vs && S.phase !== "over") { S.vs.dl = false; toast("The Dark Lord has left. The dark forces march on by themselves."); renderUpNext(); } });
   });
 }
 function joinSetup() {
@@ -4442,62 +4514,116 @@ function joinSetup() {
 }
 
 /* ----- Keeper (host) side ----- */
-function vsBegin(len) {
+function vsBegin(min) {
   audio(); readName();
   setMap(DEFAULT_MAP); newRun(); S.perks = {}; S.dyn = 0;
-  S.vs = { len, dl: true, dread: vsBudget(1), army: {}, ready: { k: false, d: false }, spells: { swift: 0, armor: 0, fog: 0 }, revealed: null };
+  S.vs = { live: true, len: min * 60, t: 0, dl: true, dread: vsBudget(1) * VS_TUNE.start, cd: {}, spells: { swift: 0, armor: 0, fog: 0 }, scd: {},
+           gates: [], spots: vsGateSpots(), boss: 0, bossN: 0, season: 0, scout: { k: 0, d: 0 }, sent: 0, log: [] };
+  S.phase = "wave"; S.queue = []; S.spawnT = 0; S.waveHp = S.hp;
   auto = false; $("btnAuto").textContent = "Auto: off"; $("btnAuto").classList.remove("on");
   document.documentElement.classList.add("vs");
   sel = null; paused = false;
   $("startCard").hidden = true; $("overCard").hidden = true;
   seasonI = seasonIdx(1); season = SEASONS[seasonI]; buildBg(); amb = []; fadeT = 0;
   renderPanel(); renderUpNext(); updateHud();
-  toast(`The Dark Lord has arrived. Hold ${len} levels to win!`);
+  toast(`The Dark Lord has arrived. Hold the keep for ${min} minutes to win!`);
   clearInterval(NET.timer); NET.timer = setInterval(() => { if (S && S.vs && S.vs.dl) vsSend(vsSnap()); }, 100);
 }
-function vsArmyQueue() {
-  const L = S.level, gap = Math.max(.38, 1 - L * .01), groups = [];
-  for (const k in S.vs.army) { const n = S.vs.army[k]; for (let i = 0; i < n; i += 4) groups.push(Array(Math.min(4, n - i)).fill(k)); }
-  groups.sort(() => Math.random() - .5);
-  const q = groups.flat().map(k => ({ k, gap: ENEMIES[k].fly ? gap * 1.2 : gap }));
-  if (L % 10 === 0) q.push(...bossItems(L));
-  S.vs.revealed = { ...S.vs.army }; S.vs.army = {};
-  return q;
+// the rival's moves, newest first, for the Keeper's live feed (players often have the sound off)
+function vsNote(msg) { const V = S.vs; V.log.unshift({ t: V.t, msg }); V.log.length = Math.min(V.log.length, 6); toast(msg); vsSend({ t: "toast", msg }); }
+// the match clock: levels, seasons and bosses, the dread drip, rests and spells wearing off, gates knocked down, and the end
+function vsTick(dt) {
+  const V = S.vs;
+  for (const id in V.spells) V.spells[id] = Math.max(0, V.spells[id] - dt);
+  for (const o of [V.cd, V.scd]) for (const k in o) o[k] = Math.max(0, o[k] - dt);
+  V.scout.k = Math.max(0, V.scout.k - dt); V.scout.d = Math.max(0, V.scout.d - dt);
+  if (!V.live || S.phase !== "wave") return;
+  V.t += dt;
+  const L = 1 + Math.floor(V.t / vsSpl());
+  while (S.level < L) { const held = S.level; S.level++; toast(levelRewards(held)); }
+  const z = vsSeason();
+  if (z !== V.season) { V.season = z; V.boss++; checkSeason(); vsNote(`${season.name}: the Dark Lord has a new boss to send.`); }
+  V.gates = V.gates.filter(g => { if (!g.e.dead) return true; if (V.focus === g.spot) V.focus = null; vsNote("The Keeper has knocked down a Dark Gate!"); return false; });
+  const army = vsBudget(S.level);
+  earn(army / 2 * goldScale(S.level) / vsSpl() * VS_TUNE.keepDrip * dt);   // (a monster's dread is twice its gold)
+  if (V.dread < army * VS_TUNE.cap) V.dread = Math.min(army * VS_TUNE.cap, V.dread + army / vsSpl() * VS_TUNE.drip * (1 + VS_TUNE.gateDrip * V.gates.length) * dt);
+  if (V.t >= V.len) vsEnd("keeper");
 }
-function vsLevelCleared(L) {
-  if (L >= S.vs.len) return vsEnd("keeper");
-  const inc = vsBudget(L + 1); S.vs.dread += inc; S.vs.revealed = null;
-  vsSend({ t: "toast", msg: `The Keeper held level ${L}. +${inc} dread.` });
+// a gate's place on the road, for sending from: none means the road's own start
+const vsGate = i => (S.vs.gates[i] || null) && S.vs.gates[i].e;
+const gateCost = () => Math.round(vsBudget(S.level) * VS_TUNE.gateCost);
+const ravenCost = () => Math.round(VS_TUNE.ravenCost * goldScale(S.level));
+const spyCost = () => Math.round(VS_TUNE.spyCost * goldScale(S.level));
+// the Keeper marks a Dark Gate (by its spot) for every tower in reach to shoot first; null clears it
+function vsFocus(spot) {
+  const V = S && S.vs; if (!V || S.phase === "over") return false;
+  if (spot == null || !V.gates.some(g => g.spot === spot)) { V.focus = null; return spot == null; }
+  if (V.focus !== spot) { V.focus = spot; vsSend({ t: "toast", msg: "The Keeper's towers are aiming at one of your gates!" }); }
+  return true;
 }
+// the Keeper's Spyglass: a few seconds of seeing the Dark Lord's dread and what's ready to send
+function vsSpy() {
+  const V = S && S.vs; if (!V || S.phase === "over" || V.scout.k > 0) return false;
+  const c = spyCost(); if (S.gold < c) return false;
+  S.gold -= c; V.scout.k = VS_TUNE.scout; vsSend({ t: "toast", msg: "The Keeper is spying on you through a spyglass!" }); return true;
+}
+// what the Dark Lord sends (and what the bot Dark Lord calls directly): summon, boss, gate, spell, raven
 function hostMsg(m) {
-  if (!m || !S || !S.vs || S.phase === "over") return;
-  const V = S.vs, k = m.k;
-  if (m.t === "army" && S.phase === "build" && !V.ready.d && ENEMIES[k] && ENEMIES[k].from <= S.level) {
-    if (m.n > 0 && V.dread >= VS_UNIT(k)) { V.army[k] = (V.army[k] || 0) + 1; V.dread -= VS_UNIT(k); }
-    if (m.n < 0 && V.army[k] > 0) { V.army[k]--; V.dread += VS_UNIT(k); if (!V.army[k]) delete V.army[k]; }
+  if (!m || !S || !S.vs || !S.vs.live || S.phase !== "wave") return false;
+  const V = S.vs, k = m.k, gate = m.gate == null ? null : vsGate(m.gate);
+  if (m.gate != null && !gate) return false;
+  if (m.t === "summon") {
+    if (!ENEMIES[k] || !vsAvail().includes(k) || V.cd[k] > 0) return false;
+    const p = vsPack(k); if (V.dread < p.cost) return false;
+    V.dread -= p.cost; V.sent += p.cost; V.cd[k] = VS_TUNE.cd;
+    const from = ENEMIES[k].fly && !VS_TUNE.gateFly ? null : gate;
+    for (let i = 0; i < p.n; i++) S.queue.push({ k, gap: ENEMIES[k].fly ? .55 : .45, gate: from });
+    return true;
   }
-  if (m.t === "summon" && S.phase === "wave" && ENEMIES[k] && ENEMIES[k].from <= S.level) {
-    const c = Math.ceil(VS_UNIT(k) * 1.25); if (V.dread >= c) { V.dread -= c; spawn({ k }); }
+  if (m.t === "boss") {
+    if (V.boss <= 0) return false;
+    V.boss--; V.bossN++; const bl = 10 * V.bossN, b = bossFor(bl);
+    S.queue.push(...bossItems(bl).map(q => ({ ...q, bl, gate })));
+    vsNote(`The Dark Lord sends ${b.named ? "" : "the "}${b.name}!`); sfx("boss");
+    return true;
   }
-  if (m.t === "spell" && S.phase === "wave" && SPELLS[m.id]) {
-    const c = spellCost(m.id);
-    if (V.dread >= c && !(V.spells[m.id] > 0)) {
-      V.dread -= c;
-      if (m.id === "heal") S.enemies.forEach(e => { if (!e.dead) e.hp = Math.min(e.max, e.hp + e.max * .3); });
-      else V.spells[m.id] = SPELLS[m.id].dur;
-      toast(`The Dark Lord casts ${SPELLS[m.id].name}! ${SPELLS[m.id].desc}`); sfx("boss");
-    }
+  if (m.t === "gate") {
+    const sp = V.spots[m.spot], c = gateCost();
+    if (!sp || V.gates.length >= VS_TUNE.gateMax || V.gates.some(g => g.spot === m.spot) || V.dread < c) return false;
+    if (S.towers.some(t => Math.hypot(t.x - sp.x, t.y - sp.y) < CELL - 2)) return false;   // the Keeper built there first
+    V.dread -= c;
+    const hp = 18 * VS_TUNE.gateHp * hpScale(S.level);
+    const e = { k: "gate", gate: true, path: ROAD, d: sp.d, x: sp.x, y: sp.y, hp, max: hp, spd: 0, armor: VS_TUNE.gateArmor, gold: VS_TUNE.gateGold, fly: false, r: 16, dmg: 0, regen: 0,
+                boss: false, hex: 0, hexCd: 0, slowT: 0, slowA: 0, burnT: 0, burnDps: 0, t: 0, v: 0, v2: 0, sz: 1, face: 1, dead: false, split: null, rise: 0, back: 0, col: "#7a3fb5" };
+    S.enemies.push(e); V.gates.push({ spot: m.spot, e });
+    vsNote("The Dark Lord has raised a Dark Gate beside the road!"); sfx("boss");
+    return true;
   }
-  if (m.t === "ready" && S.phase === "build") { V.ready.d = true; if (V.ready.k) startWave(); else { toast("The Dark Lord's army is ready."); renderUpNext(); updateHud(); } }
+  if (m.t === "spell") {
+    const sp = SPELLS[m.id], c = sp && spellCost(m.id);
+    if (!sp || V.spells[m.id] > 0 || V.scd[m.id] > 0 || V.dread < c) return false;
+    V.dread -= c; V.scd[m.id] = sp.dur + VS_TUNE.spellCd;
+    if (m.id === "heal") S.enemies.forEach(e => { if (!e.dead && !e.gate) e.hp = Math.min(e.max, e.hp + e.max * .3); });
+    else V.spells[m.id] = sp.dur;
+    vsNote(`The Dark Lord casts ${sp.name}! ${sp.desc}`); sfx("boss");
+    return true;
+  }
+  if (m.t === "raven") {
+    const c = ravenCost(); if (V.scout.d > 0 || V.dread < c) return false;
+    V.dread -= c; V.scout.d = VS_TUNE.scout; vsNote("A raven circles over the keep. The Dark Lord is watching your gold.");
+    return true;
+  }
+  return false;
 }
 function vsEnd(winner) {
   S.phase = "over"; const L = S.level, len = S.vs.len;
   vsSend({ t: "over", w: winner, L, len }); vsSend(vsSnap());
   sfx(winner === "keeper" ? "clear" : "over");
   vsShowOver(winner === "keeper" ? "The keep stands!" : "The keep has fallen", winner === "keeper"
-    ? `You held all ${len} levels against the Dark Lord. Victory is yours.` : `The Dark Lord brought the castle down on level ${L} of ${len}.`);
+    ? `You held the keep for all ${len / 60} minutes against the Dark Lord. Victory is yours.` : `The Dark Lord brought the castle down with ${vsClock(vsLeft())} to go.`);
   setTimeout(netClose, 1500);
 }
+const vsClock = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 function vsShowOver(head, note) {
   $("overCard").querySelector("h2").textContent = head;
   $("overScore").textContent = note; $("overHeirlooms").textContent = ""; $("overNote").textContent = "Two-player games don't affect your heirlooms or the Hall of Heroes.";
@@ -4509,7 +4635,8 @@ function vsShowOver(head, note) {
 const r1 = v => Math.round(v * 10) / 10;
 // the game as plain data: what two-player mode sends the Dark Lord many times a second, and what a bot replay records
 function vsSnap() {
-  return { t: "snap", ...snapState(), vs: { dread: Math.floor(S.vs.dread), army: S.vs.army, ready: S.vs.ready, spells: S.vs.spells, len: S.vs.len } };
+  return { t: "snap", ...snapState(), vs: { dread: Math.floor(S.vs.dread), t: Math.round(S.vs.t), len: S.vs.len, cd: S.vs.cd, spells: S.vs.spells, scd: S.vs.scd, boss: S.vs.boss,
+    spots: S.vs.spots, gates: S.vs.gates.map(g => g.spot), scout: S.vs.scout, spy: S.vs.scout.d > 0 } };
 }
 function snapState() {
   return {
@@ -4720,6 +4847,11 @@ function drawFish() {
   if (sp) { c.fillStyle = "#fff"; ell(c, fish.x + 2, fish.y - 6, 1.6, 1.6); }
   c.restore();
 }
+// the pond can't be built on anyway, so while the fish is up a tap anywhere on the pond (or near the fish) catches it
+function fishHit(x, y, pad = 0) {
+  if (!fish || fish.gone || fish.t < 0) return false;
+  return Math.hypot(x - fish.x, y - fish.y) < 26 + pad || ((x - 400) / (82 + pad)) ** 2 + ((y - 80) / (44 + pad)) ** 2 < 1;
+}
 function catchFish() {
   if (!fish || fish.gone || fish.t < 0) return;
   fish.gone = true; fish.goneAt = fish.t; sfx("clear"); unlock("wish");
@@ -4847,11 +4979,6 @@ function replayOpen() {
 function boot(data) {
   newRun(); // a preview run behind the start card so the meadow is alive
   if (data && data.save && data.started) begin(data.save); else showStart();
-// the pond can't be built on anyway, so while the fish is up a tap anywhere on the pond (or near the fish) catches it
-function fishHit(x, y, pad = 0) {
-  if (!fish || fish.gone || fish.t < 0) return false;
-  return Math.hypot(x - fish.x, y - fish.y) < 26 + pad || ((x - 400) / (82 + pad)) ** 2 + ((y - 80) / (44 + pad)) ** 2 < 1;
-}
   renderPalette(); renderBoard(); renderUpNext(); updateHud();
   requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
   if (/^#replay/.test(location.hash)) { replayOpen(); return; }   // local dev: watch a bot's game instead of playing

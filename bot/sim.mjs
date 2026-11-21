@@ -19,6 +19,9 @@ globalThis.__EK = {
   RULES_VERSION, GAME_VERSION, get MAP() { return MAP; }, DEFAULT_MAP,
   snapState: typeof snapState === "function" ? snapState : null,   // older copies of the game (EK_GAME) may not have it
   treasMax: typeof treasMax === "function" ? treasMax : () => Infinity, SCAV: typeof SCAV === "object" ? SCAV : null,
+  // two players (live match): older copies of the game don't have it
+  vs: typeof VS_TUNE === "object" ? { TUNE: VS_TUNE, begin: vsBegin, send: hostMsg, spy: vsSpy, focus: vsFocus, avail: vsAvail, pack: vsPack, unit: VS_UNIT, budget: vsBudget, SPELLS, spellCost,
+    gateCost, ravenCost, spyCost, bossFor, tStats, lightAt } : null,
 };
 `;
 
