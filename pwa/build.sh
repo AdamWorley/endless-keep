@@ -28,7 +28,7 @@ mkdir -p "$OUT"
 </head>
 <body>
 HEAD
-  cat ../endless-keep.html
+  node inline.mjs ../endless-keep.html   # the page with its game/ pieces put back in: still one file
   printf '\n</body>\n</html>\n'
 } > "$OUT/index.html"
 cp manifest.webmanifest sw.js icon.svg icon-192.png icon-512.png apple-touch-icon.png "$OUT/"

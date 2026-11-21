@@ -2,7 +2,7 @@
 
 Bots that play Endless Keep, evolved rather than hand-written, for testing balance changes.
 
-They play the real game: `sim.mjs` loads `endless-keep.html` into Node with stand-ins for the browser (no
+They play the real game: `sim.mjs` loads `endless-keep.html` (with its `game/` pieces put back) into Node with stand-ins for the browser (no
 drawing, no sound, no network) and seeded random numbers, then calls the game's own `update()`. There is no copy
 of the rules to keep in step, so a balance change in the game reaches the bots straight away.
 
@@ -28,7 +28,7 @@ npm run bot:test -- --games 50 --compare before
 
 `npm run bot:replay` plays one game with a saved strategy and records it, about ten snapshots a second, to
 `bot/replays/` (not committed). Open the game with `#replay` on the end of its address, either the built game at
-<http://localhost:8420/#replay> or `endless-keep.html#replay` straight from disk, then choose the file or drop it on
+<http://localhost:8420/#replay> or `dist/index.html#replay` straight from disk, then choose the file or drop it on
 the page. You get play and pause, speed (½× to 16×), a position slider, a jump to any recorded level, and the whole
 game's level-by-level log beside the board (hearts lost, gold, towers, the level's event).
 

@@ -1,5 +1,5 @@
 // Records one bot game for the replay viewer. Open the game with #replay on the end of its address (the built game
-// at http://localhost:8420/#replay, or endless-keep.html#replay straight from disk) and drop the file in.
+// at http://localhost:8420/#replay, or dist/index.html#replay straight from disk) and drop the file in.
 //
 //   npm run bot:replay                                   # all-rounder, first test seed, the last 10 levels
 //   npm run bot:replay -- --strategy no-frost --seed 7 --levels 40-60

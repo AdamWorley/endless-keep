@@ -3,9 +3,9 @@ name: Game
 on:
   push:
     branches: [main]
-    paths: [endless-keep.html, "pwa/**", bot/sim.mjs, bot/policy.mjs, wrangler.jsonc, package.json, package-lock.json, .github/workflows/game.yml]
+    paths: [endless-keep.html, "game/**", "pwa/**", bot/sim.mjs, bot/policy.mjs, wrangler.jsonc, package.json, package-lock.json, .github/workflows/game.yml]
   pull_request:
-    paths: [endless-keep.html, "pwa/**", bot/sim.mjs, bot/policy.mjs, wrangler.jsonc, package.json, package-lock.json, .github/workflows/game.yml]
+    paths: [endless-keep.html, "game/**", "pwa/**", bot/sim.mjs, bot/policy.mjs, wrangler.jsonc, package.json, package-lock.json, .github/workflows/game.yml]
   workflow_dispatch:
 permissions:
   contents: read

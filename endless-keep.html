@@ -651,50 +651,7 @@ function heartsAlert() {
 }
 
 /* ---------- storage helpers ---------- */
-// Player-name cleaning and a basic profanity filter.
-// keep in sync with leaderboard/src/names.js (the server is the authority; this copy double-checks names on screen)
-
-const MAX_LEN = 16;
-
-// Turns whatever was typed into a safe display name, or "" if nothing usable is left.
-function cleanName(input) {
-  if (typeof input !== "string") return "";
-  let s = input.normalize("NFKC")
-    // drop control, format (zero-width, bidi overrides), private-use, unassigned and surrogate code points
-    .replace(/[\p{Cc}\p{Cf}\p{Co}\p{Cn}\p{Cs}]/gu, "")
-    // at most two combining marks per letter, so "zalgo" text can't smear over the board
-    .replace(/(\p{M}{2})\p{M}+/gu, "$1")
-    // only letters, marks, numbers, spaces and a little punctuation
-    .replace(/[^\p{L}\p{M}\p{N} '._!-]/gu, "")
-    .replace(/\s+/g, " ").trim();
-  s = Array.from(s).slice(0, MAX_LEN).join("").trim();
-  return /[\p{L}\p{N}]/u.test(s) ? s : "";
-}
-
-// Common look-alike swaps people use to sneak words past filters.
-const LEET = { "0": "o", "1": "i", "!": "i", "3": "e", "4": "a", "@": "a", "5": "s", "$": "s", "7": "t", "8": "b", "9": "g", "|": "i", "+": "t" };
-const fold = s => s.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase().replace(/[0-9!@$|+]/g, c => LEET[c] || c);
-
-// Words blocked anywhere inside a name (rarely part of innocent words).
-const ANYWHERE = ["fuck", "fuk", "fck", "shit", "cunt", "nigg", "nigga", "faggot", "fagot", "whore", "slut", "wank", "twat", "bitch", "biatch",
-  "retard", "kike", "chink", "spic", "tranny", "dyke", "nazi", "hitler", "rapist", "pedo", "paedo", "porn", "penis", "vagina", "dildo",
-  "cock", "pussy", "asshole", "arsehole", "bollock", "bastard", "jizz", "cum shot", "cumshot", "blowjob", "handjob", "motherf", "heil"];
-// Words blocked only as a whole word (they hide inside innocent words like "class", "title" or "grape").
-const WHOLE = ["ass", "arse", "tit", "tits", "cum", "fag", "rape", "raped", "sex", "nig", "coon", "homo", "piss", "prick", "spunk", "gay", "kkk"];
-const SAFE = ["cocktail", "peacock", "hancock", "babcock", "cockatoo", "cockatiel", "cockney", "cockerel", "cockpit", "shuttlecock", "scunthorpe", "spicy", "spice"];
-
-function isProfane(name) {
-  const f = fold(name);
-  const words = f.split(/[^a-z]+/).filter(Boolean);
-  if (words.some(w => WHOLE.includes(w) || WHOLE.includes(w.replace(/(.)\1+/g, "$1")))) return true;
-  let joined = f.replace(/[^a-z]/g, "");
-  for (const ok of SAFE) joined = joined.split(ok).join("");
-  const squeezed = joined.replace(/(.)\1+/g, "$1");
-  if (WHOLE.includes(joined) || WHOLE.includes(squeezed)) return true;   // e.g. "a s s"
-  // the squeezed form ("fuuuck" -> "fuck") is only compared with words that have no doubled letters themselves,
-  // otherwise "nigg" would squeeze to "nig" and match "knight"
-  return ANYWHERE.some(b => { const w = b.replace(/ /g, ""); return joined.includes(w) || (!/(.)\1/.test(w) && squeezed.includes(w)); });
-}
+//#include game/names.js
 // a name safe to show: cleaned, and blanked if it fails the filter
 const safeName = v => { const n = cleanName(v); return n && !isProfane(n) ? n : ""; };
 
@@ -853,21 +810,7 @@ const DRAGON_STAGES = [
   { upto: 1e9, name: "Great wyrm",   s: 1.32, body: "#d4a017", wing: "#a8790c", belly: "#f6df8f", fire: ["rgba(255,230,120,.5)", "#ffe27a", "#ffffff"] },
 ];
 const dragonStage = lvl => DRAGON_STAGES.find(d => lvl <= d.upto);
-const DRAGON_NAMES = ["Ember", "Pip", "Saffron", "Bramble", "Marigold", "Puff", "Sparky", "Juniper", "Toast", "Wisp", "Clementine", "Smudge", "Biscuit", "Nutmeg", "Pebble", "Fennel", "Comet"];
-// some names are special: the dragon gets a little bonus (and sometimes a new look) to go with it
-const SECRET_DRAGONS = {
-  cinder:    { name: "Cinder",     msg: "Cinder is as brown as chocolate, and Cinder's flames cling twice as long.", burn: 2,
-               look: { body: "#7b4a2d", wing: "#5a321c", belly: "#d9b08c" } },
-  freya:     { name: "Freya",      msg: "Freya fights like a warrior queen: +10% damage.",               dmg: 1.1 },
-  sasha:     { name: "Sasha",      msg: "Sasha is lightning quick: breathes fire 15% faster.",           rate: 1.15 },
-  bean:      { name: "Bean",       msg: "Bean stays teeny forever, but anything Bean defeats drops 25% more gold.", gold: 1.25, tiny: true },
-  nibnib:    { name: "Nibnib",     msg: "Nibnib has the sharpest eyes in the valley: +15% range.",       range: 1.15 },
-  nightfury: { name: "Night Fury", msg: "Scales as dark as midnight and purple fire: +10% damage, +25% at night.", dark: true },
-  baby:      { name: "Baby",       msg: "Baby will always be a baby. While Baby is on guard, the castle mends a heart after every level.", tiny: true, mend: 1 },
-  mushu:     { name: "Mushu",      msg: "Mushu is small, pink and part axolotl, but very fierce: breathes fire 10% faster, and the flames cling 50% longer.", tiny: true, rate: 1.1, burn: 1.5,
-               look: { body: "#f4a3bf", wing: "#e57fa4", belly: "#fcd8e3", gill: "#d9467f", axolotl: true } },
-  lauren:    { name: "Lauren",     msg: "Lauren's fire sweeps wide: the flames splash 40% further.",     splash: 1.4, rv: 5 },
-};
+//#include game/dragons.js
 const secretKey = n => String(n || "").toLowerCase().replace(/[^a-z]/g, "");
 // a name added in a later rules version gives no bonus in a game started under older rules
 const dragonSecret = t => { const sp = t && t.type === "dragon" && SECRET_DRAGONS[secretKey(t.name)]; return sp && !(sp.rv && S && S.rv && S.rv < sp.rv) ? sp : null; };
@@ -1101,39 +1044,7 @@ function bossItems(L) {
   for (let i = 0; i < (b.pair ? 2 : 1); i++) q.push({ k: "boss", gap: b.pair && !i ? 1.4 : 2.5 });
   return q;
 }
-// the bestiary's words for each monster: a line of flavour and how to beat it
-const LORE = {
-  goblin:    { lore: "Small, green and endlessly confident. Goblins come in noisy mobs and fear nothing, mostly because they haven't noticed it yet.",
-               tip: "Any tower will do. A Catapult can clear a whole pack in one shot." },
-  wolf:      { lore: "Lean grey wolves that run the road faster than anything else on four legs. They don't bite hard, but they don't stop either.",
-               tip: "Archer Towers fire fast enough to catch them, and a Frost Spire slows them to a trot." },
-  orc:       { lore: "Broad, slow and wrapped in boiled hide. An orc walks up the road as if it already owns the castle and is only coming to collect.",
-               tip: "Catapult splash wears down a whole column, and Mage Towers ignore their armour." },
-  bat:       { lore: "Cave bats pour out of the hills in squeaking clouds and fly straight over the road, the walls and the catapult crews' heads.",
-               tip: "Catapults can't hit them. Archer Towers are the cheap answer: keep a couple near the castle." },
-  wolfrider: { lore: "A goblin who has discovered wolves. Nearly twice the speed, all of the attitude, and the wolf doesn't seem to mind.",
-               tip: "Slow them with a Frost Spire first, then let Archer Towers do the rest." },
-  knight:    { lore: "Soldiers from a war nobody remembers, still marching. Their rusted plate turns arrows and stones, but spells pass straight through.",
-               tip: "Bring magic. Mage Towers and the Dragon Roost ignore their armour entirely, while arrows barely scratch them." },
-  troll:     { lore: "Huge, patient and very hard to hurt for long: a troll's cuts close up while you watch, and it hits the gate like a falling tree.",
-               tip: "Hit it hard and keep hitting. A Frost Spire holds it in range, and the Dragon Roost's fire keeps burning while it heals." },
-  wyvern:    { lore: "Lesser cousins of the dragons, scaled like armour and far too proud to walk. They glide in high and low, never by the road.",
-               tip: "Catapults can't hit them. Every other tower can." },
-  orcrider:  { lore: "Orc raiders ride hard and hit harder, charging past the outer towers before the archers have finished taking aim.",
-               tip: "A Frost Spire at the start of the road buys time for your other towers." },
-  jasmine:   { lore: "Queen of the witches of the Gloaming Wood. Jasmine burns the mill, curses the bridge and turns the miller into a newt, then flies off to tell everyone how cruelly the village treated her. In every version of the story she tells, she is the one who was wronged.",
-               tip: "She rides a broomstick, so Catapults can't touch her, and she hexes the towers that hurt her, silencing each for two seconds. Spread the damage across many Archer and Mage Towers so there's always another one left to blame. Castle archers and mages are beneath her notice: she never hexes them." },
-  trollking: { lore: "The oldest troll under the mountain, crowned with whatever he crushed last. He has come down from the mountain to see why his trolls haven't come home.",
-               tip: "A long fight. Line the road with Frost Spires, and lean on Mage Towers: his armour blunts arrows and boulders." },
-  bigdragon: { lore: "An ancient dragon who takes your little roost as a personal insult. She flies straight for the keep and burns anything that argues.",
-               tip: "She flies, so Catapults are no use. Every other tower can reach her." },
-  slime:     { lore: "Nobody knows where slimes come from, but everyone knows what happens when you hit one: now there are six. They wobble up the road eating whatever they find, which is usually something important.",
-               tip: "Slimes heal, and each one bursts into 6 slimelets that heal too, so chip damage gets you nowhere. The first ones are young: smaller, fewer and bursting into only 3, but they're fully grown by level 61. One that reaches the castle takes 7 hearts, more than all its slimelets would. Hit the whole family hard and together: Catapult and Dragon splash, with a Frost Spire to hold them in range. Dragon fire keeps burning while they heal." },
-  slimecube: { lore: "A slime that never stopped eating. It has swallowed a cart, two knights and most of a bridge, and it is still hungry. You can see them all inside it, slowly turning.",
-               tip: "It heals as it goes, and when it falls it bursts into two slimes, each of which bursts into 6 slimelets, and they all heal too. If it reaches the castle it takes 15 hearts, half the walls. The fight isn't over when the cube is: keep splash towers near the castle end of the road to mop up." },
-  wyrm:      { lore: "A dragon's skeleton held together by old magic and older spite. Its bones shrug off arrows and boulders alike.",
-               tip: "Mage Towers and the Dragon Roost ignore its armour, and a Frost Spire keeps it in their range." },
-};
+//#include game/bestiary.js
 // enemy health compounds 5% a level up to 50, then 4.5% after that, so level 100 is a real achievement
 const HP5 = 1.0035;   // rules v5: monsters get a little tougher each level, to balance towers growing faster with upgrades
 const hpScale = L => (1 + 0.12 * (L - 1)) * Math.pow(1.05, Math.min(L, 50) - 1) * Math.pow(1.045, Math.max(0, L - 50)) * (rules5() ? Math.pow(HP5, L - 1) : 1);
@@ -4806,177 +4717,9 @@ function drawGoo() {
   }
 }
 
-/* ---------- the wishing fish ----------
-   Now and then a golden fish surfaces in the pond during a level (about one level in four, from level 3; never in
-   winter, when the pond is frozen, or while a wish is still working). Tap it (anywhere on the pond), or press W, before it dives and it grants a
-   wish: one of three heirlooms' bonuses for the rest of this level and the next WISH_LEVELS. It runs on real time in
-   the frame loop, outside the game's own update, so it's as easy to catch at 3x speed and the bots never meet it. */
-const POND = { x: 400, y: 80, rx: 44, ry: 13 }, FISH_STAY = 8;
-let fish = null, fishL = 0;   // fishL: the level the fish has already been decided for
-function fishTick(dt) {
-  if (fish) {
-    fish.t += dt;
-    if (fish.t >= 0 && !fish.told) { fish.told = true; toast("A golden fish has surfaced in the pond! Tap the pond (or press W) before it dives, for a wish."); }
-    if (fish.gone) { if (fish.t > fish.goneAt + .8) fish = null; }
-    else if (fish.t > FISH_STAY) { fish.gone = true; fish.goneAt = fish.t; }
-    else { const a = fish.a0 + fish.t * .7 * fish.dir; fish.x = POND.x + Math.cos(a) * POND.rx; fish.y = POND.y + Math.sin(a) * POND.ry; fish.face = -Math.sin(a) * fish.dir >= 0 ? 1 : -1; }
-  }
-  if (S.wish && !wishLeft()) { toast(`Your wish has faded: ${PERKS[S.wish.id].name} is back to normal.`); S.wish = null; schedulePersist(); renderUpNext(); }
-  if (S.phase !== "wave" || fishL === S.level || S.vs || watchOnly() || !newRules() || !rules5()) return;
-  fishL = S.level;
-  if (S.level < 3 || season.frozen || S.wish || Math.random() > .25) return;
-  fish = { t: -(3 + Math.random() * 12), a0: Math.random() * 6.28, dir: Math.random() < .5 ? 1 : -1, x: POND.x, y: POND.y, face: 1 };   // surfaces 3-15 s into the level
-}
-function drawFishShape(c, x, y, s, face, wig) {
-  c.save(); c.translate(x, y); c.scale(face * s, s);
-  c.fillStyle = "#e07a1f"; tri(c, -9, 0, -16, -6 + wig, -16, 6 + wig);                      // tail
-  c.fillStyle = "#f2a33a"; ell(c, 0, 0, 10, 5.2);                                           // body
-  c.fillStyle = "#ffd36b"; ell(c, 1.5, -1.4, 6.5, 2.4);                                     // golden back
-  c.fillStyle = "#e07a1f"; tri(c, -2, -4.4, 4, -4.6, 0, -8);                                // fin
-  c.fillStyle = "#fff"; ell(c, 6, -1.2, 1.7, 1.7); c.fillStyle = "#1b1b1b"; ell(c, 6.4, -1.1, .9, .9);
-  c.restore();
-}
-function drawFish() {
-  if (fish.t < 0) return;
-  const c = ctx, up = Math.min(1, fish.t / .6), down = fish.gone ? Math.max(0, 1 - (fish.t - fish.goneAt) / .6) : 1, a = Math.min(up, down);
-  const p = (time * 1.6) % 1;   // ripples spreading from the fish
-  c.save();
-  c.strokeStyle = `rgba(255,255,255,${.5 * (1 - p) * a})`; c.lineWidth = 1.4; c.beginPath(); c.ellipse(fish.x, fish.y + 2, 10 + p * 16, 4 + p * 6, 0, 0, Math.PI * 2); c.stroke();
-  if (season.night) { const g = c.createRadialGradient(fish.x, fish.y, 0, fish.x, fish.y, 26); g.addColorStop(0, `rgba(255,214,110,${.45 * a})`); g.addColorStop(1, "rgba(255,214,110,0)"); c.fillStyle = g; c.fillRect(fish.x - 26, fish.y - 26, 52, 52); }
-  c.globalAlpha = a;
-  const sp = !fish.gone && Math.sin(time * 9) > .96;   // a glint now and then
-  drawFishShape(c, fish.x, fish.y - 2 * up, 1, fish.face, Math.sin(time * 10) * 2);
-  if (sp) { c.fillStyle = "#fff"; ell(c, fish.x + 2, fish.y - 6, 1.6, 1.6); }
-  c.restore();
-}
-// the pond can't be built on anyway, so while the fish is up a tap anywhere on the pond (or near the fish) catches it
-function fishHit(x, y, pad = 0) {
-  if (!fish || fish.gone || fish.t < 0) return false;
-  return Math.hypot(x - fish.x, y - fish.y) < 26 + pad || ((x - 400) / (82 + pad)) ** 2 + ((y - 80) / (44 + pad)) ** 2 < 1;
-}
-function catchFish() {
-  if (!fish || fish.gone || fish.t < 0) return;
-  fish.gone = true; fish.goneAt = fish.t; sfx("clear"); unlock("wish");
-  for (let i = 0; i < 16; i++) { const a = Math.random() * 6.28, sp = 30 + Math.random() * 50; S.fx.push({ x: fish.x, y: fish.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 40, life: .6, max: .6, col: i % 2 ? "rgba(255,214,110,.95)" : "rgba(200,235,250,.9)", r: 2.2, g: 90 }); }
-  const ids = Object.keys(WISHES).sort(() => Math.random() - .5).slice(0, 3), was = paused;
-  paused = true;
-  openModal(card => {
-    card.append(el("h2", "", "The golden fish grants a wish"), el("p", "", `Choose one. It lasts for the rest of this level and the next ${WISH_LEVELS}.`));
-    const g = el("div", "heirlooms");
-    ids.forEach(id => {
-      const P = PERKS[id], R = RARITY[P.r], n = WISHES[id], b = el("button", `heirloom ${P.r}`); b.style.setProperty("--rc", R.col);
-      b.append(heirloomImg(id, "hi"), el("span", "rr", "Wish"), el("span", "bn", P.name), el("span", "bd", P.desc(n)), el("span", "bo", perk(id) ? `On top of your ${perk(id)} heirloom${perk(id) === 1 ? "" : "s"}` : `For ${WISH_LEVELS + 1} levels`));
-      b.addEventListener("click", () => {
-        S.wish = { id, n, until: S.level + WISH_LEVELS }; sfx("up");
-        toast(`Your wish is granted: ${P.name} for ${WISH_LEVELS + 1} levels.`); schedulePersist(); closeModal();
-      });
-      g.append(b);
-    });
-    const no = el("button", "", "Let it swim away");
-    no.addEventListener("click", closeModal);
-    card.append(g, el("div", "row")); card.lastChild.append(no);
-  }, () => { paused = was; renderUpNext(); renderPanel(); updateHud(); });
-}
-document.addEventListener("keydown", ev => { if ((ev.key === "w" || ev.key === "W") && fish && !fish.gone && fish.t >= 0 && $("modal").hidden && !ev.target.closest("input, textarea, select")) { ev.preventDefault(); catchFish(); } });
+//#include game/wishing-fish.js
 
-/* ---------- bot replays (local dev) ----------
-   Open the game with #replay on the end of its address and drop in a file from `npm run bot:replay`. The file holds
-   snapshots of the game (the same ones two-player mode sends the Dark Lord), about ten a second, and the board is
-   drawn straight from them, moving things along in between. Nothing is played or saved, and it never touches your game. */
-let RP = null;   // { meta, frames, i, t, speed, playing, tw, tr }
-function replayApply(i) {
-  const f = RP.frames[i];
-  if (f.tw) RP.tw = f.tw;   // towers and trees are only stored when they change; aim and muzzle flash come every frame
-  if (f.tr) RP.tr = f.tr;
-  const tw = f.ta ? RP.tw.map((a, j) => { const b = a.slice(); b[4] = f.ta[2 * j]; b[5] = f.ta[2 * j + 1]; return b; }) : RP.tw;
-  const was = S && S.vsGuest ? S : null;
-  S = stateFromSnap({ ...f, tw, tr: RP.tr }); S.rv = RP.meta.rules;
-  if (was && S.hitTotal > was.hitTotal && i === RP.i + 1) { const lost = S.hitTotal - was.hitTotal; castleHit(hitTier(lost, S.hp + lost, S.hp, S.maxHp), false); }
-  RP.i = i;
-}
-function replaySeek(t) {
-  const F = RP.frames; t = Math.max(0, Math.min(F[F.length - 1].g, t));
-  let lo = 0, hi = F.length - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (F[m].g <= t) lo = m; else hi = m - 1; }
-  // towers and trees come from the last frame that stored them
-  RP.tw = RP.tr = null; for (let j = lo; j >= 0 && (!RP.tw || !RP.tr); j--) { if (!RP.tw && F[j].tw) RP.tw = F[j].tw; if (!RP.tr && F[j].tr) RP.tr = F[j].tr; }
-  RP.t = t; RP.i = -1; replayApply(lo); replayHud(true);
-}
-function replayTick(dt) {
-  if (!RP.playing) { time += dt; return; }
-  const F = RP.frames, step = dt * RP.speed; RP.t += step;
-  let j = RP.i; while (j + 1 < F.length && F[j + 1].g <= RP.t) j++;
-  if (j !== RP.i) replayApply(j); else guestTick(step);
-  if (RP.i >= F.length - 1) { RP.playing = false; replayHud(true); }
-}
-function replayLevelStart(L) { const f = RP.frames.find(q => q.L === L); return f ? f.g : 0; }
-let rpKey = "";
-function replayHud(force) {
-  const bar = $("replayBar"); if (!bar || !RP.frames) return;
-  const F = RP.frames, f = F[Math.max(0, RP.i)], key = [RP.i, RP.playing, RP.speed].join("|");
-  $("hLevel").textContent = S.level; $("hGold").textContent = Math.floor(S.gold).toLocaleString(); $("hHearts").textContent = `${S.hp}/${S.maxHp}`;
-  if (!force && key === rpKey) return; rpKey = key;
-  bar.querySelector("[data-rp=play]").textContent = RP.playing ? "Pause" : RP.i >= F.length - 1 ? "Replay" : "Play";
-  const sl = bar.querySelector("input[type=range]"); if (document.activeElement !== sl) sl.value = RP.t;
-  const sel = bar.querySelector("select[data-rp=level]"); if (document.activeElement !== sel) sel.value = f.L;
-  const lv = (RP.meta.levels || []).find(q => q.L === f.L);
-  const log = document.querySelector(".rp-log"); if (log) { const was = log.querySelector("tr.now"), row = log.querySelector(`tr[data-l="${f.L}"]`); if (was !== row) { if (was) was.classList.remove("now"); if (row) { row.classList.add("now"); row.scrollIntoView({ block: "nearest" }); } } }
-  bar.querySelector("[data-rp=info]").textContent = `Level ${f.L} · ${f.ph === "wave" ? "wave" : "building"}` +
-    (lv ? ` · lost ${lv.hpLost} heart${lv.hpLost === 1 ? "" : "s"} · ${lv.towers} towers${lv.ev ? " · event: " + lv.ev : ""}` : "");
-}
-function replayStart(data) {
-  if (!data || !Array.isArray(data.frames) || !data.frames.length || !data.meta) { toast("That isn't a replay file from npm run bot:replay."); return; }
-  RP = { meta: data.meta, frames: data.frames, i: -1, t: 0, speed: 2, playing: true, tw: null, tr: null };
-  setMap(data.meta.map ? { name: "Replay", road: data.meta.map } : DEFAULT_MAP);
-  modalDone = null; closeModal(); $("startCard").hidden = true; $("overCard").hidden = true; sel = null;
-  document.documentElement.classList.add("replay"); $("palette").textContent = ""; $("selPanel").textContent = "";
-  replaySeek(0); seasonI = seasonIdx(S.level); season = SEASONS[seasonI]; buildBg(); amb = []; fadeT = 0;
-  const M = data.meta, bar = $("replayBar"), levels = [...new Set(data.frames.map(q => q.L))];
-  bar.querySelector("[data-rp=title]").textContent = `${M.strategy} · seed ${M.seed} · held ${M.held} levels${M.killedBy && M.killedBy.length ? " · fell to " + M.killedBy.join(", ") : ""}`;
-  const sl = bar.querySelector("input[type=range]"); sl.max = data.frames[data.frames.length - 1].g; sl.step = .1;
-  const ls = bar.querySelector("select[data-rp=level]"); ls.textContent = ""; levels.forEach(L => { const o = document.createElement("option"); o.value = L; o.textContent = "Level " + L; ls.append(o); });
-  // the side panel: the whole game level by level; the recorded levels can be jumped to
-  const p = $("selPanel"); p.textContent = "";
-  p.append(el("h3", "", "Bot replay"), el("p", "hint", `Recorded levels ${levels[0]}–${levels[levels.length - 1]} of a game that held ${M.held}. Game ${M.game}, rules v${M.rules}. Click a recorded level to jump to it.`));
-  const box = el("div", "rp-log"), tb = document.createElement("table"), body = document.createElement("tbody");
-  tb.innerHTML = "<thead><tr><th>Level</th><th>Hearts lost</th><th>Gold</th><th>Towers</th><th>Event</th></tr></thead>";
-  for (const q of M.levels || []) {
-    const tr = document.createElement("tr"), rec = levels.includes(q.L); tr.dataset.l = q.L;
-    for (const v of [q.L, q.hpLost, Math.floor(q.gold).toLocaleString(), q.towers, q.ev || ""]) tr.append(el("td", "", String(v)));
-    if (rec) { tr.className = "rec"; tr.tabIndex = 0; const go = () => replaySeek(replayLevelStart(q.L)); tr.addEventListener("click", go); tr.addEventListener("keydown", e => { if (e.key === "Enter") go(); }); }
-    body.append(tr);
-  }
-  tb.append(body); box.append(tb); p.append(box);
-  replayHud(true);
-}
-async function replayLoad(file) {
-  try {
-    const gz = /\.gz$/i.test(file.name) || new Uint8Array(await file.slice(0, 2).arrayBuffer()).join() === "31,139";
-    const data = await new Response(gz ? file.stream().pipeThrough(new DecompressionStream("gzip")) : file).json();
-    replayStart(data);
-  } catch (e) { toast("Couldn't read that replay: " + e.message); }
-}
-function replayOpen() {
-  const bar = document.createElement("div"); bar.id = "replayBar";
-  bar.innerHTML = `<div class="rp-row"><b data-rp="title">Bot replay: choose a file from npm run bot:replay, or drop one on the page</b>
-    <label class="rp-file"><input type="file" accept=".json,.gz,application/json,application/gzip"><span>Open replay…</span></label></div>
-    <div class="rp-row"><button data-rp="prev" title="Previous level">‹ Level</button><button data-rp="play" class="primary">Play</button><button data-rp="next" title="Next level">Level ›</button>
-    <select data-rp="speed" aria-label="Speed">${[.5, 1, 2, 4, 8, 16].map(v => `<option value="${v}"${v === 2 ? " selected" : ""}>${v}×</option>`).join("")}</select>
-    <select data-rp="level" aria-label="Jump to level"></select><input type="range" min="0" max="1" value="0" aria-label="Position in the replay"><span data-rp="info"></span></div>`;
-  document.body.append(bar);
-  const q = k => bar.querySelector(k);
-  q("input[type=file]").addEventListener("change", ev => { if (ev.target.files[0]) replayLoad(ev.target.files[0]); });
-  document.addEventListener("dragover", ev => ev.preventDefault());
-  document.addEventListener("drop", ev => { ev.preventDefault(); const f = ev.dataTransfer.files[0]; if (f) replayLoad(f); });
-  q("[data-rp=play]").addEventListener("click", () => { if (!RP) return; if (RP.i >= RP.frames.length - 1) replaySeek(0); RP.playing = !RP.playing; replayHud(true); });
-  q("[data-rp=speed]").addEventListener("change", ev => { if (RP) RP.speed = +ev.target.value; });
-  q("[data-rp=level]").addEventListener("change", ev => { if (RP) replaySeek(replayLevelStart(+ev.target.value)); });
-  q("input[type=range]").addEventListener("input", ev => { if (RP) replaySeek(+ev.target.value); });
-  const hop = d => { if (!RP) return; const ls = [...new Set(RP.frames.map(f => f.L))], k = ls.indexOf(S.level) + d; if (k >= 0 && k < ls.length) replaySeek(replayLevelStart(ls[k])); };
-  q("[data-rp=prev]").addEventListener("click", () => hop(-1)); q("[data-rp=next]").addEventListener("click", () => hop(1));
-  document.addEventListener("keydown", ev => { if (!RP || ev.target.closest("input, select")) return; if (ev.key === " ") { ev.preventDefault(); q("[data-rp=play]").click(); } else if (ev.key === "ArrowRight") hop(1); else if (ev.key === "ArrowLeft") hop(-1); });
-  RP = { meta: null, frames: null, playing: false };   // watching, but nothing loaded yet
-  modalDone = null; closeModal(); $("startCard").hidden = true; paused = true;
-}
+//#include game/replay.js
 
 function boot(data) {
   newRun(); // a preview run behind the start card so the meadow is alive

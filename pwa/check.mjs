@@ -3,6 +3,7 @@
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 const dir = process.argv[2] || "dist", html = readFileSync(join(dir, "index.html"), "utf8");
+if (/^\/\/#include /m.test(html)) throw new Error("a game/ piece wasn't put back into the page");
 const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]);
 if (scripts.length < 2) throw new Error(`expected the service-worker and game scripts, found ${scripts.length}`);
 scripts.forEach((code, i) => { try { new Function(code); } catch (e) { throw new Error(`inline script ${i + 1} doesn't parse: ${e.message}`); } });

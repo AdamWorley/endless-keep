@@ -1,10 +1,11 @@
-// Runs the real game (endless-keep.html) inside Node, with no browser: the page's script is loaded into a
+// Runs the real game (endless-keep.html and its game/ pieces) inside Node, with no browser: the page's script is loaded into a
 // sandbox where every DOM, canvas and audio call goes to a harmless stand-in, Math.random is seeded, and a
 // small hook exposes the game's own functions. The bot plays with exactly the rules players get.
 import fs from "node:fs";
 import vm from "node:vm";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { inline } from "../pwa/inline.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const GAME_FILE = process.env.EK_GAME || path.join(HERE, "..", "endless-keep.html");
@@ -29,7 +30,7 @@ globalThis.__EK = {
 let compiled = null;
 function script() {
   if (compiled) return compiled;
-  const html = fs.readFileSync(GAME_FILE, "utf8");
+  const html = inline(GAME_FILE);   // the page with its game/ pieces put back
   const m = html.match(/<script>([\s\S]*)<\/script>/);
   if (!m) throw new Error("no <script> in " + GAME_FILE);
   let src = m[1];

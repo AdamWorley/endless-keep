@@ -3,9 +3,9 @@ name: Leaderboard
 on:
   push:
     branches: [main]
-    paths: ["leaderboard/**", endless-keep.html, bot/sim.mjs, .github/workflows/leaderboard.yml]
+    paths: ["leaderboard/**", endless-keep.html, "game/**", pwa/inline.mjs, bot/sim.mjs, .github/workflows/leaderboard.yml]
   pull_request:
-    paths: ["leaderboard/**", endless-keep.html, bot/sim.mjs]
+    paths: ["leaderboard/**", endless-keep.html, "game/**", pwa/inline.mjs, bot/sim.mjs]
   workflow_dispatch:
 permissions:
   contents: read

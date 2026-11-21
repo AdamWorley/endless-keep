@@ -5,3 +5,4 @@ node_modules/
 .dev.vars
 bot/runs/
 bot/replays/
+artifact.html
