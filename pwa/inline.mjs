@@ -6,7 +6,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 export function inline(file) {
-  const dir = path.dirname(file);
-  return readFileSync(file, "utf8").replace(/^\/\/#include (\S+)$/gm, (_, f) => readFileSync(path.join(dir, f), "utf8").replace(/\n$/, ""));
+  const dir = path.dirname(file);   // include paths are relative to the page, in pieces too (a piece can include another)
+  const join = text => text.replace(/^\/\/#include (\S+)$/gm, (_, f) => join(readFileSync(path.join(dir, f), "utf8").replace(/\n$/, "")));
+  return join(readFileSync(file, "utf8"));
 }
 if (process.argv[1] === fileURLToPath(import.meta.url)) process.stdout.write(inline(process.argv[2] || "endless-keep.html"));
