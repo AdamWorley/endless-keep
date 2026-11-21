@@ -1112,8 +1112,10 @@ const TUNES = {
   harbour: {   // A  G  D  A, and Em  G  D  A for bosses: an A Mixolydian sea shanty on a reedy squeezebox
     calm: [[45, [57, 61, 64, 69]], [43, [55, 59, 62, 67]], [50, [57, 62, 66, 69]], [45, [57, 61, 64, 69]]],
     boss: [[40, [52, 55, 59, 64]], [43, [55, 59, 62, 67]], [50, [57, 62, 66, 69]], [45, [57, 61, 64, 69]]],
-    melody: [69, 71, 73, 74, 76, 79], beat: .25, bar: 12, bass2: 6, pat: [0, null, 2, 1, null, 2, 3, null, 2, 1, null, 2], lift: [6], mel: [3, 9],
-    wave: "square", ring: .4, vol: .011, up: 0, surf: [0] },
+    melody: [69, 71, 73, 74, 76, 79], beat: .25, bar: 12, bass2: 6, pat: [0, null, null, 1, null, null, 2, null, null, 1, null, null], lift: [], mel: [3, 9],
+    wave: "square", ring: .7, vol: .008, up: 0, surf: [0],
+    // a plucked ostinato over it all, every step, short and dry, like pizzicato strings: chord notes rocking up and down
+    ost: { pat: [0, 2, 3, 2, 1, 2, 3, 2, 1, 3, 2, 1], up: 12, ring: .13, vol: .02, wave: "triangle", lift: [2, 6] } },
   ember: {   // Em  Am  B  Em, and Em  C  B  B for bosses: a driving E harmonic minor riff over noise drums
     calm: [[40, [52, 55, 59, 64]], [45, [57, 60, 64, 69]], [47, [59, 63, 66, 71]], [40, [52, 55, 59, 64]]],
     boss: [[40, [52, 55, 59, 64]], [48, [55, 60, 64, 67]], [47, [59, 63, 66, 71]], [47, [59, 63, 66, 71]]],
@@ -1163,6 +1165,7 @@ function musicTick() {
     const [bass, ch] = (boss ? T.boss : T.calm)[bar % 4];
     if (step === 0) { mNote(mtof(bass), t, beat * 8, .05, "sine", true); ch.slice(0, 3).forEach(m => mNote(mtof(m - 12), t, beat * 16, .012, "sine", true)); if (T.bell) mNote(mtof(bass - 12), t, 2.2, .03, "sine"); if (T.drone) mNote(mtof(45 - 12), t, beat * T.bar + .6, .03, "sawtooth", true); }
     if (T.drums && T.drums[step]) mDrum(t, T.drums[step]);
+    if (T.ost) { const O = T.ost; mNote(mtof(ch[O.pat[step % O.pat.length]] + O.up + (O.lift.includes(step) ? 12 : 0)), t, O.ring, O.vol * (step % 3 === 0 ? 1.3 : 1), O.wave); }   // a little accent on each beat
     if (T.surf && T.surf.includes(step)) mSurf(t, beat * T.bar * 1.5, bar % 2 === 0);   // one long wave a bar (about 4.5 s, so each overlaps the next), a bigger one every other bar
     if (step === T.bass2) mNote(mtof(bass), t, beat * 8, .04, "sine", true);
     const n = T.pat[step % T.pat.length];
