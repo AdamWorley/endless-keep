@@ -4588,7 +4588,7 @@ function hostMsg(m) {
     return true;
   }
   if (m.t === "gate") {
-    const sp = V.spots[m.spot], c = gateCost();
+    const sp = Number.isInteger(m.spot) && V.spots[m.spot], c = gateCost();
     if (!sp || V.gates.length >= VS_TUNE.gateMax || V.gates.some(g => g.spot === m.spot) || V.dread < c) return false;
     if (S.towers.some(t => Math.hypot(t.x - sp.x, t.y - sp.y) < CELL - 2)) return false;   // the Keeper built there first
     V.dread -= c;
@@ -4600,7 +4600,7 @@ function hostMsg(m) {
     return true;
   }
   if (m.t === "spell") {
-    const sp = SPELLS[m.id], c = sp && spellCost(m.id);
+    const sp = Object.hasOwn(SPELLS, m.id) && SPELLS[m.id], c = sp && spellCost(m.id);   // own keys only: "constructor" would pass and make dread NaN
     if (!sp || V.spells[m.id] > 0 || V.scd[m.id] > 0 || V.dread < c) return false;
     V.dread -= c; V.scd[m.id] = sp.dur + VS_TUNE.spellCd;
     if (m.id === "heal") S.enemies.forEach(e => { if (!e.dead && !e.gate) e.hp = Math.min(e.max, e.hp + e.max * .3); });
