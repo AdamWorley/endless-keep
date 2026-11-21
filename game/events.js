@@ -87,17 +87,36 @@ function evPortrait(who) {
     g.fillStyle = "#c08cff"; ell(g, 40, 62, 2.6, 2); ell(g, 56, 62, 2.6, 2);                              // glowing eyes
     g.fillStyle = "#1c120a"; g.beginPath(); g.moveTo(40, 78); g.quadraticCurveTo(48, 72, 56, 78); g.quadraticCurveTo(48, 86, 40, 78); g.fill();   // a scowl
     g.strokeStyle = "#1c120a"; g.lineWidth = 2.4; g.beginPath(); g.moveTo(34, 54); g.lineTo(44, 58); g.moveTo(62, 54); g.lineTo(52, 58); g.stroke();   // brows
-  } else if (who === "wizard") {
-    g.fillStyle = "rgba(255,240,180,.8)"; for (const [x, y] of [[18, 22], [78, 30], [70, 12], [24, 70]]) star(g, x, y, 3);
-    blob(48, 92, 30, 26, "#5b3f9e");                                   // robe
-    blob(48, 52, 15, 16, "#f0c9a0");                                   // face
-    g.fillStyle = ink; g.beginPath(); g.moveTo(32, 54); g.quadraticCurveTo(48, 98, 64, 54); g.fill();          // beard
-    g.fillStyle = "#f4f1ea"; g.beginPath(); g.moveTo(34, 55); g.quadraticCurveTo(48, 94, 62, 55); g.quadraticCurveTo(48, 62, 34, 55); g.fill();
-    g.fillStyle = ink; tri(g, 24, 44, 72, 44, 52, -2); g.fillStyle = "#6a4bb3"; tri(g, 27, 42, 69, 42, 52, 2);   // hat
-    g.fillStyle = "#e9b949"; star(g, 46, 30, 4); g.fillStyle = ink; g.fillRect(24, 40, 48, 6); g.fillStyle = "#4a3585"; g.fillRect(26, 41, 44, 4);
-    g.fillStyle = ink; ell(g, 42, 50, 2, 2.4); ell(g, 54, 50, 2, 2.4);                                        // eyes
-    g.strokeStyle = ink; g.lineWidth = 4; g.beginPath(); g.moveTo(82, 30); g.lineTo(78, 96); g.stroke();      // staff
-    g.strokeStyle = "#8a6034"; g.lineWidth = 2; g.stroke(); blob(82, 28, 5, 5, "#7fe0ff");
+  } else if (who === "wizard") {   // an old man with a long face, a hooked nose, bushy brows and a beard to his belt
+    g.fillStyle = "rgba(255,240,180,.8)"; for (const [x, y] of [[16, 24], [80, 34], [74, 12], [20, 72]]) star(g, x, y, 3);
+    const skin = "#efc7a0", shade = "#d9a77e", robe = "#5b3f9e", robeDk = "#46307d", beard = "#f1eee6", beardDk = "#cfcabd";
+    g.fillStyle = ink; g.beginPath(); g.moveTo(14, 98); g.quadraticCurveTo(18, 70, 48, 66); g.quadraticCurveTo(78, 70, 82, 98); g.fill();   // shoulders
+    g.fillStyle = robe; g.beginPath(); g.moveTo(17, 98); g.quadraticCurveTo(21, 72, 48, 69); g.quadraticCurveTo(75, 72, 79, 98); g.fill();
+    g.fillStyle = robeDk; g.beginPath(); g.moveTo(60, 98); g.quadraticCurveTo(64, 78, 74, 76); g.quadraticCurveTo(78, 86, 79, 98); g.fill();
+    g.fillStyle = ink; g.beginPath(); g.ellipse(48, 47, 14.5, 18.5, 0, 0, Math.PI * 2); g.fill();                                // a long face
+    g.fillStyle = skin; g.beginPath(); g.ellipse(48, 47, 12.5, 16.5, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = shade; g.beginPath(); g.ellipse(55, 50, 5, 11, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = "rgba(230,120,110,.35)"; ell(g, 39, 53, 3.5, 2.2); ell(g, 57, 53, 3.5, 2.2);                                   // rosy cheeks
+    const bp = () => { g.beginPath(); g.moveTo(35, 52); g.quadraticCurveTo(34, 64, 38, 74); g.quadraticCurveTo(42, 88, 48, 96);   // the beard
+      g.quadraticCurveTo(54, 88, 58, 74); g.quadraticCurveTo(62, 64, 61, 52); g.quadraticCurveTo(56, 60, 48, 60); g.quadraticCurveTo(40, 60, 35, 52); };
+    bp(); g.lineWidth = 4; g.strokeStyle = ink; g.stroke(); bp(); g.fillStyle = beard; g.fill();
+    g.strokeStyle = beardDk; g.lineWidth = 1.2; for (const [a, b, c2, d] of [[42, 64, 44, 84], [48, 63, 48, 90], [54, 64, 52, 84]]) { g.beginPath(); g.moveTo(a, b); g.quadraticCurveTo((a + c2) / 2 + 2, (b + d) / 2, c2, d); g.stroke(); }
+    g.fillStyle = beard; g.strokeStyle = ink; g.lineWidth = 1.6;                                                                 // moustache
+    for (const k of [-1, 1]) { g.beginPath(); g.moveTo(48, 56); g.quadraticCurveTo(48 + 8 * k, 53, 48 + 12 * k, 60); g.quadraticCurveTo(48 + 7 * k, 58, 48, 59); g.closePath(); g.stroke(); g.fill(); }
+    g.fillStyle = ink; g.beginPath(); g.moveTo(48, 44); g.quadraticCurveTo(53, 50, 50, 54); g.quadraticCurveTo(47, 55, 46, 53); g.fill();   // a hooked nose
+    g.fillStyle = shade; g.beginPath(); g.moveTo(48, 45); g.quadraticCurveTo(52, 50, 50, 53); g.quadraticCurveTo(48, 53.5, 47, 52.5); g.fill();
+    g.fillStyle = "#fff"; ell(g, 42, 44, 3, 2.2); ell(g, 54, 44, 3, 2.2); g.fillStyle = "#2d4f7a"; ell(g, 42.6, 44.3, 1.6, 1.7); ell(g, 54.6, 44.3, 1.6, 1.7);   // eyes
+    g.fillStyle = ink; ell(g, 42.8, 44.4, .8, .9); ell(g, 54.8, 44.4, .8, .9);
+    g.fillStyle = beard; g.strokeStyle = ink; g.lineWidth = 1.4;                                                                 // bushy brows
+    for (const k of [-1, 1]) { g.beginPath(); g.moveTo(48 - 2 * k, 41); g.quadraticCurveTo(48 + 6 * k, 37, 48 + 11 * k, 40); g.quadraticCurveTo(48 + 6 * k, 40, 48 - 2 * k, 42); g.closePath(); g.stroke(); g.fill(); }
+    g.fillStyle = ink; g.beginPath(); g.moveTo(18, 36); g.quadraticCurveTo(48, 26, 80, 36); g.quadraticCurveTo(48, 44, 18, 36); g.fill();   // a wide, drooping brim
+    g.fillStyle = "#4a3585"; g.beginPath(); g.moveTo(21, 36); g.quadraticCurveTo(48, 29, 77, 36); g.quadraticCurveTo(48, 41, 21, 36); g.fill();
+    g.fillStyle = ink; g.beginPath(); g.moveTo(32, 33); g.quadraticCurveTo(40, 14, 58, 2); g.quadraticCurveTo(56, 14, 66, 33); g.fill();      // a tall hat with a bent tip
+    g.fillStyle = "#6a4bb3"; g.beginPath(); g.moveTo(35, 32); g.quadraticCurveTo(42, 16, 56, 6); g.quadraticCurveTo(54, 16, 63, 32); g.fill();
+    g.fillStyle = "#e9b949"; star(g, 46, 24, 3.4); star(g, 55, 15, 2.4);
+    g.strokeStyle = ink; g.lineWidth = 4.5; g.beginPath(); g.moveTo(84, 30); g.lineTo(80, 98); g.stroke();                           // staff, in his hand
+    g.strokeStyle = "#8a6034"; g.lineWidth = 2.5; g.stroke(); blob(84, 27, 5, 5, "#7fe0ff"); g.fillStyle = "#fff"; ell(g, 82.5, 25.5, 1.6, 1.6);
+    blob(78, 76, 5, 4.5, skin);
   } else {
     blob(48, 94, 28, 24, "#7a4e2c");                                   // jerkin
     blob(18, 46, 10, 6, "#7fae4a"); blob(78, 46, 10, 6, "#7fae4a");    // ears

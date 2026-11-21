@@ -1223,7 +1223,7 @@ function drawPalm(g, x, y, s, tone) {
   g.fillStyle = "#6b4a2a"; ell(g, tx - 2.2 * s, ty + 2.5 * s, 2.4 * s, 2.4 * s); ell(g, tx + 2.2 * s, ty + 2.5 * s, 2.4 * s, 2.4 * s);
   if (season.snow) { g.fillStyle = "#f7fafc"; ell(g, tx - 1 * s, ty - 6 * s, 9 * s, 3 * s); }
 }
-const onSand = t => MAP.sea && t.y >= 450;   // Harbour cliffs: the beach is the row above the sea
+const onSand = t => MAP.sea && t.y >= SHORE_Y;   // Harbour cliffs: the beach is the row above the sea
 function drawTree(g, x, y, s, tone, shadow = true, bare = MAP.bare) {
   if (shadow) { g.fillStyle = "rgba(20,40,20,.28)"; ell(g, x + 4, y + 4, 16 * s, 7 * s); }
   if (bare === "palm") return drawPalm(g, x, y, s, tone);
@@ -1260,10 +1260,34 @@ function drawBog(g, Z, r) {
     if (!Z.snow) { g.fillStyle = "#6b4a2a"; ell(g, rx - 2, ry - 10, 1.4, 3); }
   }
 }
+// the foot of the shore's cliff: the beach runs from here down to the sea (the road row above the sea is all sand)
+const SHORE_Y = 11 * CELL + 2;
+// where the road climbs the shore's cliff: a cut ramp, with rock walls each side and the slope shaded
+function drawRamps(g, Z) {
+  for (const [c, r] of MAPINFO.cells) {
+    if (r !== 10 || !MAPINFO.set.has(cellKey(c, 11))) continue;
+    const x = c * CELL, y0 = SHORE_Y - 22, y1 = SHORE_Y + 4;
+    const slope = g.createLinearGradient(0, y0, 0, y1); slope.addColorStop(0, "rgba(90,60,30,0)"); slope.addColorStop(1, "rgba(90,60,30,.35)");
+    g.fillStyle = slope; g.fillRect(x + 5, y0, CELL - 10, y1 - y0);
+    g.strokeStyle = "rgba(90,60,30,.55)"; g.lineWidth = 2; for (let k = 1; k < 5; k++) { g.beginPath(); g.moveTo(x + 6, y0 + k * 5); g.lineTo(x + CELL - 6, y0 + k * 5); g.stroke(); }   // ridges up the slope
+    for (const [a, b] of [[x - 1, x - 9], [x + CELL + 1, x + CELL + 9]]) {   // the rock walls of the cut, each side of the road
+      g.fillStyle = Z.ink; g.beginPath(); g.moveTo(a, y0 - 4); g.lineTo(b, y1); g.lineTo(a, y1); g.closePath(); g.fill();
+      g.fillStyle = Z.night ? "#4a4034" : "#a8885f"; g.beginPath(); g.moveTo(a + (b > a ? 1 : -1), y0); g.lineTo(b + (b > a ? -2 : 2), y1 - 1); g.lineTo(a + (b > a ? 1 : -1), y1 - 1); g.closePath(); g.fill();
+    }
+  }
+}
 // the beach and the sea along the bottom of the board, under the cliff the castle stands on
 function drawSea(g, Z, r) {
-  const top = 12 * CELL - 6;
-  g.fillStyle = Z.snow ? "#e4e2da" : Z.night ? "#6d6450" : "#e2cf9c"; g.fillRect(0, top - 22, W, 30);   // sand
+  const top = 12 * CELL - 6, lip = SHORE_Y;
+  g.fillStyle = Z.snow ? "#e4e2da" : Z.night ? "#6d6450" : "#e2cf9c"; g.fillRect(0, lip, W, top - lip + 8);   // sand
+  // a low cliff all along the shore, the grass on top and the beach at its foot (the road climbs it on a ramp)
+  const rockTop = Z.night ? "#6a5d4b" : "#c2a37a", rockLow = Z.night ? "#4a4034" : "#8f7454", foot = [0, 3, -2, 4, 0, -3, 2, 5, -1, 3, -2, 1, 4, 0, -2, 3, 1, -3, 2, 0, 3];
+  const shore = () => { g.beginPath(); g.moveTo(-4, lip - 20); g.lineTo(CASTLE.x - 20, lip - 20); for (let i = foot.length - 1; i >= 0; i--) g.lineTo(i * 40, lip + 2 + foot[i]); g.lineTo(-4, lip + 2); g.closePath(); };
+  shore(); g.strokeStyle = Z.ink; g.lineWidth = 4; g.stroke();
+  const shoreRock = g.createLinearGradient(0, lip - 20, 0, lip + 4); shoreRock.addColorStop(0, rockTop); shoreRock.addColorStop(1, rockLow);
+  shore(); g.fillStyle = shoreRock; g.fill();
+  g.strokeStyle = Z.night ? "rgba(30,24,18,.5)" : "rgba(110,84,56,.6)"; g.lineWidth = 1.6; g.beginPath(); g.moveTo(0, lip - 9); for (let x = 0; x <= CASTLE.x; x += 40) g.lineTo(x + 20, lip - 9 + ((x / 40) % 3) - 1); g.stroke();
+  g.fillStyle = Z.ink; g.fillRect(-4, lip - 25, CASTLE.x - 12, 7); g.fillStyle = Z.grass[1]; g.fillRect(-4, lip - 24, CASTLE.x - 14, 5);   // the grassy edge
   g.fillStyle = Z.ink; g.fillRect(0, top - 2, W, H - top + 2);
   const sea = g.createLinearGradient(0, top, 0, H); sea.addColorStop(0, Z.night ? "#2a4a66" : "#5fb3cf"); sea.addColorStop(1, Z.night ? "#173048" : "#2f7fa8");
   g.fillStyle = sea; g.fillRect(0, top, W, H - top);
@@ -1388,6 +1412,7 @@ function buildBg() {
   for (let i = 0; i < 180; i++) { const q = MAPINFO.cells[(r() * MAPINFO.cells.length) | 0], [x, y] = cellXY(q); g.fillStyle = r() < .5 ? "rgba(120,90,55,.45)" : "rgba(240,220,170,.6)"; ell(g, x + (r() - .5) * 26, y + (r() - .5) * 26, 1.5 + r() * 2, 1 + r() * 1.5); }
   if (Z.snow) { road(); g.strokeStyle = "rgba(255,255,255,.35)"; g.lineWidth = 6; g.setLineDash([18, 30]); g.stroke(); g.setLineDash([]); }
   if (MAP.waterSet) for (const q of MAPINFO.cells) if (MAP.waterSet.has(cellKey(...q))) drawBridge(g, q, Z);
+  if (MAP.sea) drawRamps(g, Z);
   // flowers
   for (let i = 0; i < Z.nflowers * (MAP.flowers ?? 1); i++) { const x = r() * W, y = r() * H, c = Z.flowers[(r() * Z.flowers.length) | 0]; if (distRoad(x, y) < 34 || (x > 820 && y > 250) || (MAP.waterSet && MAP.waterSet.has(cellKey(Math.floor(x / CELL), Math.floor(y / CELL))))) continue; g.fillStyle = c; ell(g, x, y, Z.amb === "leaves" ? 2.6 : 1.8, Z.amb === "leaves" ? 1.5 : 1.8); }
   for (const q of MAP.stones || []) (MAP.rocks ? drawRock : drawStone)(g, ...cellXY(q), q[0] * 7 + q[1] * 3, Z);
