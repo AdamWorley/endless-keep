@@ -791,7 +791,13 @@ const SALTMARSH = { id: "saltmarsh", name: "Saltmarsh", builtin: true, unlock: "
   mist: [[300, 230, 95], [620, 330, 100], [180, 470, 80]],
   road: cellsAlong([[140, 20], [140, 460], [340, 460], [340, 140], [580, 140], [580, 460], [740, 460], [740, 380], [780, 380]]) };
 const inMist = (x, y) => !!MAP.mist && MAP.mist.some(([mx, my, r]) => (x - mx) ** 2 + (y - my) ** 2 < r * r);
-const MAPS = [DEFAULT_MAP, GRAVEYARD, MILLFORD, TROLLPASS, GLOAMING, SALTMARSH];
+// sea: the bottom two rows are sea, under the clifftop castle, and fliers come in off it (from the bottom edge)
+const HARBOUR = { id: "harbour", name: "Harbour cliffs", builtin: true, unlock: "lv50", need: "Reach level 50 to unlock it.",
+  about: "The road climbs from the beach to a clifftop castle, and anything with wings comes in off the sea.", sea: true, pond: false, trees: .6, tune: "harbour",
+  water: (() => { const out = []; for (let c = 0; c < COLS; c++) for (const r of [12, 13]) if (!inCastle(c, r)) out.push([c, r]); return out; })(),
+  fishAt: { x: 380, y: 525, rx: 40, ry: 12, where: "sea" },
+  road: cellsAlong([[20, 460], [300, 460], [300, 300], [100, 300], [100, 140], [580, 140], [580, 380], [780, 380]]) };
+const MAPS = [DEFAULT_MAP, GRAVEYARD, MILLFORD, TROLLPASS, GLOAMING, SALTMARSH, HARBOUR];
 for (const m of MAPS) { m.stoneSet = new Set((m.stones || []).map(q => cellKey(...q))); m.waterSet = new Set((m.water || []).map(q => cellKey(...q))); }
 // where a way in starts, just off the board: straight on from the road if that leaves the board, else over the nearest edge
 function entryOut([c, r], from) {
@@ -1088,6 +1094,11 @@ const TUNES = {
     boss: [[50, [57, 62, 65, 69]], [46, [58, 62, 65, 70]], [48, [55, 60, 64, 67]], [45, [57, 61, 64, 69]]],
     melody: [72, 74, 77, 79, 81, 84], beat: .22, bar: 8, bass2: 4, pat: [0, 2, 1, 2, 0, 3, 1, 2], lift: [5], mel: [2, 6],
     wave: "sawtooth", ring: .28, vol: .011, up: 0, swing: .3 },
+  harbour: {   // A  G  D  A, and Em  G  D  A for bosses: an A Mixolydian sea shanty on a reedy squeezebox
+    calm: [[45, [57, 61, 64, 69]], [43, [55, 59, 62, 67]], [50, [57, 62, 66, 69]], [45, [57, 61, 64, 69]]],
+    boss: [[40, [52, 55, 59, 64]], [43, [55, 59, 62, 67]], [50, [57, 62, 66, 69]], [45, [57, 61, 64, 69]]],
+    melody: [69, 71, 73, 74, 76, 79], beat: .25, bar: 12, bass2: 6, pat: [0, null, 2, 1, null, 2, 3, null, 2, 1, null, 2], lift: [6], mel: [3, 9],
+    wave: "square", ring: .4, vol: .011, up: 0 },
 };
 function mNote(f, t, dur, vol, type, slow, wobble) {
   const o = AC.createOscillator(), g = AC.createGain();
@@ -1184,6 +1195,21 @@ function drawBog(g, Z, r) {
     if (!Z.snow) { g.fillStyle = "#6b4a2a"; ell(g, rx - 2, ry - 10, 1.4, 3); }
   }
 }
+// the beach and the sea along the bottom of the board, under the cliff the castle stands on
+function drawSea(g, Z, r) {
+  const top = 12 * CELL - 6;
+  g.fillStyle = Z.snow ? "#e4e2da" : Z.night ? "#6d6450" : "#e2cf9c"; g.fillRect(0, top - 22, W, 30);   // sand
+  g.fillStyle = Z.ink; g.fillRect(0, top - 2, W, H - top + 2);
+  const sea = g.createLinearGradient(0, top, 0, H); sea.addColorStop(0, Z.night ? "#2a4a66" : "#5fb3cf"); sea.addColorStop(1, Z.night ? "#173048" : "#2f7fa8");
+  g.fillStyle = sea; g.fillRect(0, top, W, H - top);
+  g.fillStyle = "rgba(255,255,255,.7)"; for (let x = 0; x < W; x += 18) ell(g, x + 9, top + 2, 10, 3);   // surf
+  g.strokeStyle = "rgba(255,255,255,.35)"; g.lineWidth = 2;
+  for (let i = 0; i < 26; i++) { const x = r() * W, y = top + 16 + r() * (H - top - 22); g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + 8, y - 4, x + 16, y); g.stroke(); }
+  // the cliff under the castle
+  g.fillStyle = Z.ink; g.fillRect(CASTLE.x - 34, top - 26, W - CASTLE.x + 34, H - top + 26);
+  g.fillStyle = "#8e8574"; g.fillRect(CASTLE.x - 31, top - 24, W - CASTLE.x + 31, H - top + 24);
+  g.fillStyle = "#6f675a"; for (let i = 0; i < 7; i++) g.fillRect(CASTLE.x - 25 + i * 18, top - 10 + (i % 3) * 14, 12, 3);
+}
 // drifting mist over a map's mist patches, drawn over the board's things
 function drawMist() {
   ctx.save();
@@ -1258,6 +1284,7 @@ function buildBg() {
   }
   if (MAP.river) drawRiver(g, Z);
   if (MAP.bog) drawBog(g, Z, r);
+  if (MAP.sea) drawSea(g, Z, r);
   // road
   g.lineJoin = "miter"; g.lineCap = "square";   // square ends: each piece of road fills its squares, corners included
   const road = () => { g.beginPath(); for (const [x1, y1, x2, y2] of MAPINFO.segs) { g.moveTo(x1, y1); g.lineTo(x2 === x1 && y2 === y1 ? x2 + .01 : x2, y2); } };
@@ -1459,7 +1486,7 @@ function groundBlock(x, y) {
   if (x > CASTLE.x - 30 && y > CASTLE.y - 50) return "castle";
   if (MAP.pond !== false && ((x - 400) / 82) ** 2 + ((y - 80) / 44) ** 2 < 1) return "pond";
   if (MAP.stoneSet && MAP.stoneSet.has(cellKey(Math.floor(x / CELL), Math.floor(y / CELL)))) return MAP.rocks ? "rock" : "stone";
-  if (MAP.waterSet && MAP.waterSet.has(cellKey(Math.floor(x / CELL), Math.floor(y / CELL)))) return MAP.bog ? "bog" : "river";
+  if (MAP.waterSet && MAP.waterSet.has(cellKey(Math.floor(x / CELL), Math.floor(y / CELL)))) return MAP.bog ? "bog" : MAP.sea ? "sea" : "river";
   return "";
 }
 function canBuild(x, y) {
@@ -1591,7 +1618,7 @@ function spawn(item) {
   const L = S.level;
   let path = ROADS[(S.spawnN = (S.spawnN || 0) + 1) % ROADS.length];   // monsters on foot take turns between the paths
   const g = item.gate;   // two players: a Dark Gate beside the road, where monsters on foot join the road and fliers take off
-  if (d.fly) { const sy = 60 + Math.random() * 440; path = mkPath([g ? [g.x, g.y] : [-40, sy], [CASTLE.x + 20, CASTLE.y + 110 + (Math.random() - .5) * 60]]); }
+  if (d.fly) { const sy = 60 + Math.random() * 440; path = mkPath([g ? [g.x, g.y] : MAP.sea ? [60 + Math.random() * 700, H + 40] : [-40, sy], [CASTLE.x + 20, CASTLE.y + 110 + (Math.random() - .5) * 60]]); }
   else if (g) path = ROAD;
   const e = makeFoe(d, path, L);
   if (d.k === "slime" && slimeGrow(L) < 1) youngSlime(e, slimeGrow(L));
@@ -2524,7 +2551,7 @@ function renderUpNext() {
 }
 
 /* ---------- defender bar: tap for details, drag to build ---------- */
-const BUILD_MSG = { road: "Towers can't go on the road.", pond: "Towers can't go in the pond.", tower: "Too close to another tower.", tree: "A tree is in the way. Tap it to chop it down.", stone: "A headstone is in the way.", rock: "A boulder is in the way.", river: "Towers can't go in the river.", bog: "A tower would sink in the bog.", edge: "Too close to the edge.", castle: "That's the castle!" };
+const BUILD_MSG = { road: "Towers can't go on the road.", pond: "Towers can't go in the pond.", tower: "Too close to another tower.", tree: "A tree is in the way. Tap it to chop it down.", stone: "A headstone is in the way.", rock: "A boulder is in the way.", river: "Towers can't go in the river.", bog: "A tower would sink in the bog.", sea: "Towers can't go in the sea.", edge: "Too close to the edge.", castle: "That's the castle!" };
 function placeTower(k, x, y) {
   const d = TOWERS[k];
   { const lk = lockOf(k); if (lk) { toast(lk.why); return false; } }
