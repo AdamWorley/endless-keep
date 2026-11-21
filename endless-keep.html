@@ -560,7 +560,8 @@ canvas.mapedit:focus-visible { outline: 3px solid var(--gold); outline-offset: 2
           <dl class="kv" id="overStats"></dl>
           <p id="overMvp"></p>
           <div class="overbadges" id="overBadges"></div>
-          <div class="row"><button id="btnAgain" class="primary">Play again</button></div>
+          <div class="row"><button id="btnPost" hidden>Post to the Hall of Heroes</button><button id="btnAgain" class="primary">Play again</button></div>
+          <p class="fine" id="postNote" hidden></p>
         </div>
       </div>
     </div>
@@ -1989,7 +1990,7 @@ function gameOver() {
   $("overScore").textContent = held === 1 ? "You held the keep for 1 level." : `You held the keep for ${held} levels.`;
   const best = readMyBest();
   $("overNote").textContent = held > 0
-    ? (best > held ? `Your best is still level ${best}. Your score is on the leaderboard as ${playerName || "Player"}.` : `Level ${held} is on the leaderboard as ${playerName || "Player"}.`)
+    ? (best > held ? `Your best is still level ${best}.` : `That's your best yet.`)
     : "Build a few towers beside the road before the first goblins arrive.";
   const st = S.stats, kv = $("overStats"); kv.textContent = "";
   [["Monsters defeated", st.kills], ["Bosses defeated", st.bosses], ["Gold earned", st.gold], ["Defenders built", st.built], ["Trees chopped by hand", st.chopped]]
@@ -2010,6 +2011,7 @@ function gameOver() {
   $("overHeirlooms").textContent = (earned ? `You earned ${earned} heirloom${earned === 1 ? "" : "s"} to keep for future games. ` : "")
     + `Hold out to level ${next} in one game to earn ${earned ? "another" : "an heirloom"}.`;
   $("btnAgain").textContent = meta.picks ? `Choose your heirloom${meta.picks === 1 ? "" : "s"}` : "Play again";
+  offerPost(held);
   $("overCard").hidden = false;
   clearSave();
   renderPanel(); updateHud();
@@ -3417,9 +3419,25 @@ function savePlayer(level, badge) {
   const players = { ...src, [k]: entry };
   if (cloudOn()) { myScoreDoc = { players }; enqueue(() => db.doc("scores/" + uid).set({ players })); renderAch(); }
   else { ls.set("ek_scores", players); renderBoard(); }
-  // the shared board takes the level this run has reached (it keeps the best), with the run's ticket
-  if (LB_URL && S && !S.vs && !S.vsGuest && !S.map && S.level > 1) submitScore(S.level - 1, badges, rv, S.mid);
 }
+// the shared board only gets a score you choose to post, from the game-over card (this run's level, with its ticket)
+const canPost = () => !!LB_URL && !!S && !S.vs && !S.vsGuest && !S.map && S.level > 1;
+function offerPost(held) {
+  const b = $("btnPost"), note = $("postNote");
+  b.hidden = !canPost(); note.hidden = true; b.disabled = false; b.textContent = `Post level ${held} to the Hall of Heroes`;
+}
+$("btnPost").addEventListener("click", async () => {
+  const b = $("btnPost"), note = $("postNote"), held = S.level - 1, { cur } = myEntry();
+  b.disabled = true; b.textContent = "Posting…";
+  const res = await submitScore(held, (cur && cur.badges) || [], S.rv || RULES_VERSION, S.mid);
+  note.hidden = false;
+  if (res === "ok") { b.textContent = "Posted"; note.textContent = `Level ${held} is in the Hall of Heroes as ${cleanName(playerName) || "A keeper"}. It keeps your best.`; }
+  else {
+    b.disabled = res === "name"; b.textContent = res === "name" ? "Can't post" : `Try posting again`;
+    note.textContent = res === "name" ? "That name can't go on the shared board. Pick another on the start screen next time."
+      : res === "refused" ? "The Hall of Heroes wouldn't take this score." : "Couldn't reach the Hall of Heroes. Check you're online and try again.";
+  }
+});
 const ACH = [
   { id: "lv10",       name: "Seasoned Defender",   desc: "Reach level 10" },
   { id: "lv25",       name: "Veteran of the Keep", desc: "Reach level 25" },
@@ -3607,7 +3625,7 @@ function renderBoard() {
   if (boardMode === "loading") note.textContent = "Loading scores…";
   else if (boardMode === "slow") note.textContent = "Can't reach the shared leaderboard yet. Scores will appear when it connects.";
   else if (boardMode === "local") note.textContent = rows.length ? "Scores are kept on this device." : "No scores yet. Clear a level to get on the board. Scores are kept on this device.";
-  else if (boardMode === "api") note.textContent = lbNote || (rows.length ? "The shared Hall of Heroes. Your best level is saved each time you clear one." : "No heroes yet. Clear a level to claim the top spot.");
+  else if (boardMode === "api") note.textContent = lbNote || (rows.length ? "The shared Hall of Heroes. When the keep falls, you can post your level here." : "No heroes yet. Clear a level to claim the top spot.");
   else if (!cloudWritable) note.textContent = "You can see the shared board, but your own scores are kept on this device.";
   else note.textContent = rows.length ? "Your best level is saved each time you clear one." : "No heroes yet. Clear a level to claim the top spot.";
   renderAch();
@@ -3688,20 +3706,22 @@ function lbStartRun() {
   lbRunAsk = { run, p };
   return p;
 }
+// says how it went: "ok", "name" (the name isn't allowed), "refused" or "offline"
 async function submitScore(level, badges, v = RULES_VERSION, mid = null, retry = true) {
   const name = cleanName(playerName) || "A keeper";
-  if (isProfane(name)) { lbNote = "Your name can't go on the shared board. Pick another on the start screen."; renderBoard(); return; }
+  if (isProfane(name)) return "name";
   const run = S;
   if (!run.lbt) await lbStartRun();
-  if (!run.lbt) return;   // no ticket yet (offline?): this level stays on the device; the next one will try again
+  if (!run.lbt) return "offline";   // no ticket (offline when the run began, and still now)
   try {
     const r = await fetch(LB_URL + "/scores", { method: "POST", mode: "cors", credentials: "omit", referrerPolicy: "no-referrer", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token: lbToken(), ticket: run.lbt, name, level, v, ...(mid ? { map: mid } : {}), badges: badges.filter(b => ACH.some(a => a.id === b)) }) });
-    if (r.status === 422) { lbNote = "Your name can't go on the shared board. Pick another on the start screen."; renderBoard(); return; }
-    if (r.status === 429 && retry) { setTimeout(() => submitScore(level, badges, v, mid, false), 6500); return; }
-    if (r.status === 403) { const d = await r.json().catch(() => null); if (d && d.error === "ticket") { run.lbt = null; lbStartRun(); } return; }  // too_fast: the next level will count
-    if (r.ok) { lbNote = ""; fetchBoard(); }
-  } catch { /* offline: the score is still kept on this device */ }
+    if (r.status === 422) return "name";
+    if (r.status === 429 && retry) { await new Promise(ok => setTimeout(ok, 6500)); return submitScore(level, badges, v, mid, false); }
+    if (r.status === 403) return "refused";   // a bad ticket, or a level reached faster than the game allows
+    if (r.ok) { lbNote = ""; fetchBoard(); return "ok"; }
+    return r.status >= 500 ? "offline" : "refused";
+  } catch { return "offline"; }   // the score is still kept on this device
 }
 async function initCloud() {
   if (!window.claude || typeof window.claude.use !== "function") { if (LB_URL) return apiInit(); boardMode = "local"; renderBoard(); return; }
@@ -4028,7 +4048,7 @@ function vsEnd(winner) {
 const vsClock = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 function vsShowOver(head, note) {
   $("overCard").querySelector("h2").textContent = head;
-  $("overScore").textContent = note; $("overHeirlooms").textContent = ""; $("overNote").textContent = "Two-player games don't affect your heirlooms or the Hall of Heroes.";
+  $("overScore").textContent = note; $("overHeirlooms").textContent = ""; $("overNote").textContent = "Two-player games don't affect your heirlooms or the Hall of Heroes."; $("btnPost").hidden = $("postNote").hidden = true;
   $("overStats").textContent = ""; $("overMvp").textContent = ""; $("overBadges").textContent = "";
   $("btnAgain").textContent = "Back to the start";
   if (S) S.phase = "over";

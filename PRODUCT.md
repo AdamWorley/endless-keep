@@ -28,7 +28,7 @@ The combination is the point; no one feature is the hook:
 - Sessions are short and interruptible. Players move saved games and heirlooms between devices, and between the app and the Claude page, with export/import codes.
 - Players often run at 3× speed and often play with sound off, so moment-to-moment events are easy to miss.
 - Two-player matches use a 5-letter code (PeerJS matchmaking, then a direct connection) and run on a clock (the Keeper picks the length in minutes).
-- The Hall of Heroes is a Cloudflare Worker with a D1 database (`leaderboard/`). Each `RULES_VERSION` has its own board on each built-in map.
+- The Hall of Heroes is a Cloudflare Worker with a D1 database (`leaderboard/`). Each `RULES_VERSION` has its own board on each built-in map. A score goes on it only when the player chooses to post it, from the game-over card; personal bests on the device are kept either way.
 - Built-in maps unlock with achievements, and each has its own scenery and tune. The map builder is a dev tool, only shown when the game runs locally.
 
 ## Capabilities and Constraints
