@@ -1273,16 +1273,23 @@ function drawBoardwalk(g, Z) {
     if (r !== 11) continue;
     const x = c * CELL, y = r * CELL, along = on(c - 1, r) || on(c + 1, r), up = on(c, r - 1);
     // the deck runs to the edges it joins, and stops short of the others
-    const x1 = x + (on(c - 1, r) ? 0 : 3), x2 = x + CELL - (on(c + 1, r) ? 0 : 3), y1 = y + (up ? 0 : 3), y2 = y + CELL - 3;
-    g.fillStyle = Z.ink; g.fillRect(x1, y1, x2 - x1, y2 - y1);
-    const L = on(c - 1, r) ? 0 : 1.5, R = on(c + 1, r) ? 0 : 1.5, T = up ? 0 : 1.5;   // no ink seam where decks join
-    g.fillStyle = Z.snow ? "#b9ab98" : Z.night ? "#6e5638" : "#b08a58"; g.fillRect(x1 + L, y1 + T, x2 - x1 - L - R, y2 - y1 - T - 1.5);
-    g.fillStyle = Z.night ? "#4e3c26" : "#83623a";   // the gaps between planks, across the way the road runs
-    if (along) for (let i = x1 + 6; i < x2 - 2; i += 6.7) g.fillRect(i, y1 + 1.5, 1.3, y2 - y1 - 3);
-    else for (let i = y1 + 6; i < y2 - 2; i += 6.7) g.fillRect(x1 + 1.5, i, x2 - x1 - 3, 1.3);
-    g.fillStyle = "rgba(255,240,200,.18)"; g.fillRect(x1 + 1.5, y1 + 1.5, x2 - x1 - 3, 3);   // sun on the boards
-    g.fillStyle = Z.night ? "#3c2e1c" : "#6e5232"; for (const px of [x1 + 4, x2 - 6]) if (!on(c - 1, r) || px > x1 + 4) g.fillRect(px, y2 - 1, 2.5, 3);   // posts in the sand
-    if (Z.snow) { g.fillStyle = "rgba(255,255,255,.7)"; g.fillRect(x1 + 2, y1 + 2, x2 - x1 - 4, 2); }
+    const top = 12 * CELL - 6, sandTop = SHORE_Y + 8;   // between the cliff's foot and the water's edge
+    const x1 = x + (on(c - 1, r) ? 0 : 3), x2 = x + CELL - (on(c + 1, r) ? 0 : 3), y1 = up ? y : sandTop + 1, y2 = top - 2;
+    const sand = Z.snow ? "#e4e2da" : Z.night ? "#6d6450" : "#e2cf9c", wood = Z.snow ? "#b9ab98" : Z.night ? "#6e5638" : "#b08a58", P = 6, G = 5;
+    g.fillStyle = sand; g.fillRect(x, up ? y : sandTop, CELL, top - (up ? y : sandTop));   // the sand shows between the boards (and covers the road's painted dirt)
+    g.fillStyle = Z.night ? "#2a4a66" : "#5fb3cf"; g.fillRect(x, top, CELL, y + CELL - top);   // the water's edge, which the road's paint covered
+    g.fillStyle = "rgba(255,255,255,.7)"; for (let sx = Math.floor(x / 18) * 18; sx < x + CELL; sx += 18) ell(g, sx + 9, top + 2, 10, 3);
+    g.fillStyle = "rgba(120,90,55,.35)"; g.fillRect(x1, y1 + 4, x2 - x1, 2); g.fillRect(x1, y2 - 6, x2 - x1, 2);   // a shadow under each board's ends
+    // boards across the way the road runs, a board's width apart, lined up from the board's edge so they run on from square to square
+    g.save(); g.beginPath(); g.rect(x1 - 1, y1 - 1, x2 - x1 + 2, y2 - y1 + 2); g.clip();   // a board across two squares is drawn in both, clipped
+    for (let k = Math.floor(((along ? x1 : y1) - 1) / (P + G)) * (P + G) + 1 - (P + G); k < (along ? x2 : y2); k += P + G) {
+      const [bx, by, bw, bh] = along ? [k, y1, P, y2 - y1] : [x1, k, x2 - x1, P];
+      g.fillStyle = Z.ink; g.fillRect(bx - .8, by - .8, bw + 1.6, bh + 1.6);
+      g.fillStyle = wood; g.fillRect(bx, by, bw, bh);
+      g.fillStyle = "rgba(255,240,200,.22)"; along ? g.fillRect(bx, by, 1.6, bh) : g.fillRect(bx, by, bw, 1.6);   // sun on each board
+      if (Z.snow) { g.fillStyle = "rgba(255,255,255,.75)"; along ? g.fillRect(bx, by, bw, 3) : g.fillRect(bx, by, 3, bh); }
+    }
+    g.restore();
   }
 }
 // where the road climbs the shore's cliff: a cut ramp, with rock walls each side and the slope shaded
