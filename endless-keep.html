@@ -351,6 +351,9 @@ html.lock, html.lock body { overflow: hidden; overscroll-behavior: none; height:
 /* heirlooms and export/import dialogs sit above everything, so they work at phone sizes too */
 .modal { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; background: rgba(8, 12, 10, .72); padding: 16px; }
 .modal .card { width: min(780px, 100%); max-height: calc(100dvh - 32px); }
+.evpop { display: flex; gap: 16px; align-items: center; }
+.evpop .portrait { width: 96px; height: 96px; flex: none; border-radius: 50%; box-shadow: 0 0 0 3px var(--btn-fg, #33261a), 0 4px 10px rgba(0,0,0,.3); }
+.evpop .say { font-style: italic; }
 .heirlooms { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 @media (max-width: 640px) { .heirlooms { grid-template-columns: minmax(0, 1fr); } }
 .heirloom { display: grid; align-content: start; gap: 6px; text-align: left; padding: 14px; font-weight: 400; color: var(--fg);
@@ -1008,6 +1011,7 @@ function restore(sv) {
   if (typeof sv.lbt === "string" && sv.lbt.length < 200) S.lbt = sv.lbt;   // the shared board's ticket for this run
   const gone = new Set(sv.cleared || []);
   S.trees = S.trees.filter(tr => !gone.has(tr.id) && !S.towers.some(t => Math.hypot(t.x - tr.x, t.y - tr.y) < 34));
+  for (const t of S.trees) growWild(t, S.level);
   (sv.planted || []).forEach(([x, y, planted, tone, chopped, boost]) => {
     if (moved) { const sq = freeSquare(x, y); if (!sq || S.trees.some(o => o.x === sq[0] && o.y === sq[1])) return; [x, y] = sq; }
     const t = { id: 1000 + (S.nextTree = (S.nextTree || 0) + 1), x, y, tone: tone ? 1 : 0, planted, boost: Math.max(0, Math.min(999, Math.floor(+boost || 0))), shake: 0, fall: 0, dir: 1 };
@@ -1375,7 +1379,16 @@ function forestTrees() {
   }
   return MAP.forestTrees = out;
 }
-const freshTrees = () => [...forestTrees(), ...TREES].filter(t => !groundBlock(t.x, t.y) && (MAP.trees == null || (t.id * 37) % 100 < MAP.trees * 100)).map(t => ({ ...t, hp: t.max, shake: 0, fall: 0, dir: 1 }));
+const freshTrees = () => [...forestTrees(), ...TREES].filter(t => !groundBlock(t.x, t.y) && (MAP.trees == null || (t.id * 37) % 100 < MAP.trees * 100)).map(t => ({ ...t, hp: t.max, shake: 0, fall: 0, dir: 1, base: t.max > 4 ? 2 : 1 }));
+// the map's own trees grow too: a stage every 7 levels from the size they started at (base), up to a mighty oak. A
+// forest's trees (wood set low) keep giving less firewood. Returns true if the tree grew
+function growWild(t, L) {
+  const i = Math.min(GROWTH.length - 1, t.base + Math.floor((L - 1) / 7)), g = GROWTH[i];
+  if (i <= (t.stage || t.base)) return false;
+  const chopped = Math.max(0, t.max - t.hp);
+  t.stage = i; t.s = Math.max(t.s, g.s); t.max = g.max; t.wood = Math.round(g.wood * (t.wood && t.wood < 5 ? .4 : 1)); t.hp = Math.max(1, g.max - chopped);
+  return true;
+}
 // a woodcutter clears a tree at once and sells the firewood, keeping a share as their fee (smaller with Lumber rights)
 const cutterFee = () => Math.max(.1, .5 - .08 * perk("lumber"));
 const cutterPay = t => Math.round(woodValue(t) * (1 - cutterFee()));
@@ -1797,6 +1810,7 @@ function startWave() {
   if (RP) return;   // a replay plays itself
   if (NET.role === "guest") return vsSend({ t: "ready" });
   if (S.vs) return;   // a live two-player match has no levels to start: it runs on the clock
+  if (evPending() && typeof document !== "undefined" && $("modal").hidden) return askEvent(true);   // the visitor's still waiting for an answer
   audio();
   S.queue = planFor().map(q => ({ ...q }));
   S.phase = "wave"; S.spawnT = .5; S.waveHp = S.hp; S.stormT = 2;
@@ -1831,6 +1845,8 @@ function levelRewards(L) {
     for (let i = 0; i < 8; i++) S.fx.push({ x: t.x + (Math.random() - .5) * 20 * t.s, y: t.y - 16 * t.s, vx: (Math.random() - .5) * 40, vy: -30 - Math.random() * 30, life: .8, max: .8, col: "#c9f29a", r: 2.2, g: 40 });
   }
   S.stats.grown = (S.stats.grown || 0) + grew;
+  for (const t of S.trees) if (t.planted == null && !t.fall && growWild(t, L + 1))
+    for (let i = 0; i < 8; i++) S.fx.push({ x: t.x + (Math.random() - .5) * 20 * t.s, y: t.y - 16 * t.s, vx: (Math.random() - .5) * 40, vy: -30 - Math.random() * 30, life: .8, max: .8, col: "#c9f29a", r: 2.2, g: 40 });
   if (grew) msg += ` · ${grew === 1 ? "A tree has" : grew + " trees have"} grown`;
   return msg;
 }
@@ -1891,7 +1907,8 @@ function update(dt) {
   if (!S || S.phase === "over") return;
   for (const t of S.trees) { if (t.shake > 0) t.shake -= dt; if (t.fall) t.fall += dt * 1.6; }
   if (S.trees.some(t => t.fall > 1.5)) S.trees = S.trees.filter(t => !(t.fall > 1.5));
-  if (S.phase === "build" && auto && !S.vs) { S.nextT = Math.max(0, S.nextT - dt); if (S.nextT <= 0) { if (!evPending()) startWave(); else if ($("modal").hidden && $("startCard").hidden && !paused) askEvent(); } }
+  if (S.phase === "build" && !S.vs && evPending() && $("modal").hidden && $("startCard").hidden && !paused) askEvent();   // a visitor asks as soon as the level is cleared
+  if (S.phase === "build" && auto && !S.vs) { S.nextT = Math.max(0, S.nextT - dt); if (S.nextT <= 0 && !evPending()) startWave(); }
   if (S.vs) { vsTick(dt); if (S.phase === "over") return; }
   if (S.phase === "wave") {
     S.spawnT -= dt;
@@ -2560,18 +2577,9 @@ function renderUpNext() {
   $("upTitle").textContent = S.phase === "wave" ? `Level ${L} (under way)` : `Coming in level ${L}`;
   { const n = wishLeft(); if (n) box.append(chip("wish", null, `Wish: ${PERKS[S.wish.id].name} ×${S.wish.n}, ${n} more level${n === 1 ? "" : "s"}`)); }
   const ev = curEv();
-  if (ev) {
+  if (ev && EVENTS[ev.id].kind !== "choice") {   // a toll or a wizard asks in a popup instead
     const E = EVENTS[ev.id], bx = el("div", "event " + E.kind);
     bx.append(el("b", "", E.name), el("span", "", E.desc(L)));
-    if (E.kind === "choice") {
-      if (ev.choice) bx.append(el("span", "fine", ev.choice === "pay" ? "You paid." : "You refused."));
-      else if (S.phase === "build") {
-        const r = el("div", "row"), c = E.cost(L), py = el("button", "primary", `${E.pay} · ${c} g`), no = el("button", "", E.refuse);
-        py.dataset.cost = c; py.disabled = S.gold < c;
-        py.addEventListener("click", () => chooseEvent(true)); no.addEventListener("click", () => chooseEvent(false));
-        r.append(py, no); bx.append(r);
-      }
-    }
     box.append(bx);
   }
   // a new season brings new rules: say so the level before, and keep them here all season (the toast goes by too fast
