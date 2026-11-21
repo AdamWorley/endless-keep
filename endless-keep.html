@@ -778,7 +778,20 @@ const GLOAMING = { id: "gloaming", name: "Gloaming Wood", builtin: true, unlock:
   about: "A dim wood where trees crowd every square. Chop your way to room for towers, and sell the firewood.", forest: .7, pond: false,
   tint: "rgba(30,25,80,.26)", gloom: .35, flowers: .5, tune: "gloaming",
   road: cellsAlong([[20, 460], [260, 460], [260, 260], [460, 260], [460, 460], [620, 460], [620, 220], [740, 220], [740, 380], [780, 380]]) };
-const MAPS = [DEFAULT_MAP, GRAVEYARD, MILLFORD, TROLLPASS, GLOAMING];
+// bog: water squares are pools of bog (the road crosses on boardwalks); mist: patches [x, y, radius] where towers
+// lose a fifth of their range unless a Lantern lights them
+const bogCells = pools => { const out = [];
+  for (let c = 0; c < COLS; c++) for (let r = 0; r < ROWS; r++) if (!inCastle(c, r) && pools.some(([pc, pr, pd]) => Math.hypot(c - pc, r - pr) <= pd)) out.push([c, r]);
+  return out; };
+const SALTMARSH = { id: "saltmarsh", name: "Saltmarsh", builtin: true, unlock: "slimecube", need: "Defeat the Slime Cube to unlock it.",
+  about: "Boardwalks over a bog. Mist hangs over the marsh and shortens your towers' reach, except where a Lantern shines.", foes: { slime: 1.4 },
+  pond: false, bog: true, trees: .4, flowers: .6, tint: "rgba(60,85,75,.16)", gloom: .2, tune: "saltmarsh",
+  water: bogCells([[5.5, 6, 1.6], [8, 8, 1.3], [11, 7, 1.5], [14, 6, 1.2], [17, 3.5, 1.8], [1.5, 12, 1.2], [11, 12, 1.4], [21, 1.5, 1.5]]),
+  fishAt: { x: 460, y: 300, rx: 22, ry: 14, where: "bog" },
+  mist: [[300, 230, 95], [620, 330, 100], [180, 470, 80]],
+  road: cellsAlong([[140, 20], [140, 460], [340, 460], [340, 140], [580, 140], [580, 460], [740, 460], [740, 380], [780, 380]]) };
+const inMist = (x, y) => !!MAP.mist && MAP.mist.some(([mx, my, r]) => (x - mx) ** 2 + (y - my) ** 2 < r * r);
+const MAPS = [DEFAULT_MAP, GRAVEYARD, MILLFORD, TROLLPASS, GLOAMING, SALTMARSH];
 for (const m of MAPS) { m.stoneSet = new Set((m.stones || []).map(q => cellKey(...q))); m.waterSet = new Set((m.water || []).map(q => cellKey(...q))); }
 // where a way in starts, just off the board: straight on from the road if that leaves the board, else over the nearest edge
 function entryOut([c, r], from) {
@@ -1070,6 +1083,11 @@ const TUNES = {
     boss: [[50, [62, 65, 69, 74]], [46, [58, 62, 65, 70]], [48, [60, 64, 67, 72]], [45, [57, 60, 64, 69]]],
     melody: [74, 76, 77, 79, 81, 83], beat: .3, bar: 8, bass2: 4, pat: [0, 2, 1, 3, null, 2, 1, null], lift: [], mel: [4],
     wave: "sine", ring: .9, vol: .03, up: 12, wobble: true },
+  saltmarsh: {   // F  Bb  C  F, and Dm  Bb  C  A for bosses: a bouncy, swung bassoon line
+    calm: [[41, [53, 57, 60, 65]], [46, [58, 62, 65, 70]], [48, [55, 60, 64, 67]], [41, [53, 57, 60, 65]]],
+    boss: [[50, [57, 62, 65, 69]], [46, [58, 62, 65, 70]], [48, [55, 60, 64, 67]], [45, [57, 61, 64, 69]]],
+    melody: [72, 74, 77, 79, 81, 84], beat: .22, bar: 8, bass2: 4, pat: [0, 2, 1, 2, 0, 3, 1, 2], lift: [5], mel: [2, 6],
+    wave: "sawtooth", ring: .28, vol: .011, up: 0, swing: .3 },
 };
 function mNote(f, t, dur, vol, type, slow, wobble) {
   const o = AC.createOscillator(), g = AC.createGain();
@@ -1090,7 +1108,7 @@ function musicTick() {
   const T = TUNES[MAP.tune] || TUNES.meadow, now = AC.currentTime, beat = T.beat;
   if (mNext < now) mNext = now + .1;
   while (mNext < now + .8) {
-    const t = mNext, step = mStep % T.bar, bar = Math.floor(mStep / T.bar);
+    const step = mStep % T.bar, bar = Math.floor(mStep / T.bar), t = mNext + (T.swing && step % 2 ? beat * T.swing : 0);   // swing: every other note a little late
     const boss = S && S.phase === "wave" && S.level % 10 === 0;
     const [bass, ch] = (boss ? T.boss : T.calm)[bar % 4];
     if (step === 0) { mNote(mtof(bass), t, beat * 8, .05, "sine", true); ch.slice(0, 3).forEach(m => mNote(mtof(m - 12), t, beat * 16, .012, "sine", true)); if (T.bell) mNote(mtof(bass - 12), t, 2.2, .03, "sine"); if (T.drone) mNote(mtof(45 - 12), t, beat * T.bar + .6, .03, "sawtooth", true); }
@@ -1153,6 +1171,28 @@ function drawRiver(g, Z) {
   line(); g.strokeStyle = Z.pond; g.lineWidth = 2 * CELL - 14; g.stroke();
   line(); g.strokeStyle = Z.frozen ? "rgba(255,255,255,.7)" : "rgba(255,255,255,.3)"; g.lineWidth = 2; g.setLineDash(Z.frozen ? [10, 26] : [14, 34]); g.translate(-10, 0); g.stroke();
   g.translate(20, 0); g.setLineDash([8, 40]); g.stroke(); g.restore();
+}
+// pools of bog: soft blobs that run together, with reeds round the edges; frozen in winter
+function drawBog(g, Z, r) {
+  const cells = MAP.water.map(cellXY), murk = Z.frozen ? Z.pond : Z.night ? "#2b3c32" : "#5c7a58";
+  for (const [w, col] of [[32, Z.ink], [30, Z.rim], [27, murk]]) { g.fillStyle = col; for (const [x, y] of cells) ell(g, x, y, w, w * .9); }
+  g.fillStyle = Z.frozen ? "rgba(255,255,255,.5)" : "rgba(160,190,140,.35)"; for (const [x, y] of cells) ell(g, x - 6, y - 5, 7, 2.5);
+  g.strokeStyle = Z.night ? "#3d5a3a" : "#6f8f43"; g.lineWidth = 1.6; g.lineCap = "round";
+  for (const [x, y] of cells) for (let i = 0; i < 3; i++) {   // reeds
+    const a = r() * Math.PI * 2, rx = x + Math.cos(a) * 22, ry = y + Math.sin(a) * 20;
+    g.beginPath(); g.moveTo(rx, ry); g.lineTo(rx - 2, ry - 9); g.moveTo(rx + 2, ry); g.lineTo(rx + 3, ry - 8); g.stroke();
+    if (!Z.snow) { g.fillStyle = "#6b4a2a"; ell(g, rx - 2, ry - 10, 1.4, 3); }
+  }
+}
+// drifting mist over a map's mist patches, drawn over the board's things
+function drawMist() {
+  ctx.save();
+  for (const [mx, my, mr] of MAP.mist) for (let i = 0; i < 6; i++) {
+    const a = i * 1.05 + time * .12, x = mx + Math.cos(a) * mr * .45, y = my + Math.sin(a * 1.3) * mr * .3, rr = mr * (.55 + .08 * Math.sin(time * .5 + i));
+    const gr = ctx.createRadialGradient(x, y, 0, x, y, rr); gr.addColorStop(0, "rgba(235,240,235,.24)"); gr.addColorStop(1, "rgba(235,240,235,0)");
+    ctx.fillStyle = gr; ctx.fillRect(x - rr, y - rr, rr * 2, rr * 2);
+  }
+  ctx.restore();
 }
 // a wooden bridge where a road square crosses the water: planks across the road, a rail on each side
 function drawBridge(g, [c, r], Z) {
@@ -1217,6 +1257,7 @@ function buildBg() {
     i < 120 ? ell(g, r() * W, r() * H, 18 + r() * 40, 8 + r() * 16) : ell(g, r() * W, r() * H, 1.5 + r() * 2.5, 1 + r() * 1.6);
   }
   if (MAP.river) drawRiver(g, Z);
+  if (MAP.bog) drawBog(g, Z, r);
   // road
   g.lineJoin = "miter"; g.lineCap = "square";   // square ends: each piece of road fills its squares, corners included
   const road = () => { g.beginPath(); for (const [x1, y1, x2, y2] of MAPINFO.segs) { g.moveTo(x1, y1); g.lineTo(x2 === x1 && y2 === y1 ? x2 + .01 : x2, y2); } };
@@ -1418,7 +1459,7 @@ function groundBlock(x, y) {
   if (x > CASTLE.x - 30 && y > CASTLE.y - 50) return "castle";
   if (MAP.pond !== false && ((x - 400) / 82) ** 2 + ((y - 80) / 44) ** 2 < 1) return "pond";
   if (MAP.stoneSet && MAP.stoneSet.has(cellKey(Math.floor(x / CELL), Math.floor(y / CELL)))) return MAP.rocks ? "rock" : "stone";
-  if (MAP.waterSet && MAP.waterSet.has(cellKey(Math.floor(x / CELL), Math.floor(y / CELL)))) return "river";
+  if (MAP.waterSet && MAP.waterSet.has(cellKey(Math.floor(x / CELL), Math.floor(y / CELL)))) return MAP.bog ? "bog" : "river";
   return "";
 }
 function canBuild(x, y) {
@@ -1963,6 +2004,7 @@ function render() {
   }
   items.sort((a, b) => a.y - b.y).forEach(it => it.f());
   if (S) S.enemies.forEach(e => e.fly && drawEnemy(e));
+  if (MAP.mist) drawMist();
   if (lit) {
     ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
     if (MAP.gloom) { ctx.globalCompositeOperation = "saturation"; ctx.fillStyle = `rgba(128,128,128,${MAP.gloom})`; ctx.fillRect(0, 0, cv.width, cv.height); ctx.globalCompositeOperation = "source-over"; }
@@ -2291,7 +2333,8 @@ function renderPanel() {
       const lb = glowBonus(lit);
       p.append(el("p", "hint", `A Lantern lights this tower: monsters in its light take +${Math.round(lb * 100)}% damage (${Math.round(st.dmg)} → ${Math.round(st.dmg * (1 + lb))} a hit)` +
         (dark || fog ? `, and the tower sees through the ${dark && fog ? "darkness and fog" : dark ? "darkness" : "fog"} at full range.` : ".")));
-    } else if (dark) p.append(el("p", "hint", `Night: darkness cuts this tower's range by ${Math.round((1 - dark) * 100)}%. Build a Lantern nearby to light it up.`));
+    } else if (inMist(t.x, t.y)) p.append(el("p", "hint", "Marsh mist cuts this tower's range by 20%. Build a Lantern nearby to light it up."));
+    else if (dark) p.append(el("p", "hint", `Night: darkness cuts this tower's range by ${Math.round((1 - dark) * 100)}%. Build a Lantern nearby to light it up.`));
     if (snow) p.append(el("p", "hint", `Winter: falling snow cuts range by ${Math.round((1 - snow) * 100)}%.`)); }
   if (t.type === "dragon") {
     const nf = el("div", "namefield"), lab = el("label", "", "Dragon's name"), r2 = el("div", "row2");
@@ -2481,7 +2524,7 @@ function renderUpNext() {
 }
 
 /* ---------- defender bar: tap for details, drag to build ---------- */
-const BUILD_MSG = { road: "Towers can't go on the road.", pond: "Towers can't go in the pond.", tower: "Too close to another tower.", tree: "A tree is in the way. Tap it to chop it down.", stone: "A headstone is in the way.", rock: "A boulder is in the way.", river: "Towers can't go in the river.", edge: "Too close to the edge.", castle: "That's the castle!" };
+const BUILD_MSG = { road: "Towers can't go on the road.", pond: "Towers can't go in the pond.", tower: "Too close to another tower.", tree: "A tree is in the way. Tap it to chop it down.", stone: "A headstone is in the way.", rock: "A boulder is in the way.", river: "Towers can't go in the river.", bog: "A tower would sink in the bog.", edge: "Too close to the edge.", castle: "That's the castle!" };
 function placeTower(k, x, y) {
   const d = TOWERS[k];
   { const lk = lockOf(k); if (lk) { toast(lk.why); return false; } }

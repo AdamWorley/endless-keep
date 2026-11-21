@@ -98,7 +98,7 @@ const upBase = k => k === "dragon" && rules5() ? 200 : TOWERS[k].cost;
 function tStats(t) {
   const d = towerDef(t.type), n = t.lvl - 1, sp = dragonSecret(t) || {};
   if (t.type === "lantern") return { dmg: 0, range: glowReach(t), rate: 0, slow: 0, bonus: glowBonus(t) };
-  const lit = t.x != null && !!lightAt(t.x, t.y), dim = (evOn("fog") || vsOn("fog") ? .8 : 1) * (sRule("gloom") || 1);
+  const lit = t.x != null && !!lightAt(t.x, t.y), dim = (evOn("fog") || vsOn("fog") ? .8 : 1) * (sRule("gloom") || 1) * (t.x != null && inMist(t.x, t.y) ? .8 : 1);
   const spDmg = (sp.dmg || 1) * (sp.dark ? (season && season.night ? 1.25 : 1.1) : 1), tier = archerTier(t) || {};
   return {
     dmg: d.dmg * lvlDmg(n) * (1 + .06 * perk(TYPE_PERK[t.type]) + .1 * perk("crown") + .05 * dyn()) * (evOn("wizard") ? 1.3 : 1) * spDmg * (tier.dmg || 1),

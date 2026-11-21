@@ -185,7 +185,7 @@ export function buildPhase(G, P, M) {
 function towerOptions(G, P, M, E) {
   const S = G.S, out = [], { cells, cov } = M.map;
   const sh = shooters(S), armyDps = sh.reduce((a, t) => a + dps(G, t.type, t.lvl), 0), meanDps = sh.length ? armyDps / sh.length : dps(G, "archer", 1);
-  const dark = !!(G.season && G.season.gloom) || G.curEv()?.id === "fog";
+  const dark = !!(G.season && G.season.gloom) || G.curEv()?.id === "fog" || !!(G.MAP && G.MAP.mist);   // mist dims towers like the dark
   const lanternMul = 1 + (dark ? P.lanternDark : 0);
   // a Lantern only helps towers no other Lantern lights already (lights don't add up)
   const dark_ = sh.filter(t => !G.lightAt(t.x, t.y)).map(t => ({ x: t.x, y: t.y, d: dps(G, t.type, t.lvl) }));
