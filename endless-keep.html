@@ -743,11 +743,11 @@ function riverLine(cols) {
   out.push(pts[pts.length - 1]);
   return out;
 }
-function riverCells(line) {
+function riverCells(line, reach = CELL + 4) {
   const out = [];
   for (let c = 0; c < COLS; c++) for (let r = 0; r < ROWS; r++) {
     const [x, y] = cellXY([c, r]);
-    if (line.some((p, i) => i && distSeg(x, y, { x1: line[i - 1][0], y1: line[i - 1][1], x2: p[0], y2: p[1] }) < CELL + 4)) out.push([c, r]);
+    if (line.some((p, i) => i && distSeg(x, y, { x1: line[i - 1][0], y1: line[i - 1][1], x2: p[0], y2: p[1] }) < reach)) out.push([c, r]);
   }
   return out;
 }
@@ -797,7 +797,14 @@ const HARBOUR = { id: "harbour", name: "Harbour cliffs", builtin: true, unlock: 
   water: (() => { const out = []; for (let c = 0; c < COLS; c++) for (const r of [12, 13]) if (!inCastle(c, r)) out.push([c, r]); return out; })(),
   fishAt: { x: 380, y: 525, rx: 40, ry: 12, where: "sea" },
   road: cellsAlong([[20, 460], [300, 460], [300, 300], [100, 300], [100, 140], [580, 140], [580, 380], [780, 380]]) };
-const MAPS = [DEFAULT_MAP, GRAVEYARD, MILLFORD, TROLLPASS, GLOAMING, SALTMARSH, HARBOUR];
+// lava: thin streams (rivers: their lines, one square wide) that block building; the road crosses on stone bridges
+const EMBER_LAVA = [riverLine([5.5, 5.5, 6, 6.5, 6.5, 6, 5.5, 5.5, 6, 6.5, 7, 7, 6.5, 6.5]), riverLine([13.5, 13.5, 13, 12.5, 12.5, 13, 13.5, 14, 14, 13.5, 13, 13, 13.5, 13.5])];
+const EMBER = { id: "ember", name: "Ember Peak", builtin: true, unlock: "greatwyrm", need: "Raise a dragon into a Great wyrm to unlock it.",
+  about: "Over the volcano's shoulder, between streams of lava. Wyverns nest up here, and bats come thick and fast.", foes: { wyvern: 2.2, bat: 1.5 },
+  lava: true, rivers: EMBER_LAVA, water: EMBER_LAVA.flatMap(l => riverCells(l, 23)), pond: false, bare: true, trees: .3, flowers: .15,
+  tint: "rgba(120,40,20,.16)", gloom: .45, tune: "ember",
+  road: cellsAlong([[20, 180], [660, 180], [660, 300], [100, 300], [100, 460], [740, 460], [740, 380], [780, 380]]) };
+const MAPS = [DEFAULT_MAP, GRAVEYARD, MILLFORD, TROLLPASS, GLOAMING, SALTMARSH, HARBOUR, EMBER];
 for (const m of MAPS) { m.stoneSet = new Set((m.stones || []).map(q => cellKey(...q))); m.waterSet = new Set((m.water || []).map(q => cellKey(...q))); }
 // where a way in starts, just off the board: straight on from the road if that leaves the board, else over the nearest edge
 function entryOut([c, r], from) {
@@ -1099,7 +1106,21 @@ const TUNES = {
     boss: [[40, [52, 55, 59, 64]], [43, [55, 59, 62, 67]], [50, [57, 62, 66, 69]], [45, [57, 61, 64, 69]]],
     melody: [69, 71, 73, 74, 76, 79], beat: .25, bar: 12, bass2: 6, pat: [0, null, 2, 1, null, 2, 3, null, 2, 1, null, 2], lift: [6], mel: [3, 9],
     wave: "square", ring: .4, vol: .011, up: 0 },
+  ember: {   // Em  Am  B  Em, and Em  C  B  B for bosses: a driving E harmonic minor riff over noise drums
+    calm: [[40, [52, 55, 59, 64]], [45, [57, 60, 64, 69]], [47, [59, 63, 66, 71]], [40, [52, 55, 59, 64]]],
+    boss: [[40, [52, 55, 59, 64]], [48, [55, 60, 64, 67]], [47, [59, 63, 66, 71]], [47, [59, 63, 66, 71]]],
+    melody: [76, 78, 79, 81, 83, 84, 87], beat: .21, bar: 8, bass2: 4, pat: [0, 1, 2, 1, 3, 1, 2, 1], lift: [], mel: [3, 7],
+    wave: "sawtooth", ring: .2, vol: .009, up: 0, drums: { 0: "low", 4: "low", 2: "snap", 6: "snap", 7: "snap" } },
 };
+// a burst of noise for drums: low (a thump) or snap (a dry crack)
+let mNoiseBuf = null;
+function mDrum(t, kind) {
+  if (!mNoiseBuf) { mNoiseBuf = AC.createBuffer(1, AC.sampleRate * .25, AC.sampleRate); const d = mNoiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+  const src = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain(), low = kind === "low";
+  src.buffer = mNoiseBuf; f.type = low ? "lowpass" : "bandpass"; f.frequency.value = low ? 220 : 1800;
+  g.gain.setValueAtTime(low ? .16 : .045, t); g.gain.exponentialRampToValueAtTime(.0001, t + (low ? .22 : .09));
+  src.connect(f).connect(g).connect(mBus); src.start(t); src.stop(t + .25);
+}
 function mNote(f, t, dur, vol, type, slow, wobble) {
   const o = AC.createOscillator(), g = AC.createGain();
   o.type = type; o.frequency.value = f;
@@ -1123,6 +1144,7 @@ function musicTick() {
     const boss = S && S.phase === "wave" && S.level % 10 === 0;
     const [bass, ch] = (boss ? T.boss : T.calm)[bar % 4];
     if (step === 0) { mNote(mtof(bass), t, beat * 8, .05, "sine", true); ch.slice(0, 3).forEach(m => mNote(mtof(m - 12), t, beat * 16, .012, "sine", true)); if (T.bell) mNote(mtof(bass - 12), t, 2.2, .03, "sine"); if (T.drone) mNote(mtof(45 - 12), t, beat * T.bar + .6, .03, "sawtooth", true); }
+    if (T.drums && T.drums[step]) mDrum(t, T.drums[step]);
     if (step === T.bass2) mNote(mtof(bass), t, beat * 8, .04, "sine", true);
     const n = T.pat[step % T.pat.length];
     if (n != null) mNote(mtof(ch[n] + T.up + (T.lift.includes(step) ? 12 : 0)), t, T.ring, T.vol, T.wave, false, T.wobble);
@@ -1220,14 +1242,26 @@ function drawMist() {
   }
   ctx.restore();
 }
+// a stream of lava: a dark crust, molten middle and bright threads; it never freezes
+function drawLava(g, Z, pts) {
+  const line = () => { g.beginPath(); pts.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); };
+  g.save(); g.lineCap = g.lineJoin = "round";
+  line(); g.strokeStyle = Z.ink; g.lineWidth = CELL + 4; g.stroke();
+  line(); g.strokeStyle = "#4a1a0c"; g.lineWidth = CELL; g.stroke();
+  line(); g.strokeStyle = "#e2531c"; g.lineWidth = CELL - 12; g.stroke();
+  line(); g.strokeStyle = "#ffb347"; g.lineWidth = 4; g.setLineDash([12, 18]); g.stroke();
+  line(); g.strokeStyle = "rgba(255,240,180,.8)"; g.lineWidth = 1.5; g.setLineDash([5, 31]); g.stroke();
+  g.restore();
+}
 // a wooden bridge where a road square crosses the water: planks across the road, a rail on each side
 function drawBridge(g, [c, r], Z) {
   const [x, y] = cellXY([c, r]), across = MAPINFO.set.has(cellKey(c - 1, r)) || MAPINFO.set.has(cellKey(c + 1, r));
   g.save(); g.translate(x, y); if (!across) g.rotate(Math.PI / 2);
+  const stone = MAP.lava;   // over lava, a stone bridge
   g.fillStyle = Z.ink; g.fillRect(-21, -17, 42, 34);
-  g.fillStyle = "#9a7448"; g.fillRect(-20, -15, 40, 30);
-  g.fillStyle = "#7a5634"; for (let i = -20; i < 20; i += 6.7) g.fillRect(i, -15, 1.4, 30);    // gaps between planks
-  g.fillStyle = "#5e4128"; g.fillRect(-21, -18, 42, 4); g.fillRect(-21, 14, 42, 4);           // rails
+  g.fillStyle = stone ? "#8a8379" : "#9a7448"; g.fillRect(-20, -15, 40, 30);
+  g.fillStyle = stone ? "#6c665e" : "#7a5634"; for (let i = -20; i < 20; i += 6.7) g.fillRect(i, -15, 1.4, 30);    // gaps between planks (or slabs)
+  g.fillStyle = stone ? "#57524b" : "#5e4128"; g.fillRect(-21, -18, 42, 4); g.fillRect(-21, 14, 42, 4);           // rails
   if (Z.snow) { g.fillStyle = "rgba(255,255,255,.8)"; g.fillRect(-21, -19, 42, 2); g.fillRect(-21, 13, 42, 2); }
   g.restore();
 }
@@ -1278,11 +1312,12 @@ function buildBg() {
   if (Z.frozen) { g.strokeStyle = "rgba(255,255,255,.8)"; g.lineWidth = 1; g.beginPath(); g.moveTo(370, 78); g.lineTo(392, 86); g.lineTo(404, 79); g.moveTo(392, 86); g.lineTo(398, 96); g.moveTo(410, 70); g.lineTo(428, 76); g.stroke(); }
   if (Z.moon) { g.fillStyle = "rgba(255,248,210,.85)"; ell(g, 414, 84, 9, 4); g.fillStyle = "rgba(255,248,210,.25)"; ell(g, 414, 84, 20, 7); }
   }
-  if (MAP.rocks) for (let i = 0; i < 420; i++) {   // scree: bare stony patches and pebbles over the grass
-    g.fillStyle = i < 120 ? "rgba(120,114,104,.28)" : i < 300 ? "rgba(90,86,80,.35)" : "rgba(200,195,185,.4)";
+  if (MAP.rocks || MAP.lava) for (let i = 0; i < 420; i++) {   // scree (or ash and cinders): bare patches and pebbles over the grass
+    g.fillStyle = MAP.lava ? (i < 120 ? "rgba(55,45,42,.4)" : i < 300 ? "rgba(30,24,22,.4)" : "rgba(230,120,60,.45)") : i < 120 ? "rgba(120,114,104,.28)" : i < 300 ? "rgba(90,86,80,.35)" : "rgba(200,195,185,.4)";
     i < 120 ? ell(g, r() * W, r() * H, 18 + r() * 40, 8 + r() * 16) : ell(g, r() * W, r() * H, 1.5 + r() * 2.5, 1 + r() * 1.6);
   }
   if (MAP.river) drawRiver(g, Z);
+  if (MAP.lava) for (const l of MAP.rivers) drawLava(g, Z, l);
   if (MAP.bog) drawBog(g, Z, r);
   if (MAP.sea) drawSea(g, Z, r);
   // road
@@ -1486,7 +1521,7 @@ function groundBlock(x, y) {
   if (x > CASTLE.x - 30 && y > CASTLE.y - 50) return "castle";
   if (MAP.pond !== false && ((x - 400) / 82) ** 2 + ((y - 80) / 44) ** 2 < 1) return "pond";
   if (MAP.stoneSet && MAP.stoneSet.has(cellKey(Math.floor(x / CELL), Math.floor(y / CELL)))) return MAP.rocks ? "rock" : "stone";
-  if (MAP.waterSet && MAP.waterSet.has(cellKey(Math.floor(x / CELL), Math.floor(y / CELL)))) return MAP.bog ? "bog" : MAP.sea ? "sea" : "river";
+  if (MAP.waterSet && MAP.waterSet.has(cellKey(Math.floor(x / CELL), Math.floor(y / CELL)))) return MAP.bog ? "bog" : MAP.sea ? "sea" : MAP.lava ? "lava" : "river";
   return "";
 }
 function canBuild(x, y) {
@@ -2039,6 +2074,14 @@ function render() {
     ctx.restore();
     overlays(); if (dragGhost) dragRing();
   }
+  if (MAP.lava) {   // the lava glows through the gloom
+    ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, H);   // not over the bridges
+    for (const [c, r] of MAPINFO.cells) if (MAP.waterSet.has(cellKey(c, r))) ctx.rect(c * CELL, r * CELL, CELL, CELL);
+    ctx.clip("evenodd"); ctx.globalCompositeOperation = "lighter"; ctx.lineCap = ctx.lineJoin = "round"; ctx.lineWidth = CELL - 14;
+    ctx.strokeStyle = `rgba(255,80,20,${.22 + .08 * Math.sin(time * 1.7)})`;
+    for (const l of MAP.rivers) { ctx.beginPath(); l.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.stroke(); }
+    ctx.restore();
+  }
   if (S) {
     S.shots.forEach(drawShot);
     for (const f of S.fx) {
@@ -2551,7 +2594,7 @@ function renderUpNext() {
 }
 
 /* ---------- defender bar: tap for details, drag to build ---------- */
-const BUILD_MSG = { road: "Towers can't go on the road.", pond: "Towers can't go in the pond.", tower: "Too close to another tower.", tree: "A tree is in the way. Tap it to chop it down.", stone: "A headstone is in the way.", rock: "A boulder is in the way.", river: "Towers can't go in the river.", bog: "A tower would sink in the bog.", sea: "Towers can't go in the sea.", edge: "Too close to the edge.", castle: "That's the castle!" };
+const BUILD_MSG = { road: "Towers can't go on the road.", pond: "Towers can't go in the pond.", tower: "Too close to another tower.", tree: "A tree is in the way. Tap it to chop it down.", stone: "A headstone is in the way.", rock: "A boulder is in the way.", river: "Towers can't go in the river.", bog: "A tower would sink in the bog.", sea: "Towers can't go in the sea.", lava: "Towers can't go in the lava.", edge: "Too close to the edge.", castle: "That's the castle!" };
 function placeTower(k, x, y) {
   const d = TOWERS[k];
   { const lk = lockOf(k); if (lk) { toast(lk.why); return false; } }
