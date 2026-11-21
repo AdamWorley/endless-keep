@@ -971,7 +971,7 @@ let playerName = (ls.get("ek_name") || "").toString().slice(0, 16);
 let time = 0;
 function newRun() {
   fish = null; fishL = 0; goo = [];
-  S = { rv: RULES_VERSION, level: 1, gold: 180, hp: 30, maxHp: 30, walls: 0, treasury: 0, scav: 0, dragon: false, fort: { archers: 0, mages: 0, moat: 0, masons: 0 },
+  S = { rv: RULES_VERSION, level: 1, gold: 180, hp: 30, maxHp: 30, walls: 0, treasury: 0, scav: 0, dragon: false, fort: { archers: 0, mages: 0, moat: 0, masons: 0, nets: 0 },
         towers: [], trees: freshTrees(), enemies: [], shots: [], fx: [], texts: [],
         phase: "build", queue: [], spawnT: 0, nextT: 6, income: 0, shake: 0, waveHp: 20, newBadges: [],
         stats: { kills: 0, gold: 0, bosses: 0, chopped: 0, built: 0, slowed: 0, grown: 0, events: 0 } };
@@ -991,7 +991,7 @@ function restore(sv) {
   const int = (v, lo, hi, d) => v != null && v !== "" && Number.isFinite(+v) ? Math.max(lo, Math.min(hi, Math.floor(+v))) : d, f = sv.fort || {};
   const maxHp = int(sv.maxHp, 1, 1e6, 20);
   Object.assign(S, { level: int(sv.level, 1, 5000, 1), gold: int(sv.gold, 0, 1e9, 0), hp: int(sv.hp, 1, maxHp, maxHp), maxHp, walls: int(sv.walls, 0, 1e3, 0), treasury: int(sv.treasury, 0, 1e3, 0), scav: int(sv.scav, 0, SCAV.max, 0), dragon: !!sv.dragon,
-                     fort: { archers: int(f.archers, 0, FORT.archers.max, 0), mages: int(f.mages, 0, FORT.mages.max, 0), moat: int(f.moat, 0, FORT.moat.max, 0), masons: int(f.masons, 0, FORT.masons.max, 0) } });
+                     fort: { archers: int(f.archers, 0, FORT.archers.max, 0), mages: int(f.mages, 0, FORT.mages.max, 0), moat: int(f.moat, 0, FORT.moat.max, 0), masons: int(f.masons, 0, FORT.masons.max, 0), nets: int(f.nets, 0, FORT.nets.max, 0) } });
   // saves from before the 40-wide grid had towers in 42-wide cells around a different road: each moves to the
   // nearest free square, and if there's none close by its gold comes back
   const moved = sv.grid !== CELL;
@@ -1607,6 +1607,15 @@ function drawCastle() {
   // windows
   c.fillStyle = "#f3d77a"; c.fillRect(x + 80, y + 100, 7, 11); c.fillRect(x + 50, y + 92, 7, 11);
   if (season.night) { c.fillStyle = "rgba(243,215,122,.22)"; ell(c, x + 83, y + 105, 14, 14); ell(c, x + 53, y + 97, 14, 14); }
+  // sea nets: rope mesh hung down the cliff under the castle, and a few poles along its top
+  if (S && S.fort.nets && MAP.sea) {
+    const top = SHORE_Y - 20, bot = top + 26 + 10 * S.fort.nets, x0 = x - 24;
+    c.save(); c.strokeStyle = "rgba(70,52,30,.75)"; c.lineWidth = 1.2; c.beginPath();
+    for (let i = 0; i <= 14; i++) { const nx = x0 + i * 10; c.moveTo(nx, top); c.lineTo(nx + 18, bot); c.moveTo(nx + 18, top); c.lineTo(nx, bot); }
+    c.moveTo(x0, bot); c.lineTo(W, bot); c.stroke();
+    c.fillStyle = "#6b4a2a"; for (let i = 0; i < 4; i++) c.fillRect(x0 + 4 + i * 38, top - 14, 3, 16);
+    c.restore();
+  }
   // archers on the battlements
   if (S && S.fort.archers) {
     const n = Math.min(4, S.fort.archers), spots = [[x + 35, y + 52], [x + 89, y + 52], [x + 14, y + 76], [x + w - 16, y + 76]];
@@ -2051,7 +2060,8 @@ function update(dt) {
     if (e.hexCd > 0) e.hexCd -= dt;
     const px = e.x;
     const moat = S.fort.moat && !e.fly && e.x > 770 ? 1 - .12 * S.fort.moat : 1;
-    e.d += e.spd * walkMul(e) * (1 - e.slowA) * moat * (vsOn("swift") ? 1.2 : 1) * dt;
+    const nets = S.fort.nets && e.fly && MAP.sea && Math.hypot(e.x - CASTLE.x - 20, e.y - CASTLE.y - 110) < NETS_REACH ? 1 - .12 * S.fort.nets : 1;
+    e.d += e.spd * walkMul(e) * (1 - e.slowA) * moat * nets * (vsOn("swift") ? 1.2 : 1) * dt;
     [e.x, e.y] = posAt(e.path, e.d);
     if (Math.abs(e.x - px) > .01) e.face = e.x >= px ? 1 : -1;
     if (e.d >= e.path.len) {

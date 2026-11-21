@@ -29,9 +29,14 @@ const FORT = {
   // the castle starts with 30 hearts instead of 20 to make up for it
   masons:  { name: "Masons",         max: 5,  cost: n => Math.round(120 * Math.pow(1.8, n)),
              desc: n => `Patch up ${n * masonMend()} heart${n * masonMend() === 1 ? "" : "s"} for free after every level you clear${n < 5 ? ` (next: ${(n + 1) * masonMend()})` : ""}.` },
+  // Harbour cliffs only: fliers come in off the sea there, so nets slow them as they near the castle, as the moat does
+  // the ground monsters at the gate
+  nets:    { name: "Sea nets",       max: 3,  cost: n => Math.round(150 * Math.pow(2, n)),
+             desc: n => `Nets strung from the cliff tangle fliers coming in off the sea, slowed by ${n * 12}% near the castle${n < 3 ? ` (next: ${(n + 1) * 12}%)` : ""}.` },
 };
+const NETS_REACH = 220;   // how near the castle's gate fliers have to be to tangle in the sea nets
 const keepStats = (n, type = "archer") => ({ ...tStats({ type, lvl: n + 3, keep: true }), range: 300 * (evOn("fog") || vsOn("fog") ? .8 : 1) * (sRule("sight") || 1) });  // the castle is lit at night
 const KEEP = { type: "archer", x: CASTLE.x + 62, y: CASTLE.y + 50, cd: 0, ang: 0, flash: 0, keep: true };
 const KEEP_MAGE = { type: "mage", x: CASTLE.x + 70, y: CASTLE.y + 96, cd: 0, ang: 0, flash: 0, keep: true };   // bolts leave the staff's orb, 66 above
 const masonMend = () => rules5() ? 1 : 2;
-const FORT_KEYS = () => rules5() ? ["archers", "mages", "moat", "masons"] : ["archers", "moat", "masons"];
+const FORT_KEYS = () => (rules5() ? ["archers", "mages", "moat", "masons"] : ["archers", "moat", "masons"]).concat(rules5() && MAP.sea ? ["nets"] : []);
