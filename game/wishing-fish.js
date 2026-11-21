@@ -4,7 +4,7 @@
    winter, when the pond is frozen, or while a wish is still working). Tap it (anywhere on the pond), or press W, before it dives and it grants a
    wish: one of three heirlooms' bonuses for the rest of this level and the next WISH_LEVELS. It runs on real time in
    the frame loop, outside the game's own update, so it's as easy to catch at 3x speed and the bots never meet it. */
-const POND = { x: 400, y: 80, rx: 44, ry: 13 }, FISH_STAY = 8;
+const POND = { x: 400, y: 80, rx: 44, ry: 13 }, FISH_STAY = 8, FISH_KIND = .1;
 // where the fish swims: the meadow's pond, or a map's own water (fishAt, with where: "river"); none on a map without either
 const fishPool = () => MAP.fishAt || (MAP.pond === false ? null : POND);
 let fish = null, fishL = 0;   // fishL: the level the fish has already been decided for
@@ -17,7 +17,11 @@ function fishTick(dt) {
     else if (fish.t > FISH_STAY) { fish.gone = true; fish.goneAt = fish.t; }
     else { const P = fishPool(), a = fish.a0 + fish.t * .7 * fish.dir; fish.x = P.x + Math.cos(a) * P.rx; fish.y = P.y + Math.sin(a) * P.ry; fish.face = -Math.sin(a) * fish.dir >= 0 ? 1 : -1; }
   }
-  if (S.wish && !wishLeft()) { toast(`Your wish has faded: ${PERKS[S.wish.id].name} is back to normal.`); S.wish = null; schedulePersist(); renderUpNext(); }
+  if (S.wish && !wishLeft()) {
+    const names = [S.wish.id, ...(S.wish.also || []).map(w => w[0])].map(k => PERKS[k].name);
+    toast(names.length > 1 ? `Your wishes have faded: ${names.join(", ")} are back to normal.` : `Your wish has faded: ${names[0]} is back to normal.`);
+    S.wish = null; schedulePersist(); renderUpNext();
+  }
   if (S.phase !== "wave" || fishL === S.level || S.vs || watchOnly() || !newRules() || !rules5()) return;
   fishL = S.level;
   if (S.level < 3 || season.frozen || !fishPool() || S.wish || Math.random() > .25) return;
@@ -71,8 +75,16 @@ function catchFish() {
       });
       g.append(b);
     });
+    // now and then (1 in 10), a fish let go grants all three anyway
     const no = el("button", "", "Let it swim away");
-    no.addEventListener("click", closeModal);
+    no.addEventListener("click", () => {
+      if (Math.random() < FISH_KIND) {
+        S.wish = { id: ids[0], n: WISHES[ids[0]], until: S.level + WISH_LEVELS, also: ids.slice(1).map(k => [k, WISHES[k]]) }; sfx("up");
+        toast(`The golden fish flicks its tail, and all three wishes come true anyway: ${ids.map(k => PERKS[k].name).join(", ")} for ${WISH_LEVELS + 1} levels.`);
+        schedulePersist();
+      }
+      closeModal();
+    });
     card.append(g, el("div", "row")); card.lastChild.append(no);
   }, () => { paused = was; renderUpNext(); renderPanel(); updateHud(); });
 }

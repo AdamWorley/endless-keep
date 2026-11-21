@@ -924,7 +924,10 @@ const TYPE_PERK = { archer: "arrows", mage: "arcane", catapult: "boulders", drag
 const WISHES = { arrows: 3, arcane: 3, boulders: 3, embers: 3, chill: 2, bounty: 4, eagle: 2, quarter: 2, masonry: 2, volley: 1, chest: 1 };
 const WISH_LEVELS = 3;
 const wishLeft = () => S && S.wish && S.level <= S.wish.until ? S.wish.until - S.level + 1 : 0;
-const perk = id => (id && S && ((S.perks && S.perks[id]) || 0) + (wishLeft() && S.wish.id === id ? S.wish.n : 0)) || 0;
+// the wishes working now, as [id, n]: usually one, or all three when the fish was let go and granted them anyway (also)
+const wishList = () => wishLeft() ? [[S.wish.id, S.wish.n], ...(S.wish.also || [])] : [];
+const wishN = id => wishList().reduce((a, [k, n]) => a + (k === id ? n : 0), 0);
+const perk = id => (id && S && ((S.perks && S.perks[id]) || 0) + wishN(id)) || 0;
 // every monster and boss, for the bestiary's "met" and "defeated" records
 const BEAST_KEYS = ["goblin", "wolf", "orc", "bat", "wolfrider", "knight", "troll", "wyvern", "orcrider", "slime", "trollking", "bigdragon", "wyrm", "jasmine", "slimecube"];
 const beastRecord = (src, max) => { const o = {}; if (src && typeof src === "object") for (const k of BEAST_KEYS) { const n = Math.floor(+src[k] || 0); if (n > 0) o[k] = Math.min(max, n); } return o; };
@@ -1009,7 +1012,8 @@ function restore(sv) {
   S.rv = Number.isInteger(sv.rv) && sv.rv >= 1 && sv.rv <= 999 ? sv.rv : RULES_VERSION;  // a game keeps the rules it started under
   S.perks = normMeta({ perks: sv.perks }).perks; S.dyn = Math.max(0, Math.min(99, Math.floor(+sv.dyn || 0))); S.windUsed = !!sv.windUsed;
   if (sv.hex && HEXES[sv.hex.id]) S.hex = { id: sv.hex.id, until: int(sv.hex.until, 0, 1e6, 0) };
-  if (sv.wish && WISHES[sv.wish.id]) S.wish = { id: sv.wish.id, n: int(sv.wish.n, 1, 9, WISHES[sv.wish.id]), until: int(sv.wish.until, 0, 1e6, 0) };
+  if (sv.wish && WISHES[sv.wish.id]) S.wish = { id: sv.wish.id, n: int(sv.wish.n, 1, 9, WISHES[sv.wish.id]), until: int(sv.wish.until, 0, 1e6, 0),
+    also: (Array.isArray(sv.wish.also) ? sv.wish.also : []).filter(w => Array.isArray(w) && WISHES[w[0]]).slice(0, 2).map(([k, n]) => [k, int(n, 1, 9, WISHES[k])]) };
   if (Array.isArray(sv.plan) && sv.planL === S.level && sv.plan.every(q => q && (q.k === "boss" || ENEMIES[q.k]))) { S.plan = sv.plan; S.planL = S.level; S.ev = sv.ev && EVENTS[sv.ev.id] && sv.ev.L === S.level ? { id: sv.ev.id, L: sv.ev.L, choice: sv.ev.choice || null } : null; }
   if (typeof sv.lbt === "string" && sv.lbt.length < 200) S.lbt = sv.lbt;   // the shared board's ticket for this run
   const gone = new Set(sv.cleared || []);
@@ -2679,7 +2683,7 @@ function renderUpNext() {
   if (S.vs) return renderVsUpNext();
   const L = S.level, plan = planFor();
   $("upTitle").textContent = S.phase === "wave" ? `Level ${L} (under way)` : `Coming in level ${L}`;
-  { const n = wishLeft(); if (n) box.append(chip("wish", null, `Wish: ${PERKS[S.wish.id].name} ×${S.wish.n}, ${n} more level${n === 1 ? "" : "s"}`)); }
+  { const n = wishLeft(); if (n) box.append(chip("wish", null, `Wish${S.wish.also && S.wish.also.length ? "es" : ""}: ${wishList().map(([k, x]) => `${PERKS[k].name} ×${x}`).join(", ")}, ${n} more level${n === 1 ? "" : "s"}`)); }
   { const n = hexLeft(); if (n) box.append(chip("hex", null, `Curse: ${HEXES[S.hex.id].name} (${HEXES[S.hex.id].desc.toLowerCase().replace(/\.$/, "")}), ${n} more level${n === 1 ? "" : "s"}`)); }
   const ev = curEv();
   if (ev && EVENTS[ev.id].kind !== "choice") {   // a toll or a wizard asks in a popup instead
@@ -3537,7 +3541,7 @@ function openHl() {
   const wasPaused = paused, solo = !S.vs && !S.vsGuest; if (solo) paused = true;
   openModal(card => {
     card.append(el("h2", "", "Heirlooms in this game"));
-    const ids = activeHl(), order = Object.keys(RARITY), w = wishLeft() ? S.wish : null;
+    const ids = activeHl(), order = Object.keys(RARITY);
     if (S.vs) card.append(el("p", "", "Heirlooms stay at home in two-player games, so both sides play on equal terms."));
     else if (!ids.length && !dyn()) card.append(el("p", "", "None in this game. Reach level 5 to earn your first heirloom: it helps from your next game on."));
     else card.append(el("p", "fine", "These were fixed when this game began. Heirlooms you earn now help from your next game."));
@@ -3547,7 +3551,7 @@ function openHl() {
       ids.sort((a, b) => order.indexOf(PERKS[b].r) - order.indexOf(PERKS[a].r)).forEach(id => {
         const P = PERKS[id], n = perk(id), li = el("li"); li.style.setProperty("--rc", RARITY[P.r].col);
         li.append(heirloomImg(id, "hi"), el("b", "", P.name), el("span", "n", P.max > 1 || n > 1 ? `×${n}` : RARITY[P.r].name), el("span", "d", P.desc(n)));
-        if (w && w.id === id) { const k = wishLeft(); li.append(el("span", "w", `Wish: +${w.n} for ${k} more level${k === 1 ? "" : "s"}`)); }
+        if (wishN(id)) { const k = wishLeft(); li.append(el("span", "w", `Wish: +${wishN(id)} for ${k} more level${k === 1 ? "" : "s"}`)); }
         ul.append(li);
       });
       card.append(ul);
