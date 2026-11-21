@@ -90,6 +90,7 @@ p, .ds, .bo, .bd { text-wrap: pretty; }
 
 /* the header piece: gold title and the score track, debossed into moss card */
 header.top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; background: var(--moss); border-radius: 12px; padding: 12px 18px 14px; box-shadow: var(--raise); }
+header.top h1 button { font: inherit; letter-spacing: inherit; color: inherit; -webkit-text-fill-color: inherit; background: none; border: 0; padding: 0; margin: 0; cursor: pointer; }
 header.top h1 { font-family: var(--font-display); font-weight: 400; font-size: 2.1rem; margin: 0; letter-spacing: .02em; line-height: 1.05; padding-bottom: 2px; color: var(--gold); }
 /* cartoon gold: banded light, a crisp mid-line, a dark bevel and a soft drop */
 @supports ((-webkit-background-clip: text) or (background-clip: text)) {
@@ -501,7 +502,7 @@ canvas.mapedit:focus-visible { outline: 3px solid var(--gold); outline-offset: 2
 
 <div class="wrap" id="wrap">
   <header class="top">
-    <h1>Endless Keep</h1>
+    <h1><button id="btnLogo" title="Main menu">Endless Keep</button></h1>
     <div class="hud">
       <div class="stat"><span>Level</span><b id="hLevel">1</b></div>
       <div class="stat gold"><span id="hGoldLbl">Gold</span><b id="hGold">0</b></div>
@@ -2861,6 +2862,11 @@ $("btnSound").addEventListener("click", () => { sound = !sound; audio(); $("btnS
 function setPaused(v) { if (!S || S.phase === "over" || !$("startCard").hidden || watchOnly()) return; paused = v; if (S.vs) vsSend({ t: "toast", msg: v ? "The Keeper has paused the game." : "The Keeper is back." }); $("pauseCard").hidden = !v; $("btnPause").textContent = v ? "Resume" : "Pause"; }
 $("btnPause").addEventListener("click", () => setPaused(!paused));
 $("btnResume").addEventListener("click", () => setPaused(false));
+$("btnLogo").addEventListener("click", () => {
+  if (!$("startCard").hidden || watchOnly()) return;
+  if (S && (S.phase === "wave" || S.vs)) setPaused(true);   // mid-level: the pause card offers Save & leave, so a stray tap loses nothing
+  else $("btnQuit").click();
+});
 $("btnQuit").addEventListener("click", () => { if (S && S.phase === "build") persist(); paused = false; $("pauseCard").hidden = true; $("btnPause").textContent = "Pause"; showStart(); });
 document.addEventListener("visibilitychange", () => { if (document.hidden && S && S.phase === "wave") setPaused(true); if (document.hidden) audioRest(); else if (AC) audio(); });
 document.addEventListener("keydown", ev => {
