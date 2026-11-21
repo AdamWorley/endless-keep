@@ -1262,6 +1262,25 @@ function drawBog(g, Z, r) {
 }
 // the foot of the shore's cliff: the beach runs from here down to the sea (the road row above the sea is all sand)
 const SHORE_Y = 11 * CELL + 2;
+// the road along the beach (the row at the cliff's foot) is a boardwalk: planks laid across it, end to end
+function drawBoardwalk(g, Z) {
+  const on = (c, r) => MAPINFO.set.has(cellKey(c, r));
+  for (const [c, r] of MAPINFO.cells) {
+    if (r !== 11) continue;
+    const x = c * CELL, y = r * CELL, along = on(c - 1, r) || on(c + 1, r), up = on(c, r - 1);
+    // the deck runs to the edges it joins, and stops short of the others
+    const x1 = x + (on(c - 1, r) ? 0 : 3), x2 = x + CELL - (on(c + 1, r) ? 0 : 3), y1 = y + (up ? 0 : 3), y2 = y + CELL - 3;
+    g.fillStyle = Z.ink; g.fillRect(x1, y1, x2 - x1, y2 - y1);
+    const L = on(c - 1, r) ? 0 : 1.5, R = on(c + 1, r) ? 0 : 1.5, T = up ? 0 : 1.5;   // no ink seam where decks join
+    g.fillStyle = Z.snow ? "#b9ab98" : Z.night ? "#6e5638" : "#b08a58"; g.fillRect(x1 + L, y1 + T, x2 - x1 - L - R, y2 - y1 - T - 1.5);
+    g.fillStyle = Z.night ? "#4e3c26" : "#83623a";   // the gaps between planks, across the way the road runs
+    if (along) for (let i = x1 + 6; i < x2 - 2; i += 6.7) g.fillRect(i, y1 + 1.5, 1.3, y2 - y1 - 3);
+    else for (let i = y1 + 6; i < y2 - 2; i += 6.7) g.fillRect(x1 + 1.5, i, x2 - x1 - 3, 1.3);
+    g.fillStyle = "rgba(255,240,200,.18)"; g.fillRect(x1 + 1.5, y1 + 1.5, x2 - x1 - 3, 3);   // sun on the boards
+    g.fillStyle = Z.night ? "#3c2e1c" : "#6e5232"; for (const px of [x1 + 4, x2 - 6]) if (!on(c - 1, r) || px > x1 + 4) g.fillRect(px, y2 - 1, 2.5, 3);   // posts in the sand
+    if (Z.snow) { g.fillStyle = "rgba(255,255,255,.7)"; g.fillRect(x1 + 2, y1 + 2, x2 - x1 - 4, 2); }
+  }
+}
 // where the road climbs the shore's cliff: a cut ramp, with rock walls each side and the slope shaded
 function drawRamps(g, Z) {
   for (const [c, r] of MAPINFO.cells) {
@@ -1412,7 +1431,7 @@ function buildBg() {
   for (let i = 0; i < 180; i++) { const q = MAPINFO.cells[(r() * MAPINFO.cells.length) | 0], [x, y] = cellXY(q); g.fillStyle = r() < .5 ? "rgba(120,90,55,.45)" : "rgba(240,220,170,.6)"; ell(g, x + (r() - .5) * 26, y + (r() - .5) * 26, 1.5 + r() * 2, 1 + r() * 1.5); }
   if (Z.snow) { road(); g.strokeStyle = "rgba(255,255,255,.35)"; g.lineWidth = 6; g.setLineDash([18, 30]); g.stroke(); g.setLineDash([]); }
   if (MAP.waterSet) for (const q of MAPINFO.cells) if (MAP.waterSet.has(cellKey(...q))) drawBridge(g, q, Z);
-  if (MAP.sea) drawRamps(g, Z);
+  if (MAP.sea) { drawBoardwalk(g, Z); drawRamps(g, Z); }
   // flowers
   for (let i = 0; i < Z.nflowers * (MAP.flowers ?? 1); i++) { const x = r() * W, y = r() * H, c = Z.flowers[(r() * Z.flowers.length) | 0]; if (distRoad(x, y) < 34 || (x > 820 && y > 250) || (MAP.waterSet && MAP.waterSet.has(cellKey(Math.floor(x / CELL), Math.floor(y / CELL))))) continue; g.fillStyle = c; ell(g, x, y, Z.amb === "leaves" ? 2.6 : 1.8, Z.amb === "leaves" ? 1.5 : 1.8); }
   for (const q of MAP.stones || []) (MAP.rocks ? drawRock : drawStone)(g, ...cellXY(q), q[0] * 7 + q[1] * 3, Z);
