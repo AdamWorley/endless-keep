@@ -12,9 +12,10 @@ self.addEventListener("fetch", e => {
   const req = e.request;
   if (req.method !== "GET") return;
   const url = new URL(req.url);
-  // the page: try the network first so updates arrive, fall back to the cached copy offline
+  // the page: try the network first so updates arrive, fall back to the cached copy offline.
+  // Only a good response replaces the offline copy, never an error page or a Wi-Fi login page.
   if (req.mode === "navigate") {
-    e.respondWith(fetch(req).then(r => { const copy = r.clone(); caches.open(CACHE).then(c => c.put("./index.html", copy)); return r; })
+    e.respondWith(fetch(req).then(r => { if (r.ok && !r.redirected) { const copy = r.clone(); caches.open(CACHE).then(c => c.put("./index.html", copy)); } return r; })
       .catch(() => caches.match("./index.html")));
     return;
   }

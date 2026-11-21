@@ -3,3 +3,6 @@ node_modules/
 .wrangler/
 .DS_Store
 .dev.vars
+bot/runs/
+bot/replays/
+artifact.html

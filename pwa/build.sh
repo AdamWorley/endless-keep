@@ -13,7 +13,7 @@ mkdir -p "$OUT"
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#141d19">
+<meta name="theme-color" content="#1f2c26">
 <meta name="description" content="Hold the castle against endless waves of goblins, trolls and dragons.">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -28,7 +28,7 @@ mkdir -p "$OUT"
 </head>
 <body>
 HEAD
-  cat ../endless-keep.html
+  node inline.mjs ../endless-keep.html   # the page with its game/ pieces put back in: still one file
   printf '\n</body>\n</html>\n'
 } > "$OUT/index.html"
 cp manifest.webmanifest sw.js icon.svg icon-192.png icon-512.png apple-touch-icon.png "$OUT/"

@@ -2,20 +2,24 @@
 // Cloudflare Workers, Deno, Bun, Node 18+ (with a tiny adapter), Vercel/Netlify edge functions, etc.
 // Storage is passed in as a small adapter (see store-d1.js), so changing provider means swapping that one file.
 //
-//   GET  /scores?v=N      -> { v, scores: [{ name, best, at, badges }] }   top 50 for rules version N
-//   GET  /versions        -> { versions: [{ v, players }] }                 which boards exist
+//   GET  /scores?v=N&map=M -> { v, map, scores: [{ name, best, at, badges }] }   top 50 for rules version N on map M
+//   GET  /versions        -> { versions: [{ v, map, players }] }            which boards exist
 //   POST /runs            <- { token, v, human? }  -> { ticket }           start a run (human = Turnstile token, if enabled)
-//   POST /scores          <- { token, ticket, name, level, v, badges }      saves your best level for version v
+//   POST /scores          <- { token, ticket, name, level, v, map?, badges } saves your best level for version v on map M
 //   GET  /health          -> { ok: true }
-// Each rules version (bumped by the game whenever balance changes make it easier or harder) has its own board.
+// Each rules version (bumped by the game whenever balance changes make it easier or harder) has its own board on each
+// of the game's built-in maps. map is optional and defaults to "meadow", so older copies of the game keep working.
 //
 // Run tickets: a score must carry the signed ticket its run got from POST /runs, and the level it claims must not
 // have come sooner than the game allows (every wave takes real time to send its monsters, even at 3x speed). The
 // ticket is signed with a key derived from HASH_SALT, so it can't be forged, and it's tied to one player and version.
 import { cleanName, isProfane } from "./names.js";
 
-const BADGES = new Set(["lv10", "lv25", "lv50", "lv100", "trollking", "bigdragon", "wyrm", "jasmine", "untouched", "greatwyrm", "lumberjack", "rich", "architect", "frosty", "namesake", "whisperer",
-  "laststand", "allfive", "toplevel", "fortress", "greenthumb", "eventful", "scholar", "slayer"]);
+export const BADGES = new Set(["lv10", "lv25", "lv50", "lv100", "trollking", "bigdragon", "wyrm", "jasmine", "untouched", "greatwyrm", "lumberjack", "rich", "architect", "frosty", "namesake", "whisperer",
+  "laststand", "allfive", "toplevel", "fortress", "greenthumb", "eventful", "scholar", "slayer", "slimecube", "wish"]);
+// the game's built-in maps (MAPS in the game; the tests check they match)
+export const MAPS = new Set(["meadow", "graveyard", "millford"]);
+const isMap = m => typeof m === "string" && MAPS.has(m);
 const MAX_LEVEL = 5000;
 const MAX_VERSION = 999;
 const isVer = v => Number.isInteger(v) && v >= 1 && v <= MAX_VERSION;
@@ -29,7 +33,7 @@ const RUN_BODY = 4096;           // a Turnstile token can be up to 2048 characte
 // game-seconds apart (from 0.5s in), paying the goblin toll removes 30% of them (from level 4, not on boss levels),
 // and the game runs at most 3x real time. The 0.8 leaves slack for rounding and clock differences.
 // Must be kept in step with the game's wave rules (they only change with a RULES_VERSION bump).
-function fastestWave(L) {
+export function fastestWave(L) {
   const boss = L % 10 === 0;
   let n = Math.min(8 + Math.floor(L * 0.9), 45) - (boss ? 4 : 0);
   if (L >= 4 && !boss) n -= Math.round(n * 0.3);
@@ -86,7 +90,7 @@ export async function handle(request, opts) {
   if (url.pathname === "/health" && request.method === "GET") return reply(200, { ok: true }, cors);
   if (url.pathname === "/versions" && request.method === "GET") {
     const rows = await store.versions();
-    return reply(200, { versions: rows.map(r => ({ v: r.ver, players: r.players })) }, { ...cors, "Cache-Control": "public, max-age=30" });
+    return reply(200, { versions: rows.map(r => ({ v: r.ver, map: r.map, players: r.players })) }, { ...cors, "Cache-Control": "public, max-age=30" });
   }
   if (url.pathname !== "/scores" && url.pathname !== "/runs") return reply(404, { error: "not_found" }, cors);
   const runs = url.pathname === "/runs";
@@ -99,9 +103,11 @@ export async function handle(request, opts) {
   if (request.method === "GET" && !runs) {
     const vs = url.searchParams.get("v"), v = vs !== null && /^\d{1,3}$/.test(vs) ? Number(vs) : NaN;
     if (!isVer(v)) return reply(400, { error: "version" }, cors);
-    const rows = await store.top(50, v);
+    const map = url.searchParams.get("map") ?? "meadow";
+    if (!isMap(map)) return reply(400, { error: "map" }, cors);
+    const rows = await store.top(50, v, map);
     const scores = rows.map(r => ({ name: r.name, best: r.best, at: r.best_at, badges: safeBadges(r.badges) }));
-    return reply(200, { v, scores }, { ...cors, "Cache-Control": "public, max-age=10" });
+    return reply(200, { v, map, scores }, { ...cors, "Cache-Control": "public, max-age=10" });
   }
 
   if (request.method !== "POST") return reply(405, { error: "method" }, { ...cors, Allow: runs ? "POST, OPTIONS" : "GET, POST, OPTIONS" });
@@ -143,6 +149,8 @@ export async function handle(request, opts) {
 
   if (!Number.isInteger(level) || level < 1 || level > MAX_LEVEL) return reply(400, { error: "level" }, cors);
   if (!isVer(v)) return reply(400, { error: "version" }, cors);
+  const map = data.map ?? "meadow";
+  if (!isMap(map)) return reply(400, { error: "map" }, cors);
   const tk = await readTicket(salt, data.ticket);
   if (!tk || tk.pid !== id.slice(0, 16) || tk.v !== v || tk.t > now) return reply(403, { error: "ticket" }, cors);
   if (now - tk.t < minRunMs(level)) return reply(403, { error: "too_fast" }, cors);
@@ -151,13 +159,13 @@ export async function handle(request, opts) {
   if (isProfane(name)) return reply(422, { error: "name_not_allowed" }, cors);
   const badges = Array.isArray(data.badges) ? [...new Set(data.badges.filter(b => typeof b === "string" && BADGES.has(b)))].slice(0, BADGES.size) : [];
 
-  const cur = await store.get(id, v);
+  const cur = await store.get(id, v, map);
   if (cur && now - cur.updated < PLAYER_COOLDOWN * 1000) return reply(429, { error: "slow_down" }, { ...cors, "Retry-After": String(PLAYER_COOLDOWN) });
   const best = Math.max(cur ? cur.best : 0, level);
   const bestAt = cur && cur.best >= level ? cur.best_at : now;
   const merged = [...new Set([...(cur ? safeBadges(cur.badges) : []), ...badges])];
-  await store.put({ id, ver: v, name, best, best_at: bestAt, badges: JSON.stringify(merged), updated: now });
-  return reply(200, { ok: true, name, best, v }, cors);
+  await store.put({ id, ver: v, map, name, best, best_at: bestAt, badges: JSON.stringify(merged), updated: now });
+  return reply(200, { ok: true, name, best, v, map }, cors);
 }
 
 function safeBadges(v) {

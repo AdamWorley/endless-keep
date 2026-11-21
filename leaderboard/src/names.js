@@ -1,6 +1,6 @@
 // Player-name cleaning and a basic profanity filter.
-// The game page carries a copy of this logic (search "keep in sync with leaderboard/src/names.js") so it can
-// double-check names it reads back; keep the two in step.
+// The game carries a copy of this logic (game/names.js) so it can double-check names it reads back. The leaderboard
+// tests fail if the two disagree.
 
 const MAX_LEN = 16;
 
