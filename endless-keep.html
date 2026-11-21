@@ -800,7 +800,8 @@ const SALTMARSH = { id: "saltmarsh", name: "Saltmarsh", builtin: true, unlock: "
 const inMist = (x, y) => !!MAP.mist && MAP.mist.some(([mx, my, r]) => (x - mx) ** 2 + (y - my) ** 2 < r * r);
 // sea: the bottom two rows are sea, under the clifftop castle, and fliers come in off it (from the bottom edge)
 const HARBOUR = { id: "harbour", name: "Harbour cliffs", builtin: true, unlock: "lv50", need: "Reach level 50 to unlock it.",
-  about: "The road climbs from the beach to a clifftop castle, and anything with wings comes in off the sea.", sea: true, pond: false, trees: .6, tune: "harbour",
+  about: "The road climbs from the beach to a clifftop castle, and anything with wings comes in off the sea.", sea: true, pond: false, trees: .6, tune: "harbour", castleY: 210,   // a row up, so the castle stands back from the cliff edge
+
   water: (() => { const out = []; for (let c = 0; c < COLS; c++) for (const r of [12, 13]) if (!inCastle(c, r)) out.push([c, r]); return out; })(),
   fishAt: { x: 380, y: 525, rx: 40, ry: 12, where: "sea" },
   road: cellsAlong([[20, 460], [300, 460], [300, 300], [100, 300], [100, 140], [580, 140], [580, 380], [780, 380]]) };
@@ -880,7 +881,7 @@ let ROADSEGS = MAPINFO.segs.map(([x1, y1, x2, y2]) => ({ x1, y1, x2, y2 }));
 function setMap(m) {
   const info = m && readMap(m.road);
   if (!info || info.problems.length) m = DEFAULT_MAP;
-  MAP = m; MAPINFO = info && !info.problems.length ? info : readMap(DEFAULT_MAP.road);
+  MAP = m; CASTLE.y = m.castleY || 250; MAPINFO = info && !info.problems.length ? info : readMap(DEFAULT_MAP.road);
   ROADS = MAPINFO.paths; ROAD = ROADS[0];
   ROADSEGS = MAPINFO.segs.map(([x1, y1, x2, y2]) => ({ x1, y1, x2, y2 }));
 }
@@ -1543,10 +1544,10 @@ function plantSapling(x, y) {
 function drawCastle() {
   const c = ctx, { x, y, w, h } = CASTLE, hurt = S && S.hp / S.maxHp <= DANGER;
   if (S && S.fort.moat) {  // water all round the castle (off the board's right edge too), with a plank bridge where the road crosses
-    const mw = 10 + S.fort.moat * 4, mx = x - mw - 4, top = y + 26, bot = MAP.sea ? SHORE_Y - 22 : y + h + 8 + mw * .8, R = W + 20, isle = top + mw * .5;   // the far side looks thinner; over a cliff, the sea is the moat's front
+    const mw = 10 + S.fort.moat * 4, mx = x - mw - 4, top = y + 26, bot = MAP.sea ? SHORE_Y - 10 : y + h + 8 + mw * .8, R = W + 20, isle = top + mw * .5;   // the far side looks thinner; over a cliff, the front runs along the cliff's edge
     c.fillStyle = season.edge; c.beginPath(); c.roundRect(mx - 3, top - 3, R - mx, bot - top + 6, 10); c.fill();
     c.fillStyle = season.frozen ? "#cfe8f1" : season.pond; c.beginPath(); c.roundRect(mx, top, R - mx, bot - top, 8); c.fill();
-    const foot = MAP.sea ? bot + 3 : y + h + 9;   // over a cliff, the island runs to the cliff's edge
+    const foot = y + h + 9;
     c.fillStyle = season.edge; c.beginPath(); c.roundRect(x - 3, isle - 3, R - x, foot - isle, 8); c.fill();   // the castle's island
     c.fillStyle = season.grass[1]; c.beginPath(); c.roundRect(x, isle, R - x, foot - 6 - isle, 6); c.fill();
     c.fillStyle = "rgba(255,255,255,.3)"; c.fillRect(mx + 2, y + 50 + Math.sin(time * 1.5) * 4, 2, 18); c.fillRect(mx + mw - 5, y + 150 + Math.cos(time * 1.3) * 4, 2, 14);
