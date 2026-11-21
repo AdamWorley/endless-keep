@@ -1209,24 +1209,34 @@ function drawBareTree(g, x, y, s, tone) {
   if (tone) { g.fillStyle = season.trees[1][1]; g.globalAlpha = .75; ell(g, x + 12 * s, y - 26 * s, 3 * s, 2.2 * s); ell(g, x - 13 * s, y - 24 * s, 3 * s, 2.2 * s); ell(g, x - 9 * s, y - 28 * s, 2.4 * s, 1.8 * s); g.globalAlpha = 1; }
   if (season.snow) { g.fillStyle = "#f7fafc"; ell(g, x + 9 * s, y - 20 * s, 3 * s, 1.3 * s); ell(g, x - 8 * s, y - 22 * s, 3 * s, 1.3 * s); ell(g, x - 1 * s, y - 21 * s, 2.5 * s, 1.2 * s); }
 }
-// a palm (trees on a beach), drawn like the other trees: an inked outline, a plain brown trunk and three flat greens.
-// The trunk leans, and the crown is a fan of fat leaves; it stays green all year
+// a palm (trees on a beach), drawn like the other trees: an inked outline and three flat greens. A tall, leaning,
+// ringed trunk and a crown of long fronds that arch out and droop to a point; it stays green all year
 function drawPalm(g, x, y, s, tone) {
-  const ink = season.ink || "#33261a", o = 1.6, lean = tone ? 1 : -1, tx = x + 7 * s * lean, ty = y - 24 * s;
+  const ink = season.ink || "#33261a", lean = tone ? 1 : -1, tx = x + 8 * s * lean, ty = y - 32 * s;
   const greens = season.night ? ["#17301f", "#1f3f2b", "#2c5a3e"] : ["#2f6a3a", "#3d8247", "#55a05a"];
-  const trunk = (w, col) => { g.strokeStyle = col; g.lineWidth = w; g.beginPath(); g.moveTo(x, y + 1); g.quadraticCurveTo(x, y - 12 * s, tx, ty); g.stroke(); };
-  g.save(); g.lineCap = "butt";
-  trunk(5 * s + 2 * o, ink); trunk(5 * s, "#5a3f26");
+  const curve = () => { g.beginPath(); g.moveTo(x, y + 1); g.quadraticCurveTo(x - 1 * lean * s, y - 16 * s, tx, ty); };
+  g.save(); g.lineCap = "round";
+  curve(); g.strokeStyle = ink; g.lineWidth = 6.5 * s + 3; g.stroke();
+  curve(); g.strokeStyle = "#8a6440"; g.lineWidth = 6.5 * s; g.stroke();
+  g.strokeStyle = "#5a3f26"; g.lineWidth = 1.4;   // rings up the trunk
+  for (let k = 1; k < 7; k++) { const f = k / 7, u = 1 - f, px = u * u * x + 2 * u * f * (x - lean * s) + f * f * tx, py = u * u * (y + 1) + 2 * u * f * (y - 16 * s) + f * f * ty;
+    g.beginPath(); g.moveTo(px - 3 * s, py - .5); g.lineTo(px + 3 * s, py + .5); g.stroke(); }
   g.restore();
-  const leaf = (a, len, w, col, pad) => { g.save(); g.translate(tx, ty); g.rotate(a); g.fillStyle = col; ell(g, len * s * .5, 0, len * s * .5 + pad, w * s + pad); g.restore(); };
-  const fan = [[-2.9, 16, 4], [-2.2, 15, 4.5], [-1.57, 12, 4.5], [-.95, 15, 4.5], [-.25, 16, 4], [2.75, 12, 3.5], [.4, 12, 3.5]];
-  for (const [a, len, w] of fan) leaf(a, len, w, ink, o);                      // the outline, all at once
-  for (const [a, len, w] of fan) leaf(a, len, w, greens[0], 0);
-  for (const [a, len, w] of fan) leaf(a, len * .75, w * .55, greens[1], 0);
-  g.fillStyle = greens[2]; ell(g, tx - 3 * s, ty - 4 * s, 4 * s, 2.6 * s);    // the sunlit top, like an oak's
-  g.fillStyle = ink; ell(g, tx, ty + 2.5 * s, 5 * s + o, 3 * s + o);          // coconuts
-  g.fillStyle = "#6b4a2a"; ell(g, tx - 2.2 * s, ty + 2.5 * s, 2.4 * s, 2.4 * s); ell(g, tx + 2.2 * s, ty + 2.5 * s, 2.4 * s, 2.4 * s);
-  if (season.snow) { g.fillStyle = "#f7fafc"; ell(g, tx - 1 * s, ty - 6 * s, 9 * s, 3 * s); }
+  // a frond: from the crown out along an arch to a drooping point, wide in the middle (dx: how far out, up: how high it arches, drop: where the tip ends)
+  const frond = (dx, up, drop, w, fill, pad) => {
+    const ex = tx + dx * s, ey = ty + drop * s, cx = tx + dx * s * .55, cy = ty - up * s, nx = -(ey - ty), ny = ex - tx, nl = Math.hypot(nx, ny) || 1, ox = nx / nl * w * s, oy = ny / nl * w * s;
+    g.beginPath(); g.moveTo(tx, ty);
+    g.quadraticCurveTo(cx + ox, cy + oy, ex, ey); g.quadraticCurveTo(cx - ox, cy - oy, tx, ty); g.closePath();
+    if (pad) { g.strokeStyle = ink; g.lineWidth = pad; g.lineJoin = "round"; g.stroke(); }
+    g.fillStyle = fill; g.fill();
+  };
+  const back = [[-19, 10, 4, 4.2], [19, 10, 4, 4.2], [-6, 14, -9, 3.4], [7, 14, -9, 3.4]], front = [[-23, 7, 12, 4.8], [23, 7, 12, 4.8], [-13, 11, 9, 4], [14, 11, 9, 4]];
+  for (const [dx, up, dr, w] of back) frond(dx, up, dr, w, greens[0], 3);
+  for (const [dx, up, dr, w] of front) frond(dx, up, dr, w, greens[1], 3);
+  for (const [dx, up, dr, w] of front) frond(dx * .8, up * .9, dr * .7, w * .35, greens[2], 0);   // the light down each front frond
+  g.fillStyle = ink; ell(g, tx, ty + 3 * s, 5.4 * s, 3.4 * s);   // coconuts
+  g.fillStyle = "#6b4a2a"; ell(g, tx - 2.4 * s, ty + 3 * s, 2.5 * s, 2.5 * s); ell(g, tx + 2.4 * s, ty + 3 * s, 2.5 * s, 2.5 * s);
+  if (season.snow) { g.fillStyle = "#f7fafc"; ell(g, tx - 8 * s, ty - 4 * s, 6 * s, 1.8 * s); ell(g, tx + 8 * s, ty - 4 * s, 6 * s, 1.8 * s); }
 }
 const onSand = t => MAP.sea && t.y >= SHORE_Y;   // Harbour cliffs: the beach is the row above the sea
 function drawTree(g, x, y, s, tone, shadow = true, bare = MAP.bare) {
