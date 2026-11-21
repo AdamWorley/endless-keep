@@ -13,7 +13,7 @@ import { loadGame } from "./sim.mjs";
 import { parseArgs } from "./args.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const args = parseArgs(process.argv.slice(2), { games: 20, maxLevel: 150, dt: 1 / 30, only: "", save: "", compare: "", workers: 0 });
+const args = parseArgs(process.argv.slice(2), { games: 20, maxLevel: 150, dt: 1 / 30, only: "", save: "", compare: "", workers: 0, map: "" });
 const dir = path.join(HERE, "strategies"), resDir = path.join(HERE, "results");
 const only = args.only ? String(args.only).split(",") : null;
 const strategies = fs.existsSync(dir) ? fs.readdirSync(dir).filter(f => f.endsWith(".json")).map(f => JSON.parse(fs.readFileSync(path.join(dir, f), "utf8"))).filter(s => !only || only.includes(s.name)) : [];
@@ -29,7 +29,7 @@ const pool = makePool(+args.workers || undefined);
 console.log(`Game ${G0.GAME_VERSION}, rules v${G0.RULES_VERSION}: ${strategies.length} strateg${strategies.length === 1 ? "y" : "ies"} x ${seeds.length} games, levels capped at ${args.maxLevel}\n`);
 const report = { game: G0.GAME_VERSION, rules: G0.RULES_VERSION, at: new Date().toISOString(), games: seeds.length, maxLevel: +args.maxLevel, strategies: {} };
 await Promise.all(strategies.map(async s => {
-  const games = await Promise.all(seeds.map(seed => pool.play(s.genome, { seed, maxLevel: +args.maxLevel, dt: +args.dt, ban: s.ban || [] })));
+  const games = await Promise.all(seeds.map(seed => pool.play(s.genome, { seed, maxLevel: +args.maxLevel, dt: +args.dt, ban: s.ban || [], map: args.map || "" })));
   const held = games.map(g => g.held).sort((a, b) => a - b);
   const fellIn = {}, through = {};
   for (const g of games) {

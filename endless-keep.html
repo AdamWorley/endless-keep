@@ -417,11 +417,12 @@ button.versus:hover:not(:disabled) { background: #3a2e4a; }
 .spell.on { background: color-mix(in srgb, var(--violet) 14%, var(--violet-night)); color: var(--violet-ink); }
 .tile.summon .tc { color: var(--violet); }
 .keys { font-size: .82rem; color: var(--fg-dim); margin: 0; }
-@media (hover: none) and (pointer: coarse) { .keys .keyhelp { display: none; } }
+@media (hover: none) and (pointer: coarse) { .keyhelp { display: none; } }
 button.mapbtn { width: 100%; margin: 0 0 10px; padding: 9px 12px; font-size: .95rem; }
 .maplist { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 8px; }
 .maplist li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px; background: var(--well); box-shadow: var(--well-deboss); }
 .maplist li.on { outline: 2px solid var(--gold); }
+.maplist li.locked .mn b { color: var(--fg-dim); }
 .maplist .mn { flex: 1 1 160px; min-width: 0; }
 .maplist .mn b { display: block; }
 .maplist .mn small { color: var(--fg-dim); }
@@ -582,10 +583,10 @@ canvas.mapedit:focus-visible { outline: 3px solid var(--gold); outline-offset: 2
         <div class="upnext" id="upNext"></div>
         <h4>Later</h4>
         <div class="upnext later" id="upLater"></div>
-        <p class="keys">Drag a defender from the bar under the map onto open grass, or tap a tree to chop it. Tap open grass to plant a sapling. Tap the castle to repair it, fortify it or grow your treasury. <span class="keyhelp">Keys: Space starts a level, P pauses, F toggles fullscreen. On the map, the arrow keys move a cursor and Enter taps.</span></p>
+        <p class="keys keyhelp">Keys: Space starts a level, P pauses, F toggles fullscreen. On the map, the arrow keys move a cursor and Enter taps.</p>
       </section>
       <section class="panel" id="hallPanel">
-        <div class="boardhead"><h3>Hall of Heroes</h3><select id="boardVer" aria-label="Which rules version's scores to show" hidden></select></div>
+        <div class="boardhead"><h3>Hall of Heroes</h3><select id="boardMap" aria-label="Which map's scores to show" hidden></select><select id="boardVer" aria-label="Which rules version's scores to show" hidden></select></div>
         <ol class="board" id="boardList"></ol>
         <p class="boardnote" id="boardNote">Loading scores…</p>
       </section>
@@ -715,7 +716,19 @@ function cellsAlong(pts) {
   }
   return out;
 }
-const DEFAULT_MAP = { id: "meadow", name: "Meadow road", road: cellsAlong([[20, 140], [220, 140], [220, 420], [500, 420], [500, 140], [740, 140], [740, 380], [780, 380]]) };
+// the map builder is a dev tool: it only shows up when the game is served locally (npm run dev) or opened as a file
+const DEV = location.protocol === "file:" || /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+const DEFAULT_MAP = { id: "meadow", name: "Meadow road", builtin: true, about: "Where every keeper starts.",
+  road: cellsAlong([[20, 140], [220, 140], [220, 420], [500, 420], [500, 140], [740, 140], [740, 380], [780, 380]]) };
+// built-in maps: each has its own road, scenery and tune, and its own boards in the Hall of Heroes. A map unlocks with an
+// achievement (unlock: its id). stones: headstones, [column, row], which block building and can't be cleared.
+// trees: the share of the meadow's starting trees that grow here. foes: how much more often a monster turns up
+const GRAVEYARD = { id: "graveyard", name: "Hollow Hill graveyard", builtin: true, unlock: "wyrm", need: "Defeat the Bone Wyrm to unlock it.",
+  about: "Headstones block building, and skeleton knights turn up twice as often.", foes: { knight: 2 }, trees: .5, tint: "rgba(60,40,100,.3)", tune: "graveyard",
+  road: cellsAlong([[100, 20], [100, 420], [300, 420], [300, 180], [540, 180], [540, 460], [700, 460], [700, 380], [780, 380]]),
+  stones: [[4, 3], [5, 3], [4, 5], [5, 5], [4, 7], [5, 7], [9, 6], [11, 6], [9, 8], [11, 8], [10, 10], [15, 1], [17, 1], [19, 1], [16, 3], [18, 3], [1, 12], [4, 12]] };
+const MAPS = [DEFAULT_MAP, GRAVEYARD];
+for (const m of MAPS) m.stoneSet = new Set((m.stones || []).map(q => cellKey(...q)));
 // where a way in starts, just off the board: straight on from the road if that leaves the board, else over the nearest edge
 function entryOut([c, r], from) {
   const [x, y] = cellXY([c, r]), off = (a, b) => a < 0 || b < 0 || a >= COLS || b >= ROWS;
@@ -877,11 +890,16 @@ function newRun() {
 }
 function makeSave() {
   return { v: 1, level: S.level, gold: Math.floor(S.gold), hp: S.hp, maxHp: S.maxHp, walls: S.walls, treasury: S.treasury, scav: S.scav || 0, fort: S.fort,
-           dragon: S.dragon, cleared: TREES.filter(t => !S.trees.some(x => x.id === t.id && !x.fall)).map(t => t.id), towers: S.towers.map(t => [t.type, t.lvl, t.spent, Math.round(t.x), Math.round(t.y), Math.round(t.dmg || 0), t.kills || 0, t.slowed || 0, t.name || ""]), planted: S.trees.filter(t => t.planted != null && !t.fall).map(t => [t.x, t.y, t.planted, t.tone, Math.max(0, t.max - t.hp), t.boost || 0]), stats: S.stats, rv: S.rv, perks: S.perks, dyn: S.dyn || 0, windUsed: !!S.windUsed, wish: S.wish || null, plan: S.plan, planL: S.planL, grid: CELL, map: S.map || null, ev: S.ev || null, lbt: S.lbt || null, name: playerName, savedAt: Date.now() };
+           dragon: S.dragon, cleared: TREES.filter(t => !S.trees.some(x => x.id === t.id && !x.fall)).map(t => t.id), towers: S.towers.map(t => [t.type, t.lvl, t.spent, Math.round(t.x), Math.round(t.y), Math.round(t.dmg || 0), t.kills || 0, t.slowed || 0, t.name || ""]), planted: S.trees.filter(t => t.planted != null && !t.fall).map(t => [t.x, t.y, t.planted, t.tone, Math.max(0, t.max - t.hp), t.boost || 0]), stats: S.stats, rv: S.rv, perks: S.perks, dyn: S.dyn || 0, windUsed: !!S.windUsed, wish: S.wish || null, plan: S.plan, planL: S.planL, grid: CELL, map: S.map || null, mid: S.mid || null, ev: S.ev || null, lbt: S.lbt || null, name: playerName, savedAt: Date.now() };
+}
+// a new run on map m: a built-in map is remembered by its id (S.mid, none for the meadow), your own by its road (S.map)
+function startOn(m) {
+  setMap(m); newRun();
+  if (!MAP.builtin) S.map = { name: MAP.name, road: MAP.road }; else if (MAP !== DEFAULT_MAP) S.mid = MAP.id;
 }
 function restore(sv) {
-  const m = sv.map && Array.isArray(sv.map.road) ? { name: String(sv.map.name || "Your map").slice(0, 30), road: sv.map.road.slice(0, COLS * ROWS) } : null;
-  setMap(m); newRun(); if (MAP !== DEFAULT_MAP) S.map = { name: MAP.name, road: MAP.road };
+  const m = MAPS.find(x => x.id === sv.mid) || (sv.map && Array.isArray(sv.map.road) ? { name: String(sv.map.name || "Your map").slice(0, 30), road: sv.map.road.slice(0, COLS * ROWS) } : null);
+  startOn(m);
   const int = (v, lo, hi, d) => v != null && v !== "" && Number.isFinite(+v) ? Math.max(lo, Math.min(hi, Math.floor(+v))) : d, f = sv.fort || {};
   const maxHp = int(sv.maxHp, 1, 1e6, 20);
   Object.assign(S, { level: int(sv.level, 1, 5000, 1), gold: int(sv.gold, 0, 1e9, 0), hp: int(sv.hp, 1, maxHp, maxHp), maxHp, walls: int(sv.walls, 0, 1e3, 0), treasury: int(sv.treasury, 0, 1e3, 0), scav: int(sv.scav, 0, SCAV.max, 0), dragon: !!sv.dragon,
@@ -973,9 +991,20 @@ function sfx(name) {
 /* ---------- music: a gentle generated harp tune ---------- */
 let music = true, mBus = null, mNext = 0, mStep = 0;
 const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
-const PROG_CALM = [[50, [62, 66, 69, 74]], [47, [59, 62, 66, 71]], [43, [55, 59, 62, 67]], [45, [57, 61, 64, 69]]];  // D  Bm  G  A
-const PROG_BOSS = [[47, [59, 62, 66, 71]], [43, [55, 59, 62, 67]], [40, [52, 55, 59, 64]], [42, [54, 58, 61, 66]]];  // Bm  G  Em  F#
-const MELODY = [74, 76, 78, 81, 83, 86];
+// each map has its own tune: chords for calm and boss levels ([bass, [chord notes]] per bar), a melody scale, and how
+// the harp plays them. pat: which chord note each step plays (null rests); lift: steps that jump up an octave
+const TUNES = {
+  meadow: {   // D  Bm  G  A, and Bm  G  Em  F# for bosses: a gentle harp in fours
+    calm: [[50, [62, 66, 69, 74]], [47, [59, 62, 66, 71]], [43, [55, 59, 62, 67]], [45, [57, 61, 64, 69]]],
+    boss: [[47, [59, 62, 66, 71]], [43, [55, 59, 62, 67]], [40, [52, 55, 59, 64]], [42, [54, 58, 61, 66]]],
+    melody: [74, 76, 78, 81, 83, 86], beat: .34, bar: 16, bass2: 8, pat: [0, 1, 2, 3, 2, 1, 2, 1], lift: [11], mel: [2, 6, 12],
+    wave: "triangle", ring: 1.6, vol: .026, up: 0 },
+  graveyard: {   // Dm  Gm  Bb  A, and Dm  Bb  Gm  A for bosses: a slow music-box waltz, with a low bell on each bar
+    calm: [[50, [62, 65, 69, 74]], [43, [55, 58, 62, 67]], [46, [58, 62, 65, 70]], [45, [57, 61, 64, 69]]],
+    boss: [[50, [62, 65, 69, 74]], [46, [58, 62, 65, 70]], [43, [55, 58, 62, 67]], [45, [57, 61, 64, 69]]],
+    melody: [74, 77, 79, 81, 82, 86], beat: .3, bar: 12, bass2: 6, pat: [0, null, 1, null, 2, null], lift: [10], mel: [3, 9],
+    wave: "sine", ring: 1.2, vol: .03, up: 12, bell: true },
+};
 function mNote(f, t, dur, vol, type, slow) {
   const o = AC.createOscillator(), g = AC.createGain();
   o.type = type; o.frequency.value = f;
@@ -991,28 +1020,28 @@ function setMusic(on) {
 function musicTick() {
   if (!AC || !music || AC.state !== "running") return;
   if (!mBus) { mBus = AC.createGain(); mBus.gain.value = .55; const f = AC.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = 2600; mBus.connect(f).connect(AC.destination); }
-  const now = AC.currentTime, beat = .34;
+  const T = TUNES[MAP.tune] || TUNES.meadow, now = AC.currentTime, beat = T.beat;
   if (mNext < now) mNext = now + .1;
   while (mNext < now + .8) {
-    const t = mNext, step = mStep % 16, bar = Math.floor(mStep / 16);
+    const t = mNext, step = mStep % T.bar, bar = Math.floor(mStep / T.bar);
     const boss = S && S.phase === "wave" && S.level % 10 === 0;
-    const [bass, ch] = (boss ? PROG_BOSS : PROG_CALM)[bar % 4];
-    if (step === 0) { mNote(mtof(bass), t, beat * 8, .05, "sine", true); ch.slice(0, 3).forEach(m => mNote(mtof(m - 12), t, beat * 16, .012, "sine", true)); }
-    if (step === 8) mNote(mtof(bass), t, beat * 8, .04, "sine", true);
-    const pat = [0, 1, 2, 3, 2, 1, 2, 1];
-    mNote(mtof(ch[pat[step % 8]] + (step >= 8 && step % 8 === 3 ? 12 : 0)), t, 1.6, .026, "triangle");
-    if (!boss && (step === 2 || step === 6 || step === 12) && Math.random() < .45) mNote(mtof(MELODY[(Math.random() * MELODY.length) | 0]), t, 2.4, .022, "sine", true);
+    const [bass, ch] = (boss ? T.boss : T.calm)[bar % 4];
+    if (step === 0) { mNote(mtof(bass), t, beat * 8, .05, "sine", true); ch.slice(0, 3).forEach(m => mNote(mtof(m - 12), t, beat * 16, .012, "sine", true)); if (T.bell) mNote(mtof(bass - 12), t, 2.2, .03, "sine"); }
+    if (step === T.bass2) mNote(mtof(bass), t, beat * 8, .04, "sine", true);
+    const n = T.pat[step % T.pat.length];
+    if (n != null) mNote(mtof(ch[n] + T.up + (T.lift.includes(step) ? 12 : 0)), t, T.ring, T.vol, T.wave);
+    if (!boss && T.mel.includes(step) && Math.random() < .45) mNote(mtof(T.melody[(Math.random() * T.melody.length) | 0] + T.up), t, 2.4, .022, "sine", true);
     mNext += beat; mStep++;
   }
 }
 
 /* ---------- seasons: the valley changes every 10 levels ---------- */
 const SEASONS = [
-  { name: "Spring", msg: "Spring has come to the valley.", grass: ["#7db75a", "#63994a"], dark: "rgba(40,90,30,.12)", light: "rgba(210,240,160,.12)", blade: "rgba(40,90,30,.35)", rim: "#4f7e46", pond: "#74bdd2", edge: "#8a6a3e", road: "#d6b679", ink: "#33261a", flowers: ["#fff7fb", "#f5a3c7", "#ffd84d", "#fbe1ec"], nflowers: 220, trees: [["#c76f8e", "#e397b2", "#f8cfdd"], ["#2f6a3a", "#3d8247", "#55a05a"]], amb: "petals", kind: "good", grow: 1, rule: "Saplings grow twice as fast." },
-  { name: "Summer", msg: "Summer sun warms the keep.", grass: ["#74a852", "#5b9043"], dark: "rgba(40,80,30,.12)", light: "rgba(200,230,140,.10)", blade: "rgba(40,80,30,.35)", rim: "#4f7e46", pond: "#6fb3c9", edge: "#8a6a3e", road: "#d6b679", ink: "#33261a", flowers: ["#fff7e0", "#ffd84d", "#f5a3c7", "#c9b6ff"], nflowers: 170, trees: [["#2f6a3a", "#3d8247", "#55a05a"], ["#2b5e45", "#367557", "#4c916c"]], amb: "pollen", rule: "Clear skies: no special rules." },
-  { name: "Autumn", msg: "Autumn leaves are falling.", grass: ["#a3a856", "#86893f"], dark: "rgba(110,70,20,.14)", light: "rgba(240,200,120,.12)", blade: "rgba(90,70,30,.35)", rim: "#6f6a3a", pond: "#6aa3b3", edge: "#7d5d36", road: "#cfac70", ink: "#3a2412", flowers: ["#d4572a", "#e88b2e", "#f2c14e", "#a63d22"], nflowers: 260, trees: [["#a8431f", "#cf6a2a", "#eaa047"], ["#8e5a1c", "#c08a2a", "#e3bd4f"]], amb: "leaves", kind: "good", wood: 1.5, rule: "Harvest time: trees give 50% more gold when you chop them." },
-  { name: "Winter", msg: "Snow blankets the valley.", grass: ["#eef3f6", "#d5dfe7"], dark: "rgba(120,150,175,.12)", light: "rgba(255,255,255,.5)", blade: "rgba(140,160,180,.28)", rim: "#b9cbd6", pond: "#cfe8f1", frozen: true, edge: "#93846c", road: "#cfc4b2", ink: "#3e4650", flowers: ["#ffffff", "#e6f2ff"], nflowers: 120, trees: [["#2c5444", "#386a56", "#f4f8fb"], ["#2a4f48", "#355f57", "#f4f8fb"]], snow: true, amb: "snow", kind: "bad", walk: .85, sight: .9, chill: 1.5, rule: "Deep snow slows monsters on foot by 15%, but falling snow cuts tower range by 10%. Frost Spire chills last longer." },
-  { name: "Night", msg: "Night falls, and fireflies light the meadow.", grass: ["#2f4c3b", "#22382c"], dark: "rgba(0,0,20,.18)", light: "rgba(120,160,140,.08)", blade: "rgba(10,25,15,.4)", rim: "#22382c", pond: "#24405a", moon: true, edge: "#5a4a32", road: "#8c7a58", ink: "#0c1610", flowers: ["#cfd9ff", "#9fb0e8"], nflowers: 90, trees: [["#17301f", "#1f3f2b", "#2c5a3e"], ["#163028", "#1d3d33", "#28544a"]], night: true, amb: "fireflies", kind: "bad", gloom: .85, rule: "Darkness cuts tower range by 15%, except for towers in a Lantern's light." },
+  { name: "Spring", msg: "The blossom is out.", grass: ["#7db75a", "#63994a"], dark: "rgba(40,90,30,.12)", light: "rgba(210,240,160,.12)", blade: "rgba(40,90,30,.35)", rim: "#4f7e46", pond: "#74bdd2", edge: "#8a6a3e", road: "#d6b679", ink: "#33261a", flowers: ["#fff7fb", "#f5a3c7", "#ffd84d", "#fbe1ec"], nflowers: 220, trees: [["#c76f8e", "#e397b2", "#f8cfdd"], ["#2f6a3a", "#3d8247", "#55a05a"]], amb: "petals", kind: "good", grow: 1, rule: "Saplings grow twice as fast." },
+  { name: "Summer", msg: "Long, bright days.", grass: ["#74a852", "#5b9043"], dark: "rgba(40,80,30,.12)", light: "rgba(200,230,140,.10)", blade: "rgba(40,80,30,.35)", rim: "#4f7e46", pond: "#6fb3c9", edge: "#8a6a3e", road: "#d6b679", ink: "#33261a", flowers: ["#fff7e0", "#ffd84d", "#f5a3c7", "#c9b6ff"], nflowers: 170, trees: [["#2f6a3a", "#3d8247", "#55a05a"], ["#2b5e45", "#367557", "#4c916c"]], amb: "pollen", rule: "No special rules this season." },
+  { name: "Autumn", msg: "The leaves are turning.", grass: ["#a3a856", "#86893f"], dark: "rgba(110,70,20,.14)", light: "rgba(240,200,120,.12)", blade: "rgba(90,70,30,.35)", rim: "#6f6a3a", pond: "#6aa3b3", edge: "#7d5d36", road: "#cfac70", ink: "#3a2412", flowers: ["#d4572a", "#e88b2e", "#f2c14e", "#a63d22"], nflowers: 260, trees: [["#a8431f", "#cf6a2a", "#eaa047"], ["#8e5a1c", "#c08a2a", "#e3bd4f"]], amb: "leaves", kind: "good", wood: 1.5, rule: "Harvest time: trees give 50% more gold when you chop them." },
+  { name: "Winter", msg: "Snow lies deep on the road.", grass: ["#eef3f6", "#d5dfe7"], dark: "rgba(120,150,175,.12)", light: "rgba(255,255,255,.5)", blade: "rgba(140,160,180,.28)", rim: "#b9cbd6", pond: "#cfe8f1", frozen: true, edge: "#93846c", road: "#cfc4b2", ink: "#3e4650", flowers: ["#ffffff", "#e6f2ff"], nflowers: 120, trees: [["#2c5444", "#386a56", "#f4f8fb"], ["#2a4f48", "#355f57", "#f4f8fb"]], snow: true, amb: "snow", kind: "bad", walk: .85, sight: .9, chill: 1.5, rule: "Deep snow slows monsters on foot by 15%, but falling snow cuts tower range by 10%. Frost Spire chills last longer." },
+  { name: "Night", msg: "Night falls, and the fireflies come out.", grass: ["#2f4c3b", "#22382c"], dark: "rgba(0,0,20,.18)", light: "rgba(120,160,140,.08)", blade: "rgba(10,25,15,.4)", rim: "#22382c", pond: "#24405a", moon: true, edge: "#5a4a32", road: "#8c7a58", ink: "#0c1610", flowers: ["#cfd9ff", "#9fb0e8"], nflowers: 90, trees: [["#17301f", "#1f3f2b", "#2c5a3e"], ["#163028", "#1d3d33", "#28544a"]], night: true, amb: "fireflies", kind: "bad", gloom: .85, rule: "Darkness cuts tower range by 15%, except for towers in a Lantern's light." },
 ];
 // two players (live match): the seasons turn with the match clock instead, so every match ends at night
 const seasonIdx = L => S && S.vs && S.vs.live ? vsSeason() : Math.floor((Math.max(1, L) - 1) / 10) % SEASONS.length;
@@ -1036,6 +1065,24 @@ function drawTree(g, x, y, s, tone, shadow = true) {
   g.fillStyle = tones[2]; ell(g, x - 6 * s, y - 24 * s, 5 * s, 4 * s);
   if (season.snow) { g.fillStyle = "#f7fafc"; ell(g, x - 1 * s, y - 26 * s, 10 * s, 4.5 * s); ell(g, x + 7 * s, y - 15 * s, 5 * s, 2.5 * s); }
 }
+// a headstone, in one of three shapes, leaning a little; it takes the season's ink, snow and moonlight
+function drawStone(g, x, y, k, Z) {
+  const lean = ((k % 5) - 2) * .04, shape = k % 3, stone = Z.night ? "#7d8790" : "#a9aeb0", dark = Z.night ? "#5c656e" : "#868c90";
+  g.fillStyle = "rgba(20,30,20,.25)"; ell(g, x + 3, y + 12, 14, 5);
+  g.save(); g.translate(x, y + 12); g.rotate(lean);
+  const body = () => { g.beginPath();
+    if (shape === 0) { g.moveTo(-10, 0); g.lineTo(-10, -18); g.arc(0, -18, 10, Math.PI, 0); g.lineTo(10, 0); }        // rounded
+    else if (shape === 1) { g.moveTo(-9, 0); g.lineTo(-9, -20); g.lineTo(0, -28); g.lineTo(9, -20); g.lineTo(9, 0); }  // peaked
+    else { g.moveTo(-12, 0); g.lineTo(-12, -16); g.quadraticCurveTo(0, -24, 12, -16); g.lineTo(12, 0); }                 // wide and low
+    g.closePath(); };
+  body(); g.lineWidth = 3.2; g.strokeStyle = Z.ink; g.stroke();
+  body(); g.fillStyle = stone; g.fill();
+  g.fillStyle = dark; g.fillRect(4, -16, 4, 14);                                     // the shaded side
+  g.fillStyle = dark; g.fillRect(-5, -13, 8, 1.6); g.fillRect(-5, -9, 6, 1.6);       // worn lettering
+  if (Z.snow) { g.fillStyle = "#f7fafc"; ell(g, -1, shape === 1 ? -24 : -22, 9, 3); }
+  else { g.fillStyle = "rgba(90,130,60,.6)"; ell(g, -6, -2, 5, 2.2); }               // moss at the foot
+  g.restore();
+}
 function buildBg() {
   const g = bg.getContext("2d"); g.setTransform(bg.width / W, 0, 0, bg.height / H, 0, 0);
   const r = rng(7);
@@ -1045,6 +1092,7 @@ function buildBg() {
   for (let i = 0; i < 260; i++) { g.fillStyle = r() < .5 ? Z.dark : Z.light; ell(g, r() * W, r() * H, 10 + r() * 40, 6 + r() * 18); }
   g.strokeStyle = Z.blade; g.lineWidth = 1;
   for (let i = 0; i < 900; i++) { const x = r() * W, y = r() * H; g.beginPath(); g.moveTo(x, y); g.lineTo(x + (r() - .5) * 3, y - 3 - r() * 3); g.stroke(); }
+  if (MAP.tint) { g.fillStyle = MAP.tint; g.fillRect(0, 0, W, H); }   // some maps have a light of their own
   // a little pond
   g.fillStyle = Z.ink; ell(g, 400, 80, 67, 31);
   g.fillStyle = Z.rim; ell(g, 400, 80, 64, 28);
@@ -1066,6 +1114,7 @@ function buildBg() {
   if (Z.snow) { road(); g.strokeStyle = "rgba(255,255,255,.35)"; g.lineWidth = 6; g.setLineDash([18, 30]); g.stroke(); g.setLineDash([]); }
   // flowers
   for (let i = 0; i < Z.nflowers; i++) { const x = r() * W, y = r() * H, c = Z.flowers[(r() * Z.flowers.length) | 0]; if (distRoad(x, y) < 34 || (x > 820 && y > 250)) continue; g.fillStyle = c; ell(g, x, y, Z.amb === "leaves" ? 2.6 : 1.8, Z.amb === "leaves" ? 1.5 : 1.8); }
+  for (const q of MAP.stones || []) drawStone(g, ...cellXY(q), q[0] * 7 + q[1] * 3, Z);
   // the build grid, printed faintly across the whole map
   g.save(); g.globalAlpha = Z.night ? .3 : Z.snow ? .2 : .16; g.strokeStyle = Z.night ? "#9fb8a8" : Z.ink; g.lineWidth = 1; g.stroke(gridCells()); g.restore();
   // the fold of a folding game board, down the middle
@@ -1091,7 +1140,7 @@ const TREES = (() => {
   return out.map(t => { const [x, y] = gridSnap(t.x, t.y); return { ...t, x, y }; })
     .filter(t => { const k = t.x + "," + t.y; if (used.has(k) || groundBlock(t.x, t.y)) return false; used.add(k); return true; });
 })();
-const freshTrees = () => TREES.filter(t => !groundBlock(t.x, t.y)).map(t => ({ ...t, hp: t.max, shake: 0, fall: 0, dir: 1 }));
+const freshTrees = () => TREES.filter(t => !groundBlock(t.x, t.y) && (MAP.trees == null || (t.id * 37) % 100 < MAP.trees * 100)).map(t => ({ ...t, hp: t.max, shake: 0, fall: 0, dir: 1 }));
 // a woodcutter clears a tree at once and sells the firewood, keeping a share as their fee (smaller with Lumber rights)
 const cutterFee = () => Math.max(.1, .5 - .08 * perk("lumber"));
 const cutterPay = t => Math.round(woodValue(t) * (1 - cutterFee()));
@@ -1233,6 +1282,7 @@ function groundBlock(x, y) {
   if (onRoad(x, y)) return "road";
   if (x > CASTLE.x - 30 && y > CASTLE.y - 50) return "castle";
   if (((x - 400) / 82) ** 2 + ((y - 80) / 44) ** 2 < 1) return "pond";
+  if (MAP.stoneSet && MAP.stoneSet.has(cellKey(Math.floor(x / CELL), Math.floor(y / CELL)))) return "stone";
   return "";
 }
 function canBuild(x, y) {
@@ -1961,7 +2011,7 @@ function renderPanel() {
   updatePalette();
   if (!S || S.phase === "over") { p.append(el("h3", "", "Your defences"), el("p", "hint", "Start a game to begin building.")); return; }
   if (!sel) {
-    p.append(el("h3", "", "Your defences"), el("p", "hint", "Drag a defender from the bar under the map onto open grass (or tap the grass, then pick one). Trees are in the way until you chop them down: tap one to swing the axe. Tap open grass to plant a sapling that grows into gold. Grown trees near a tower give it extra range. Every 10 levels the season changes the rules: Up next warns you a level ahead. Tap a tower to upgrade it, or the castle to repair and fortify it and grow your treasury."));
+    p.append(el("h3", "", "Your defences"), el("p", "hint", "Drag a defender from the bar under the map onto open grass, or tap the grass and pick one. Tap a tree to chop it down, or open grass to plant a sapling. Tap a tower to upgrade it, or the castle to repair it, fortify it and grow its treasury. The season, and its rules, change every 10 levels: Up next warns you a level ahead."));
     const built = S.towers.length;
     p.append(el("p", "hint", built ? `${built} defender${built === 1 ? "" : "s"} on guard.` : "No defenders yet."));
     const act = Object.entries(S.perks || {});
@@ -2000,7 +2050,7 @@ function renderPanel() {
       const n = S.scav || 0, pc = k => Math.round(k * SCAV.pct * 100);
       econ.append(row(n ? `Scavengers · level ${n}` : "Hire scavengers", SCAV.cost(n),
         n >= SCAV.max ? `+${pc(n)}% gold from every monster defeated. As many as you can use.` :
-        `They pick over the fallen: +${pc(n)}% → +${pc(n + 1)}% gold from every monster defeated.`, n >= SCAV.max, () => { S.scav = n + 1; }));
+        `They comb the road after each fight: +${pc(n)}% → +${pc(n + 1)}% gold from every monster defeated.`, n >= SCAV.max, () => { S.scav = n + 1; }));
     }
     p.append(el("h4", "", "Fortify"), walls, el("h4", "", "Economy"), econ);
     return;
@@ -2145,7 +2195,7 @@ function renderPanel() {
     const before = t.type === "dragon" && dragonStage(t.lvl), tierWas = archerTier(t), lookWas = LOOKS[t.type] && lookOf(t.lvl);
     t.lvl++; sfx("up");
     if (LOOKS[t.type] && lookOf(t.lvl) !== lookWas) toast(`Your ${LOOKS[t.type][lookWas]} has grown into ${/^[AEIOU]/.test(LOOKS[t.type][lookOf(t.lvl)]) ? "an" : "a"} ${LOOKS[t.type][lookOf(t.lvl)]}!`);
-    if (archerTier(t) !== tierWas) toast(archerTier(t).shot === "bolt" ? "A Dragon Ballista! Heavy bolts that hit fliers 50% harder and shrug off armour." : "Your archers take up longbows: more reach, and arrows that bite deeper into armour.");
+    if (archerTier(t) !== tierWas) toast(archerTier(t).shot === "bolt" ? "A Dragon Ballista! Heavy bolts that hit fliers 50% harder, and armour no longer blunts them." : "Your archers take up longbows: more reach, and arrows that bite deeper into armour.");
     if (before && dragonStage(t.lvl) !== before) toast(`${dragonLabel(t)} has grown into a ${dragonStage(t.lvl).name}!`);
     if (t.type === "dragon" && t.lvl >= 10) unlock("greatwyrm");
     if (t.lvl >= 10) unlock("toplevel");
@@ -2279,7 +2329,7 @@ function renderUpNext() {
 }
 
 /* ---------- defender bar: tap for details, drag to build ---------- */
-const BUILD_MSG = { road: "Towers can't go on the road.", pond: "Towers can't go in the pond.", tower: "Too close to another tower.", tree: "A tree is in the way. Tap it to chop it down.", edge: "Too close to the edge.", castle: "That's the castle!" };
+const BUILD_MSG = { road: "Towers can't go on the road.", pond: "Towers can't go in the pond.", tower: "Too close to another tower.", tree: "A tree is in the way. Tap it to chop it down.", stone: "A headstone is in the way.", edge: "Too close to the edge.", castle: "That's the castle!" };
 function placeTower(k, x, y) {
   const d = TOWERS[k];
   { const lk = lockOf(k); if (lk) { toast(lk.why); return false; } }
@@ -2407,7 +2457,7 @@ $("btnAuto").addEventListener("click", () => { auto = !auto; if (S) S.nextT = Ma
 $("btnMusic").addEventListener("click", () => { audio(); setMusic(!music); });
 $("btnSpeed").addEventListener("click", () => { speed = speed % 3 + 1; $("btnSpeed").textContent = `Speed ${speed}×`; });
 $("btnSound").addEventListener("click", () => { sound = !sound; audio(); $("btnSound").textContent = `Sound: ${sound ? "on" : "off"}`; $("btnSound").classList.toggle("on", sound); ls.set("ek_sound", sound); audioRest(); });
-function setPaused(v) { if (!S || S.phase === "over" || !$("startCard").hidden || watchOnly()) return; paused = v; if (S.vs) vsSend({ t: "toast", msg: v ? "The Keeper has paused the game." : "The Keeper is back. The battle continues." }); $("pauseCard").hidden = !v; $("btnPause").textContent = v ? "Resume" : "Pause"; }
+function setPaused(v) { if (!S || S.phase === "over" || !$("startCard").hidden || watchOnly()) return; paused = v; if (S.vs) vsSend({ t: "toast", msg: v ? "The Keeper has paused the game." : "The Keeper is back." }); $("pauseCard").hidden = !v; $("btnPause").textContent = v ? "Resume" : "Pause"; }
 $("btnPause").addEventListener("click", () => setPaused(!paused));
 $("btnResume").addEventListener("click", () => setPaused(false));
 $("btnQuit").addEventListener("click", () => { if (S && S.phase === "build") persist(); paused = false; $("pauseCard").hidden = true; $("btnPause").textContent = "Pause"; showStart(); });
@@ -2450,8 +2500,8 @@ function readName() {
 }
 function showStart() {
   $("startCard").hidden = false; $("overCard").hidden = true; resetHits();
-  const cm = chosenMap(); $("btnMaps").textContent = `Map: ${cm.name} · change`;
-  if (!S || S.phase === "over" || S.vs || S.vsGuest || !S.towers.length) { if (MAP !== cm) { setMap(cm); buildBg(); } }   // the board behind shows the map you'll play
+  const cm = chosenMap(); $("btnMaps").textContent = `Map: ${cm.name} · change`; boardFollow(cm.builtin ? cm.id : "meadow");
+  if (!S || S.phase === "over" || S.vs || S.vsGuest || !S.towers.length) { if (MAP !== cm) { setMap(cm); if (S) S.trees = freshTrees(); buildBg(); } }   // the board behind shows the map you'll play
   $("pname").value = playerName;
   const c = $("btnContinue");
   if (savedGame && savedGame.level) { c.hidden = false; c.textContent = `Continue from level ${savedGame.level}` + (Number.isInteger(savedGame.rv) && savedGame.rv !== RULES_VERSION ? ` (rules v${savedGame.rv})` : ""); $("btnNew").classList.remove("primary"); }
@@ -2517,7 +2567,7 @@ function beastPage(k, atLevel) {
   box.append(enemyIcon(k, boss ? d : null, 264, !known, true));
   const bt = el("div", "bt"); box.append(bt);
   if (!known) {
-    bt.append(el("h3", "", "???"), el("p", "", boss ? `A boss nobody has lived to describe. It first appears at level ${first}.` : `Nothing like it has come for the keep yet. It first appears at level ${first}.`));
+    bt.append(el("h3", "", "???"), el("p", "", boss ? `A boss nobody has had a good look at yet. It first appears at level ${first}.` : `Nothing like it has come for the keep yet. It first appears at level ${first}.`));
     return box;
   }
   const L = Math.max(atLevel || first, first), lore = LORE[k] || {};
@@ -2679,9 +2729,9 @@ function openCollection() {
   openModal(card => {
     card.append(el("h2", "", "Your heirlooms"));
     const ids = Object.keys(PERKS).filter(id => meta.perks[id]);
-    if (!ids.length) card.append(el("p", "", "No heirlooms yet. Reach level 5 in a game to earn your first. More come at levels 15, 30, 50, 75 and so on, each a little further apart. Each one makes every future game a little easier."));
+    if (!ids.length) card.append(el("p", "", "No heirlooms yet. Reach level 5 in a game to earn your first; more come at levels 15, 30, 50, 75 and so on. Each one helps in every game after."));
     else {
-      card.append(el("p", "", "Treasures handed down through the keep. They help in every new game you start."));
+      card.append(el("p", "", "Treasures handed down through the keep. They help in every game you start."));
       const ul = el("ul", "perklist");
       const order = Object.keys(RARITY);
       ids.sort((a, b) => order.indexOf(PERKS[b].r) - order.indexOf(PERKS[a].r)).forEach(id => {
@@ -2772,7 +2822,7 @@ function begin(sv) {
   audio(); readName();
   if (sv) restore(sv);
   else {  // a fresh game on the chosen map: bring in every heirloom you own
-    setMap(chosenMap()); newRun(); if (MAP !== DEFAULT_MAP) S.map = { name: MAP.name, road: MAP.road }; S.perks = { ...meta.perks }; S.dyn = meta.dynasty;
+    startOn(chosenMap()); S.perks = { ...meta.perks }; S.dyn = meta.dynasty;
     S.gold += 25 * perk("purse"); S.maxHp += 2 * perk("stones"); S.hp = S.maxHp;
     S.treasury = perk("mint"); S.fort.archers = perk("sentries"); S.fort.moat = perk("moat");
   }
@@ -2780,7 +2830,7 @@ function begin(sv) {
   lbStartRun();
   sel = null; paused = false; S.nextT = 6;
   $("startCard").hidden = true; $("overCard").hidden = true;
-  renderPanel(); renderUpNext(); updateHud(); renderBoard();
+  renderPanel(); renderUpNext(); updateHud(); renderBoard(); boardFollow(S.mid || "meadow");
   seasonI = seasonIdx(S.level); season = SEASONS[seasonI]; buildBg(); amb = []; fadeT = 0;
   toast(sv ? `Welcome back. Level ${S.level} is next.` : "Drag defenders from the bar under the map onto the grass, then start level 1.");
 }
@@ -2794,18 +2844,22 @@ function loadMaps() {
   return Array.isArray(v) ? v.filter(m => m && typeof m.id === "string" && Array.isArray(m.road)).slice(0, 20)
     .map(m => ({ id: m.id.slice(0, 20), name: String(m.name || "Your map").slice(0, 30), road: m.road.filter(q => Array.isArray(q) && Number.isInteger(q[0]) && Number.isInteger(q[1])).slice(0, COLS * ROWS) })) : [];
 }
-function chosenMap() { const id = ls.get("ek_map"); return (id && loadMaps().find(m => m.id === id)) || DEFAULT_MAP; }
+const mapOpen = m => DEV || !m.unlock || myBadges().has(m.unlock);
+function chosenMap() {
+  const id = ls.get("ek_map"), b = MAPS.find(m => m.id === id);
+  return b ? (mapOpen(b) ? b : DEFAULT_MAP) : (DEV && id && loadMaps().find(m => m.id === id)) || DEFAULT_MAP;
+}
 const routeWord = n => `${n} path${n === 1 ? "" : "s"} to the castle`;
 function openMaps() {
   openModal(card => {
-    card.append(el("h2", "", "Maps"), el("p", "", "Pick the map for your next new game, or build your own. A saved game carries on with the map it started on."),
-      el("p", "fine", "Games on your own maps don't go on the shared leaderboard or count as a personal best, so scores stay fair."));
+    card.append(el("h2", "", "Maps"), el("p", "", "Pick the map for your next new game. A saved game carries on with the map it started on. Each map has its own Hall of Heroes."));
+    if (DEV) card.append(el("p", "fine", "Dev tools: your own maps and the map builder only show up when the game runs locally. Games on your own maps skip the leaderboard and personal bests."));
     const list = el("ul", "maplist"), cur = chosenMap();
     const row = (m, own) => {
-      const li = el("li", m.id === cur.id ? "on" : ""), info = readMap(m.road), n = el("div", "mn");
-      n.append(el("b", "", m.name), el("small", "", own ? routeWord(info.paths.length) : "The standard map. Scores go on the leaderboard."));
-      const pick = el("button", m.id === cur.id ? "primary" : "", m.id === cur.id ? "Chosen" : "Play this");
-      pick.setAttribute("aria-pressed", m.id === cur.id ? "true" : "false");
+      const open = own || mapOpen(m), li = el("li", m.id === cur.id ? "on" : open ? "" : "locked"), n = el("div", "mn");
+      n.append(el("b", "", m.name), el("small", "", own ? routeWord(readMap(m.road).paths.length) : open ? m.about : m.need));
+      const pick = el("button", m.id === cur.id ? "primary" : "", m.id === cur.id ? "Chosen" : open ? "Play this" : "Locked");
+      pick.disabled = !open; pick.setAttribute("aria-pressed", m.id === cur.id ? "true" : "false");
       pick.addEventListener("click", () => { ls.set("ek_map", m.id); openMaps(); });
       li.append(n, pick);
       if (own) {
@@ -2816,13 +2870,13 @@ function openMaps() {
           ls.set("ek_maps", loadMaps().filter(x => x.id !== m.id)); if (ls.get("ek_map") === m.id) ls.del("ek_map"); openMaps();
         });
         li.append(ed, del);
-      } else { const cp = el("button", "", "Copy and edit"); cp.addEventListener("click", () => openMapEditor({ name: "My meadow", road: m.road })); li.append(cp); }
+      } else if (DEV) { const cp = el("button", "", "Copy and edit"); cp.addEventListener("click", () => openMapEditor({ name: "My " + m.name.toLowerCase(), road: m.road })); li.append(cp); }
       return li;
     };
-    list.append(row(DEFAULT_MAP, false)); loadMaps().forEach(m => list.append(row(m, true)));
-    const r1 = el("div", "row"), make = el("button", "primary", "Build a new map"), close = el("button", "", "Close");
-    make.addEventListener("click", () => openMapEditor(null)); close.addEventListener("click", closeModal);
-    r1.append(make, close); card.append(list, r1);
+    MAPS.forEach(m => list.append(row(m, false))); if (DEV) loadMaps().forEach(m => list.append(row(m, true)));
+    const r1 = el("div", "row"), close = el("button", DEV ? "" : "primary", "Close");
+    if (DEV) { const make = el("button", "primary", "Build a new map"); make.addEventListener("click", () => openMapEditor(null)); r1.append(make); }
+    close.addEventListener("click", closeModal); r1.append(close); card.append(list, r1);
   });
 }
 // the builder: tap or drag across squares to lay road, tap road to lift it. The castle always stands on the right.
@@ -2930,34 +2984,39 @@ function myEntry() {
   const src = cloudOn() ? ((myScoreDoc && myScoreDoc.players) || {}) : readLocalScores();
   return { k, src, cur: src[k] || null };
 }
-function readMyBest() { const { cur } = myEntry(), rv = (S && S.rv) || RULES_VERSION; return (cur && cur.scores && cur.scores[rv] && cur.scores[rv].best) || 0; }
+// a board is a rules version on a map: its key is "5" for the meadow under rules v5 (as it always was), "5@graveyard" for another map
+const boardKey = (rv, mid) => mid && mid !== "meadow" ? `${rv}@${mid}` : String(rv);
+const runBoard = () => boardKey((S && S.rv) || RULES_VERSION, S && S.mid);
+function readMyBest() { const { cur } = myEntry(), k = runBoard(); return (cur && cur.scores && cur.scores[k] && cur.scores[k].best) || 0; }
 // one board row per rules version a player has a score for (v 0 = scores from before versions existed)
 function entryRows(p, mine) {
   if (!p || typeof p !== "object") return [];
   const name = safeName(p.name) || "A keeper", badges = Array.isArray(p.badges) ? p.badges.slice(0, 20) : [], out = [];
   const ok = n => Number.isInteger(n) && n > 0 && n <= 5000;
-  if (ok(p.best)) out.push({ name, best: p.best, at: +p.at || 0, mine, badges, v: 0 });
+  if (ok(p.best)) out.push({ name, best: p.best, at: +p.at || 0, mine, badges, v: 0, map: "meadow" });
   if (p.scores && typeof p.scores === "object") for (const key in p.scores) {
-    const v = Number(key), x = p.scores[key];
-    if (Number.isInteger(v) && v >= 1 && v <= 999 && x && ok(x.best)) out.push({ name, best: x.best, at: +x.at || 0, mine, badges, v });
+    const m = /^(\d{1,3})(?:@([a-z]{1,16}))?$/.exec(key), v = m ? Number(m[1]) : 0, x = p.scores[key];
+    if (v >= 1 && v <= 999 && x && ok(x.best)) out.push({ name, best: x.best, at: +x.at || 0, mine, badges, v, map: m[2] || "meadow" });
   }
   return out;
 }
-let viewV = RULES_VERSION, apiVersions = [];
+let viewV = RULES_VERSION, viewMap = "meadow", apiVersions = [];   // apiVersions: [{ v, map }] boards on the server
+// the Hall of Heroes shows the board for the map you're playing (or have chosen to play next)
+function boardFollow(id) { if (viewMap === id) return; viewMap = id; if (boardMode === "api") fetchBoard(); else renderBoard(); }
 function savePlayer(level, badge) {
-  const name = playerName || "Player", { k, src, cur } = myEntry(), rv = (S && S.rv) || RULES_VERSION;
+  const name = playerName || "Player", { k, src, cur } = myEntry(), rv = (S && S.rv) || RULES_VERSION, bk = runBoard();
   const sc = cur && cur.scores && typeof cur.scores === "object" ? cur.scores : {};
-  const oldBest = (sc[rv] && sc[rv].best) || 0, best = Math.max(oldBest, S && S.map ? 0 : level || 0);   // a game on your own map isn't a personal best
+  const oldBest = (sc[bk] && sc[bk].best) || 0, best = Math.max(oldBest, S && S.map ? 0 : level || 0);   // a game on your own map isn't a personal best
   const had = (cur && Array.isArray(cur.badges)) ? cur.badges : [];
   const badges = badge && !had.includes(badge) ? [...had, badge] : had;
   if (cur && best === oldBest && badges.length === had.length) return;
-  const scores = best > 0 ? { ...sc, [rv]: { best, at: best > oldBest || !sc[rv] ? Date.now() : sc[rv].at } } : sc;
+  const scores = best > 0 ? { ...sc, [bk]: { best, at: best > oldBest || !sc[bk] ? Date.now() : sc[bk].at } } : sc;
   const entry = { ...(cur || {}), name, badges, scores };
   const players = { ...src, [k]: entry };
   if (cloudOn()) { myScoreDoc = { players }; enqueue(() => db.doc("scores/" + uid).set({ players })); renderAch(); }
   else { ls.set("ek_scores", players); renderBoard(); }
   // the shared board takes the level this run has reached (it keeps the best), with the run's ticket
-  if (LB_URL && S && !S.vs && !S.vsGuest && !S.map && S.level > 1) submitScore(S.level - 1, badges, rv);
+  if (LB_URL && S && !S.vs && !S.vsGuest && !S.map && S.level > 1) submitScore(S.level - 1, badges, rv, S.mid);
 }
 const ACH = [
   { id: "lv10",       name: "Seasoned Defender",   desc: "Reach level 10" },
@@ -3044,7 +3103,8 @@ function unlock(id) {
   const { cur } = myEntry(); if (cur && (cur.badges || []).includes(id)) return;
   S.newBadges.push(id);
   const a = ACH.find(x => x.id === id); if (!a) return;
-  toast(`Achievement unlocked: ${a.name}`); sfx("up");
+  const nm = MAPS.find(m => m.unlock === id);
+  toast(`Achievement unlocked: ${a.name}` + (nm && !DEV ? `. New map: ${nm.name}! Pick it on the start screen.` : "")); sfx("up");
   savePlayer(0, id); renderAch();
 }
 function renderAch() {
@@ -3112,8 +3172,17 @@ function renderBoard() {
   let rows = [];
   if (boardMode === "cloud" || boardMode === "api" || (boardMode === "slow" && !LB_URL)) rows = boardRows.slice();
   if ((boardMode === "slow" && LB_URL) || boardMode === "local" || !cloudWritable) { const loc = readLocalScores(); for (const k in loc) rows.push(...entryRows(loc[k], true)); }
+  // map picker: shown once you can play more than one map
+  const mp = $("boardMap"), maps = MAPS.filter(m => m.id === viewMap || mapOpen(m));
+  mp.hidden = maps.length < 2;
+  if (mp.dataset.k !== maps.map(m => m.id).join(",")) {
+    mp.dataset.k = maps.map(m => m.id).join(","); mp.textContent = "";
+    maps.forEach(m => { const o = document.createElement("option"); o.value = m.id; o.textContent = m.name; mp.append(o); });
+  }
+  mp.value = viewMap;
+  rows = rows.filter(r => r.map === viewMap);
   // version picker: only shown once more than one rules version has scores
-  const vers = new Set([RULES_VERSION, ...rows.map(r => r.v), ...apiVersions]);
+  const vers = new Set([RULES_VERSION, ...rows.map(r => r.v), ...apiVersions.filter(x => x.map === viewMap).map(x => x.v)]);
   const pick = $("boardVer"), opts = [...vers].sort((a, b) => b - a);
   pick.hidden = opts.length < 2;
   if (pick.dataset.k !== opts.join(",")) {
@@ -3155,15 +3224,15 @@ async function apiInit() {
   try {
     const r = await fetch(LB_URL + "/versions", { mode: "cors", credentials: "omit", referrerPolicy: "no-referrer" });
     const d = r.ok ? await r.json() : null;
-    if (d && Array.isArray(d.versions)) apiVersions = d.versions.map(x => x && x.v).filter(v => Number.isInteger(v) && v >= 1 && v <= 999).slice(0, 50);
+    if (d && Array.isArray(d.versions)) apiVersions = d.versions.filter(x => x && Number.isInteger(x.v) && x.v >= 1 && x.v <= 999).map(x => ({ v: x.v, map: MAPS.some(m => m.id === x.map) ? x.map : "meadow" })).slice(0, 100);
   } catch {}
   const ok = await fetchBoard();
   if (!ok) { boardMode = "slow"; renderBoard(); setTimeout(apiInit, 30000); }
 }
 async function fetchBoard() {
   try {
-    const want = viewV >= 1 ? viewV : RULES_VERSION;
-    const r = await fetch(LB_URL + "/scores?v=" + want, { mode: "cors", credentials: "omit", cache: "no-store", referrerPolicy: "no-referrer" });
+    const want = viewV >= 1 ? viewV : RULES_VERSION, map = viewMap;
+    const r = await fetch(LB_URL + "/scores?v=" + want + (map !== "meadow" ? "&map=" + map : ""), { mode: "cors", credentials: "omit", cache: "no-store", referrerPolicy: "no-referrer" });
     if (!r.ok) return false;
     const data = await r.json();
     if (!data || !Array.isArray(data.scores)) return false;
@@ -3172,7 +3241,7 @@ async function fetchBoard() {
     boardRows = data.scores.slice(0, 50).map(x => {
       const name = safeName(x && x.name), best = x && x.best, at = x && x.at;
       if (!name || !Number.isInteger(best) || best < 1 || best > 5000) return null;
-      return { name, best, at: Number.isFinite(at) ? at : 0, v: want, mine: nameKey(name) === me, badges: Array.isArray(x.badges) ? x.badges.filter(b => ACH.some(a => a.id === b)) : [] };
+      return { name, best, at: Number.isFinite(at) ? at : 0, v: want, map, mine: nameKey(name) === me, badges: Array.isArray(x.badges) ? x.badges.filter(b => ACH.some(a => a.id === b)) : [] };
     }).filter(Boolean);
     boardMode = "api"; renderBoard(); return true;
   } catch { return false; }
@@ -3217,7 +3286,7 @@ function lbStartRun() {
   lbRunAsk = { run, p };
   return p;
 }
-async function submitScore(level, badges, v = RULES_VERSION, retry = true) {
+async function submitScore(level, badges, v = RULES_VERSION, mid = null, retry = true) {
   const name = cleanName(playerName) || "A keeper";
   if (isProfane(name)) { lbNote = "Your name can't go on the shared board. Pick another on the start screen."; renderBoard(); return; }
   const run = S;
@@ -3225,9 +3294,9 @@ async function submitScore(level, badges, v = RULES_VERSION, retry = true) {
   if (!run.lbt) return;   // no ticket yet (offline?): this level stays on the device; the next one will try again
   try {
     const r = await fetch(LB_URL + "/scores", { method: "POST", mode: "cors", credentials: "omit", referrerPolicy: "no-referrer", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token: lbToken(), ticket: run.lbt, name, level, v, badges: badges.filter(b => ACH.some(a => a.id === b)) }) });
+      body: JSON.stringify({ token: lbToken(), ticket: run.lbt, name, level, v, ...(mid ? { map: mid } : {}), badges: badges.filter(b => ACH.some(a => a.id === b)) }) });
     if (r.status === 422) { lbNote = "Your name can't go on the shared board. Pick another on the start screen."; renderBoard(); return; }
-    if (r.status === 429 && retry) { setTimeout(() => submitScore(level, badges, v, false), 6500); return; }
+    if (r.status === 429 && retry) { setTimeout(() => submitScore(level, badges, v, mid, false), 6500); return; }
     if (r.status === 403) { const d = await r.json().catch(() => null); if (d && d.error === "ticket") { run.lbt = null; lbStartRun(); } return; }  // too_fast: the next level will count
     if (r.ok) { lbNote = ""; fetchBoard(); }
   } catch { /* offline: the score is still kept on this device */ }
@@ -3377,7 +3446,7 @@ const netError = e => {
 function openVersus() {
   openModal(card => {
     card.append(el("h2", "", "Keeper vs Dark Lord"),
-      el("p", "", "Two players, two devices. The Keeper builds and defends as usual. The Dark Lord spends dread to raise each level's army in secret, then summons reinforcements and casts spells while it marches."));
+      el("p", "", "Two players, two devices. The Keeper builds and defends as usual. The Dark Lord spends dread to send monsters down the road, raise Dark Gates and cast spells. The Keeper wins by holding out until the clock runs out."));
     const r = el("div", "row"), host = el("button", "primary", "Host as the Keeper"), join = el("button", "versus", "Join as the Dark Lord");
     host.addEventListener("click", hostSetup); join.addEventListener("click", joinSetup);
     r.append(host, join);
@@ -3548,10 +3617,10 @@ function hostMsg(m) {
 }
 function vsEnd(winner) {
   S.phase = "over"; const L = S.level, len = S.vs.len;
-  vsSend({ t: "over", w: winner, L, len }); vsSend(vsSnap());
+  vsSend({ t: "over", w: winner, L, len, left: vsLeft() }); vsSend(vsSnap());
   sfx(winner === "keeper" ? "clear" : "over");
   vsShowOver(winner === "keeper" ? "The keep stands!" : "The keep has fallen", winner === "keeper"
-    ? `You held the keep for all ${len / 60} minutes against the Dark Lord. Victory is yours.` : `The Dark Lord brought the castle down with ${vsClock(vsLeft())} to go.`);
+    ? `You held the keep for all ${len / 60} minutes against the Dark Lord.` : `The Dark Lord brought the castle down with ${vsClock(vsLeft())} to go.`);
   setTimeout(netClose, 1500);
 }
 const vsClock = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
@@ -3591,7 +3660,7 @@ function guestMsg(m) {
   if (m.t === "toast") { toast(m.msg); return; }
   if (m.t === "over") {
     const won = m.w === "dark";
-    vsShowOver(won ? "The keep has fallen!" : "The keep stands", won ? `Your armies brought the castle down on level ${m.L} of ${m.len}. Darkness reigns.` : `The Keeper held all ${m.len} levels. Your armies are scattered.`);
+    vsShowOver(won ? "The keep has fallen!" : "The keep stands", won ? `Your armies brought the castle down with ${vsClock(m.left || 0)} to go.` : `The Keeper held out for all ${m.len / 60} minutes. Your armies slink home.`);
     sfx(won ? "clear" : "over"); setTimeout(netClose, 1500); return;
   }
   if (m.t !== "snap") return;
@@ -3610,7 +3679,7 @@ function guestMsg(m) {
     document.documentElement.classList.add("vs", "dl"); $("hGoldLbl").textContent = "Dread";
     modalDone = null; closeModal(); $("startCard").hidden = true; $("overCard").hidden = true;
     seasonI = seasonIdx(S.level); season = SEASONS[seasonI]; buildBg(); amb = []; fadeT = 0;
-    toast(`You are the Dark Lord. Bring down the castle within ${m.vs.len} levels!`);
+    toast(`You are the Dark Lord. Bring down the castle within ${m.vs.len / 60} minutes!`);
     dlKey = barKey = "";
   }
   renderDL();
@@ -3645,7 +3714,7 @@ function guestHud() {
   if (!S || !S.vs) return;
   const V = S.vs, btn = $("btnWave");
   $("hLevel").textContent = S.level; $("hGold").textContent = V.dread.toLocaleString(); $("hHearts").textContent = `${S.hp}/${S.maxHp}`; heartsAlert();
-  const label = S.phase === "over" ? "Game over" : S.phase === "wave" ? `Level ${S.level} under way` : V.ready.d ? "Waiting for the Keeper…" : "Unleash the army";
+  const label = S.phase === "over" ? "Game over" : S.phase === "wave" ? `${vsClock(Math.max(0, V.len - V.t))} left` : V.ready.d ? "Waiting for the Keeper…" : "Unleash the army";
   if (btn.textContent !== label) btn.textContent = label;
   btn.disabled = S.phase !== "build" || V.ready.d;
 }
@@ -3681,7 +3750,7 @@ function renderDL() {
       const go = el("button", "primary", V.ready.d ? "Waiting for the Keeper…" : "Unleash the army"); go.disabled = V.ready.d;
       go.addEventListener("click", () => vsSend({ t: "ready" })); p.append(go);
     } else {
-      p.append(el("p", "hint", "Tap monsters under the map to summon them straight onto the road (25% dearer than planning ahead). Monsters that reach the castle earn you dread."));
+      p.append(el("p", "hint", "Tap monsters under the map to send them straight onto the road. Monsters that reach the castle earn you dread."));
       Object.keys(SPELLS).forEach(id => {
         const sp = SPELLS[id], on = V.spells[id] > 0, c = spellCost(id), b = el("button", "spell" + (on ? " on" : ""));
         b.append(el("span", "nm", sp.name + (on ? " (active)" : "")), el("span", "cs", c + " dread"), el("span", "ds", sp.desc));
@@ -3695,7 +3764,7 @@ function renderDL() {
     Object.keys(counts).forEach(t => box.append(chip("", towerIcon(t), `${counts[t]} × ${SHORT[t]}`)));
     if (!S.towers.length) box.append(chip("plain", null, "No towers yet"));
     box.append(chip("plain", null, `${S.gold.toLocaleString()} gold`), chip("plain", null, `Castle ${S.hp}/${S.maxHp}`));
-    const later = $("upLater"); later.textContent = ""; later.previousElementSibling.textContent = "Later"; later.append(chip("plain", null, `The Keeper wins by clearing level ${V.len}`));
+    const later = $("upLater"); later.textContent = ""; later.previousElementSibling.textContent = "Later"; later.append(chip("plain", null, `The Keeper wins by holding out for ${V.len / 60} minutes`));
     later.hidden = later.previousElementSibling.hidden = false;
   }
 }
@@ -3703,6 +3772,7 @@ function renderDL() {
 const VERSUS_ON = false;
 $("btnVersus").hidden = !VERSUS_ON;
 if (VERSUS_ON) $("btnVersus").addEventListener("click", openVersus);
+$("boardMap").addEventListener("change", ev => boardFollow(ev.target.value));
 $("boardVer").addEventListener("change", ev => { viewV = Number(ev.target.value) || 0; if (boardMode === "api" && viewV >= 1) fetchBoard(); else renderBoard(); });
 $("verNote").textContent = `Version ${GAME_VERSION} · rules v${RULES_VERSION}. Each rules version has its own Hall of Heroes.`;
 

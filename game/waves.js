@@ -6,7 +6,7 @@ const goldScale = L => 1 + 0.06 * (L - 1);
 
 function makeWave(L) {
   const avail = Object.keys(ENEMIES).filter(k => foeFrom(k) <= L), g = slimeGrow(L);
-  const wt = k => ENEMIES[k].w * (k === "slime" ? .5 + .5 * g : 1);   // young slimes turn up less often
+  const wt = k => ENEMIES[k].w * (k === "slime" ? .5 + .5 * g : 1) * ((MAP.foes && MAP.foes[k]) || 1);   // young slimes turn up less often
   const pickFrom = ks => { const total = ks.reduce((a, k) => a + wt(k), 0); let r = Math.random() * total; for (const k of ks) { r -= wt(k); if (r <= 0) return k; } return ks[0]; };
   const pick = () => pickFrom(avail);
   const boss = L % 10 === 0;

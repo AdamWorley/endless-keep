@@ -8,7 +8,7 @@ const TOWERS = {
   mage:     { name: "Mage Tower",   cost: 100, range: 125, dmg: 32, rate: 0.5, air: true,  magic: true,  splash: 0,  role: "Armour", desc: "Slow, powerful bolts that pierce armour. One target at a time.", best: "Skeleton knights, trolls, orcs and bosses: magic ignores armour. Hits one monster at a time, so it struggles with big packs." },
   frost:    { name: "Frost Spire",  cost: 70,  range: 115, dmg: 4,  rate: 0.8, air: true,  magic: true,  splash: 48, slow: 0.45, role: "Slow", desc: "Slows everything it touches.", best: "Trolls, fast wolves and riders, and bosses. Low damage, so place it beside your hard hitters." },
   catapult: { name: "Catapult",     cost: 110, range: 185, dmg: 50, rate: 0.28, air: false, magic: false, splash: 64, minRange: 60, role: "Crowds", desc: "Slow, heavy boulders that crush whole packs. Ground only.", best: "Big packs of goblins and orcs on the road. Can't hit bats or wyverns, or anything right beside it, so build it back from the road." },
-  lantern:  { name: "Lantern",      cost: 60,  range: 110, dmg: 0,  rate: 0,   air: true,  magic: false, splash: 0, role: "Light", desc: "Doesn't fight. It lights up the grass round it: towers in its light see through darkness and fog, and monsters in its light take 10% more damage.", best: "Night and foggy levels. Put it between your towers so its light reaches several of them." },
+  lantern:  { name: "Lantern",      cost: 60,  range: 110, dmg: 0,  rate: 0,   air: true,  magic: false, splash: 0, role: "Light", desc: "Doesn't fight. Towers in its light see through darkness and fog, and monsters in it take 10% more damage.", best: "Night and foggy levels. Put it between your towers so its light reaches several of them." },
   dragon:   { name: "Dragon Roost", cost: 350, range: 155, dmg: 26, rate: 1.1, air: true,  magic: true,  splash: 40, burn: true, role: "All-round", desc: "Your own dragon breathes fire. Unlocks partway through a game.", best: "Anything, flying or armoured. Its fire keeps burning, which is great against healing trolls." },
 };
 const DRAGON_STAGES = [
@@ -90,7 +90,7 @@ const litTowers = l => S.towers.filter(t => t.type !== "lantern" && Math.hypot(l
 // level to match (HP5), so overall difficulty stays where it was. Mages hit 25% harder so they really are the answer
 // to trolls and knights, and dragon upgrades are priced as if the roost cost 200, not 350.
 // The Frost Spire is a support tower like the Lantern: it does no damage, only chills (and so Jasmine never hexes it)
-const TUNE5 = { mage: { dmg: 40 }, frost: { dmg: 0, desc: "Doesn't hurt anything: it chills everything in its blast, so monsters stay longer in reach of your other towers.",
+const TUNE5 = { mage: { dmg: 40 }, frost: { dmg: 0, desc: "Does no damage. It chills everything in its blast, so monsters stay in reach of your other towers for longer.",
   best: "Trolls, fast wolves and riders, and bosses. Place it where your hard hitters can reach what it slows." } };
 const towerDef = k => rules5() && TUNE5[k] ? { ...TOWERS[k], ...TUNE5[k] } : TOWERS[k];
 const lvlDmg = n => Math.pow(rules5() ? 1.55 : 1.5, n);

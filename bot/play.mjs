@@ -6,8 +6,8 @@ import { decode, newMemory, buildPhase, TYPES } from "./policy.mjs";
 // 1/30 is close enough and twice as fast to run
 // record: keep snapshots of the game for a replay ({ from, to } levels, or { last: n } for the last n levels played;
 // every: one snapshot per this many steps). The frames come back as result.frames
-export function playGame(genome, { seed = 1, maxLevel = 150, dt = 1 / 30, ban = [], perks = {}, dynasty = 0, trace = false, record = null } = {}) {
-  const G = loadGame({ seed, perks, dynasty });
+export function playGame(genome, { seed = 1, maxLevel = 150, dt = 1 / 30, ban = [], perks = {}, dynasty = 0, trace = false, record = null, map = "" } = {}) {
+  const G = loadGame({ seed, perks, dynasty, map });
   G.begin(null);
   const S = G.S, P = decode(genome, { ban }), M = newMemory(G, P);
   const levels = [], rec = record ? recorder(G, record) : null;

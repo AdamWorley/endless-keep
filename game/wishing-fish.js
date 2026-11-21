@@ -9,7 +9,7 @@ let fish = null, fishL = 0;   // fishL: the level the fish has already been deci
 function fishTick(dt) {
   if (fish) {
     fish.t += dt;
-    if (fish.t >= 0 && !fish.told) { fish.told = true; toast("A golden fish has surfaced in the pond! Tap the pond (or press W) before it dives, for a wish."); }
+    if (fish.t >= 0 && !fish.told) { fish.told = true; toast("A golden fish is up in the pond! Tap the pond (or press W) before it dives to make a wish."); }
     if (fish.gone) { if (fish.t > fish.goneAt + .8) fish = null; }
     else if (fish.t > FISH_STAY) { fish.gone = true; fish.goneAt = fish.t; }
     else { const a = fish.a0 + fish.t * .7 * fish.dir; fish.x = POND.x + Math.cos(a) * POND.rx; fish.y = POND.y + Math.sin(a) * POND.ry; fish.face = -Math.sin(a) * fish.dir >= 0 ? 1 : -1; }

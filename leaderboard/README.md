@@ -4,16 +4,21 @@ A tiny JSON API for the installed app's Hall of Heroes. The game only knows the 
 `endless-keep.html`), so moving to another host means deploying this code there and changing that one line.
 
 ```
-GET  /scores?v=N -> { "v", "scores": [ { "name", "best", "at", "badges" } ] }   (top 50 for rules version N)
-GET  /versions   -> { "versions": [ { "v", "players" } ] }
+GET  /scores?v=N&map=M -> { "v", "map", "scores": [ { "name", "best", "at", "badges" } ] }   (top 50 for rules version N on map M)
+GET  /versions   -> { "versions": [ { "v", "map", "players" } ] }
 POST /runs       <- { "token": "<32 hex>", "v", "human"? }   -> { "ticket" }   (start of each run)
-POST /scores     <- { "token", "ticket", "name", "level", "v", "badges" }
+POST /scores     <- { "token", "ticket", "name", "level", "v", "map"?, "badges" }
 GET  /health     -> { "ok": true }
 ```
 
 **Versions:** the game has `GAME_VERSION` (display only) and `RULES_VERSION` (an integer). Bump `RULES_VERSION`
 whenever a balance change makes the game easier or harder: each rules version gets its own board, a game keeps the
 rules version it started under, and older boards stay viewable from the picker in the Hall of Heroes.
+
+**Maps:** each built-in map has its own board for each rules version. `map` defaults to `meadow`, so older copies of
+the game keep working. `MAPS` in `core.js` must list the game's built-in maps (`npm test` checks). Adding the map column
+to an existing database is `migrations/0001-maps.sql`: run it on both databases before deploying a Worker that uses maps
+(the old Worker stops saving scores once it has run, so deploy straight after).
 
 ## Files
 | File | What it is | Provider-specific? |

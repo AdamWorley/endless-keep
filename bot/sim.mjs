@@ -16,9 +16,10 @@ globalThis.__EK = {
   get S() { return S; }, get meta() { return meta; }, set meta(v) { meta = v; }, get season() { return season; },
   begin, startWave, update, checkSeason, lightAt, makeSave, placeTower, canBuild, gridSnap, tStats, upCost, tCost, keepStats, lockOf, glowReach,
   chop, plantSapling, plantCost, treeStage, woodValue, GROWTH, repairCost, wallCost, treasCost, treasPay, FORT, curEv, chooseEvent, EVENTS,
-  TOWERS, TORDER, ENEMIES, ROAD, posAt, distRoad, CELL, W, H, CASTLE, dragonAt, bossFor, planFor, goldScale,
+  TOWERS, TORDER, ENEMIES, get ROAD() { return ROAD; }, posAt, distRoad, CELL, W, H, CASTLE, dragonAt, bossFor, planFor, goldScale,
   RULES_VERSION, GAME_VERSION, get MAP() { return MAP; }, DEFAULT_MAP,
   makeWave, ACH, cleanName, isProfane,   // the leaderboard tests check its copies of these rules against the game
+  MAPS: typeof MAPS === "object" ? MAPS : null, readMap, setMap: typeof setMap === "function" ? setMap : null,   // built-in maps (older copies may not have them)
   snapState: typeof snapState === "function" ? snapState : null,   // older copies of the game (EK_GAME) may not have it
   treasMax: typeof treasMax === "function" ? treasMax : () => Infinity, SCAV: typeof SCAV === "object" ? SCAV : null,
   // two players (live match): older copies of the game don't have it
@@ -71,10 +72,11 @@ export function seeded(seed) {
 }
 
 // a fresh copy of the game, ready at the start screen. perks: heirlooms to start with ({ id: count }), none by default
-export function loadGame({ seed = 1, perks = {}, dynasty = 0 } = {}) {
+export function loadGame({ seed = 1, perks = {}, dynasty = 0, map = "" } = {}) {
   const ids = new Map();
   const elById = id => { if (!ids.has(id)) { const e = stub(); e.hidden = true; e.id = id; ids.set(id, e); } return ids.get(id); };
   const store = new Map();
+  if (map) store.set("ek_map", JSON.stringify(map));   // a built-in map's id: new games start on it
   const localStorage = { getItem: k => (store.has(k) ? store.get(k) : null), setItem: (k, v) => store.set(k, String(v)), removeItem: k => store.delete(k), clear: () => store.clear() };
   const document = stub();
   document.getElementById = elById;
