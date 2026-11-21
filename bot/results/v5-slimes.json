@@ -1,0 +1,52 @@
+{
+ "game": "1.5.0",
+ "rules": 5,
+ "at": "2026-11-19T09:57:38.928Z",
+ "games": 20,
+ "maxLevel": 150,
+ "strategies": {
+  "all-rounder": {
+   "mean": 126.3,
+   "median": 129,
+   "min": 99,
+   "max": 140,
+   "reachedCap": 0,
+   "fellIn": {
+    "Winter": 3,
+    "boss level": 10,
+    "Autumn": 4,
+    "Summer": 2,
+    "Night": 1
+   },
+   "through": {
+    "troll": 27,
+    "knight": 8,
+    "wyrm": 3,
+    "slime": 5,
+    "orc": 1
+   },
+   "held": [
+    99,
+    110,
+    114,
+    119,
+    120,
+    123,
+    124,
+    128,
+    129,
+    129,
+    129,
+    129,
+    129,
+    129,
+    130,
+    132,
+    136,
+    139,
+    139,
+    140
+   ]
+  }
+ }
+}

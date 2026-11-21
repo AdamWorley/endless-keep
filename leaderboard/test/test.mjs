@@ -1,15 +1,16 @@
 // Run: npm test   — exercises the API with an in-memory store (no network, no Cloudflare needed)
-import { handle, minRunMs } from "../src/core.js";
+import { handle, minRunMs, fastestWave, BADGES, MAPS } from "../src/core.js";
+import { loadGame } from "../../bot/sim.mjs";
 import { cleanName, isProfane } from "../src/names.js";
 import assert from "node:assert/strict";
 
 function memStore() {
   const players = new Map(), hits = new Map();
   return {
-    async top(n, ver) { return [...players.values()].filter(p => p.ver === ver && p.best > 0).sort((a, b) => b.best - a.best || a.best_at - b.best_at).slice(0, n); },
-    async versions() { const m = new Map(); for (const p of players.values()) m.set(p.ver, (m.get(p.ver) || 0) + 1); return [...m].map(([ver, n]) => ({ ver, players: n })); },
-    async get(id, ver) { return players.get(id + "@" + ver) || null; },
-    async put(p) { const c = players.get(p.id + "@" + p.ver); players.set(p.id + "@" + p.ver, { ...p, best: Math.max(c ? c.best : 0, p.best) }); },
+    async top(n, ver, map) { return [...players.values()].filter(p => p.ver === ver && p.map === map && p.best > 0).sort((a, b) => b.best - a.best || a.best_at - b.best_at).slice(0, n); },
+    async versions() { const m = new Map(); for (const p of players.values()) { const k = p.ver + "@" + p.map; m.set(k, (m.get(k) || 0) + 1); } return [...m].map(([k, n]) => ({ ver: Number(k.split("@")[0]), map: k.split("@")[1], players: n })); },
+    async get(id, ver, map) { return players.get(id + "@" + ver + "@" + map) || null; },
+    async put(p) { const k = p.id + "@" + p.ver + "@" + p.map, c = players.get(k); players.set(k, { ...p, best: Math.max(c ? c.best : 0, p.best) }); },
     async hit(k, w) { const key = k + ":" + w; hits.set(key, (hits.get(key) || 0) + 1); return hits.get(key); },
     async prune() {},
     players,
@@ -34,7 +35,7 @@ const post = async (body, { origin = ORIGIN, ip, type = "application/json", raw 
   return handle(new Request("https://lb.example/scores", { method: "POST", headers: { "Content-Type": type, ...(origin ? { Origin: origin } : {}) },
     body: raw ?? JSON.stringify(body && typeof body === "object" && !Array.isArray(body) && !("v" in body) ? { ...body, v: 1 } : body) }), opts(ip));
 };
-const get = (origin = ORIGIN, v = 1) => handle(new Request("https://lb.example/scores?v=" + v, { headers: origin ? { Origin: origin } : {} }), opts());
+const get = (origin = ORIGIN, v = 1, map) => handle(new Request("https://lb.example/scores?v=" + v + (map ? "&map=" + map : ""), { headers: origin ? { Origin: origin } : {} }), opts());
 let pass = 0; const t = async (name, fn) => { await fn(); pass++; console.log("ok -", name); };
 
 await t("names are cleaned", () => {
@@ -166,5 +167,37 @@ await t("starting runs: origin, rate limit, Turnstile when enabled, and a salt i
   assert.equal((await startRun(null, 1, { ip: "14.0.0.4", extra: human(true), body: { token: tok(), v: 1, human: "pass" } })).status, 200);
   const nosalt = await handle(new Request("https://lb.example/runs", { method: "POST", headers: { "Content-Type": "application/json", Origin: ORIGIN }, body: JSON.stringify({ token: tok(), v: 1 }) }), { ...opts(), salt: "" });
   assert.equal(nosalt.status, 503);
+});
+await t("each map has its own board; scores without a map go on the meadow", async () => {
+  const token = tok();
+  assert.equal((await post({ token, name: "Mapper", level: 30, v: 7 })).status, 200);
+  assert.equal((await post({ token, name: "Mapper", level: 9, v: 7, map: "graveyard" })).status, 200);
+  const meadow = await (await get(ORIGIN, 7)).json(), grave = await (await get(ORIGIN, 7, "graveyard")).json();
+  assert.equal(meadow.map, "meadow"); assert.deepEqual(meadow.scores.map(x => x.best), [30]);
+  assert.equal(grave.map, "graveyard"); assert.deepEqual(grave.scores.map(x => x.best), [9]);
+  assert.equal((await post({ token: tok(), name: "Mapper", level: 5, v: 7, map: "atlantis" })).status, 400);
+  assert.equal((await post({ token: tok(), name: "Mapper", level: 5, v: 7, map: 3 })).status, 400);
+  assert.equal((await get(ORIGIN, 7, "atlantis")).status, 400);
+  const vs = await (await handle(new Request("https://lb.example/versions"), opts())).json();
+  assert.ok(vs.versions.some(x => x.v === 7 && x.map === "graveyard" && x.players === 1));
+});
+// The server keeps its own copies of three game rules. Load the real game and check they still agree.
+await t("the server's copies of the game's rules match the game", () => {
+  const G = loadGame({ seed: 7 });
+  for (const a of G.ACH) assert.ok(BADGES.has(a.id), `achievement "${a.id}" is missing from BADGES in core.js`);
+  assert.deepEqual([...MAPS].sort(), [...G.MAPS].map(m => m.id).sort(), "MAPS in core.js must list the game's built-in maps");
+  // fastestWave must never be slower than the game really allows, or honest scores are refused as too fast.
+  // The game's quickest wave: spawning starts 0.5s in, each monster waits its gap, the goblin toll can remove 30%
+  // of the ordinary monsters (from level 4, not on boss levels), and the game runs at most 3x real time.
+  for (let L = 1; L <= 200; L++) for (let i = 0; i < 4; i++) {
+    const q = G.makeWave(L), boss = L % 10 === 0, cut = L >= 4 && !boss ? Math.round(q.filter(x => x.k !== "boss").length * .3) : 0;
+    const gaps = q.map(x => x.gap).sort((a, b) => a - b).slice(0, q.length - cut - 1);
+    const game = (.5 + gaps.reduce((a, b) => a + b, 0)) / 3;
+    assert.ok(fastestWave(L) <= game, `level ${L}: the server says ${fastestWave(L).toFixed(2)}s but the game can finish in ${game.toFixed(2)}s`);
+  }
+  for (const s of ["Ada", "  sp  aced  ", "<b>x</b>", "z\u0301\u0302\u0303\u0304", "Ünïcödé Name Too Long Here", "f u c k", "sh1t", "Scunthorpe", "Big Ass", "Peacock"]) {
+    assert.equal(G.cleanName(s), cleanName(s), `cleanName(${JSON.stringify(s)})`);
+    assert.equal(G.isProfane(s), isProfane(s), `isProfane(${JSON.stringify(s)})`);
+  }
 });
 console.log(`\n${pass} checks passed`);

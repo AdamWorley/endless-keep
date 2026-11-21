@@ -27,12 +27,13 @@ The combination is the point; no one feature is the hook:
 - Played at https://keep.watchtogether.uk/, installed as a fullscreen PWA, or opened as a Claude artifact. The artifact copy has its own Hall of Heroes, stored in the artifact's database.
 - Sessions are short and interruptible. Players move saved games and heirlooms between devices, and between the app and the Claude page, with export/import codes.
 - Players often run at 3× speed and often play with sound off, so moment-to-moment events are easy to miss.
-- Two-player matches use a 5-letter code (PeerJS matchmaking, then a direct connection) and last 10, 20 or 30 levels.
-- The Hall of Heroes is a Cloudflare Worker with a D1 database (`leaderboard/`). Each `RULES_VERSION` has its own board.
+- Two-player matches use a 5-letter code (PeerJS matchmaking, then a direct connection) and run on a clock (the Keeper picks the length in minutes).
+- The Hall of Heroes is a Cloudflare Worker with a D1 database (`leaderboard/`). Each `RULES_VERSION` has its own board on each built-in map. A score goes on it only when the player chooses to post it, from the game-over card; personal bests on the device are kept either way.
+- Built-in maps unlock with achievements, and each has its own scenery and tune. The map builder is a dev tool, only shown when the game runs locally.
 
 ## Capabilities and Constraints
 
-- **Single HTML file.** Everything lives in `endless-keep.html`, with no dependencies and no external images or scripts; the art is drawn on canvas. The one external resource is Google Fonts (Uncial Antiqua and Alegreya Sans), which have system fallbacks and which the service worker caches for offline play. The page is body-only so it can run as a Claude artifact. `pwa/build.sh` wraps it for the installed app.
+- **Single HTML file.** Players get one page with no dependencies and no external images or scripts; the art is drawn on canvas. The one external resource is Google Fonts (Uncial Antiqua and Alegreya Sans), which have system fallbacks and which the service worker caches for offline play. The page is body-only so it can run as a Claude artifact. In the source, self-contained parts of the script live in `game/` and the build puts them back into `endless-keep.html` (`pwa/inline.mjs`); `pwa/build.sh` then wraps the page for the installed app.
 - **Touch-first on phones.** It must be playable with one thumb on a small screen, in portrait or landscape (the manifest sets `orientation: any`). Desktop and mouse also work.
 - **Offline-capable.** Nothing may need the network except the Hall of Heroes and two-player mode, and both must fail gracefully when offline.
 - **Versioning.** `GAME_VERSION` is shown to players and is bumped on every release. `RULES_VERSION` is bumped only when a balance change makes the game easier or harder. The leaderboard's anti-cheat timing (`fastestWave`) mirrors the wave rules.
@@ -52,7 +53,7 @@ The combination is the point; no one feature is the hook:
 
 ## Product Principles
 
-1. **Keep it one file.** A feature that needs a dependency, a build step inside the game, or a network call for core play doesn't fit.
+1. **Keep it one file.** What players get is one page (the source may be split; the build joins it). A feature that needs a dependency, a build step inside the game, or a network call for core play doesn't fit.
 2. **Thumb first.** Design every interaction for a small touch screen first, then let it scale up.
 3. **Every run should feel different.** New content should add variety to runs or depth across runs, not just bigger numbers.
 4. **Plain words over jargon.** When the UI explains a rule, it uses everyday language a non-gamer understands on first read.

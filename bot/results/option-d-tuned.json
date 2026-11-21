@@ -1,0 +1,308 @@
+{
+ "game": "1.5.0",
+ "rules": 5,
+ "at": "2026-11-18T11:03:26.280Z",
+ "games": 20,
+ "maxLevel": 150,
+ "strategies": {
+  "all-rounder": {
+   "mean": 121.4,
+   "median": 122,
+   "min": 98,
+   "max": 141,
+   "reachedCap": 0,
+   "fellIn": {
+    "Summer": 3,
+    "Winter": 6,
+    "Spring": 4,
+    "Autumn": 4,
+    "Night": 2,
+    "boss level": 1
+   },
+   "through": {
+    "knight": 4,
+    "slime": 11,
+    "orc": 3,
+    "slimelet": 9,
+    "troll": 11,
+    "orcrider": 2,
+    "wolfrider": 1
+   },
+   "held": [
+    98,
+    100,
+    105,
+    106,
+    108,
+    115,
+    116,
+    118,
+    120,
+    122,
+    122,
+    127,
+    129,
+    130,
+    130,
+    133,
+    134,
+    136,
+    138,
+    141
+   ]
+  },
+  "no-archer": {
+   "mean": 117,
+   "median": 117,
+   "min": 94,
+   "max": 138,
+   "reachedCap": 0,
+   "fellIn": {
+    "Summer": 9,
+    "Autumn": 5,
+    "Night": 1,
+    "Spring": 2,
+    "Winter": 2,
+    "boss level": 1
+   },
+   "through": {
+    "slimelet": 20,
+    "knight": 7,
+    "troll": 18,
+    "orc": 3
+   },
+   "held": [
+    94,
+    107,
+    107,
+    110,
+    111,
+    111,
+    112,
+    115,
+    115,
+    116,
+    117,
+    118,
+    119,
+    122,
+    123,
+    124,
+    124,
+    125,
+    131,
+    138
+   ]
+  },
+  "no-catapult": {
+   "mean": 127.7,
+   "median": 134,
+   "min": 92,
+   "max": 141,
+   "reachedCap": 0,
+   "fellIn": {
+    "Summer": 4,
+    "Winter": 12,
+    "Night": 2,
+    "Autumn": 2
+   },
+   "through": {
+    "troll": 14,
+    "slime": 9,
+    "knight": 7,
+    "orc": 8,
+    "slimelet": 6
+   },
+   "held": [
+    92,
+    111,
+    113,
+    114,
+    117,
+    120,
+    127,
+    130,
+    131,
+    131,
+    134,
+    134,
+    134,
+    136,
+    137,
+    137,
+    138,
+    138,
+    138,
+    141
+   ]
+  },
+  "no-frost": {
+   "mean": 93,
+   "median": 96,
+   "min": 54,
+   "max": 103,
+   "reachedCap": 0,
+   "fellIn": {
+    "Night": 11,
+    "Spring": 5,
+    "boss level": 2,
+    "Winter": 2
+   },
+   "through": {
+    "slimelet": 28,
+    "orcrider": 2,
+    "knight": 3,
+    "troll": 8,
+    "slime": 1
+   },
+   "held": [
+    54,
+    82,
+    82,
+    90,
+    90,
+    91,
+    93,
+    94,
+    96,
+    96,
+    96,
+    96,
+    97,
+    97,
+    99,
+    99,
+    101,
+    102,
+    102,
+    103
+   ]
+  },
+  "no-dragon": {
+   "mean": 106.8,
+   "median": 110,
+   "min": 52,
+   "max": 119,
+   "reachedCap": 0,
+   "fellIn": {
+    "Summer": 7,
+    "boss level": 4,
+    "Spring": 8,
+    "Night": 1
+   },
+   "through": {
+    "slimelet": 34,
+    "troll": 9,
+    "slime": 4,
+    "knight": 1
+   },
+   "held": [
+    52,
+    96,
+    101,
+    103,
+    103,
+    104,
+    105,
+    107,
+    108,
+    109,
+    110,
+    111,
+    111,
+    112,
+    113,
+    115,
+    118,
+    119,
+    119,
+    119
+   ]
+  },
+  "no-lantern": {
+   "mean": 116.9,
+   "median": 119,
+   "min": 97,
+   "max": 128,
+   "reachedCap": 0,
+   "fellIn": {
+    "Summer": 8,
+    "Autumn": 9,
+    "boss level": 2,
+    "Night": 1
+   },
+   "through": {
+    "troll": 18,
+    "slimelet": 18,
+    "slime": 5,
+    "orcrider": 3,
+    "orc": 3,
+    "knight": 3
+   },
+   "held": [
+    97,
+    99,
+    110,
+    113,
+    113,
+    114,
+    114,
+    116,
+    116,
+    118,
+    119,
+    121,
+    121,
+    121,
+    122,
+    122,
+    123,
+    125,
+    126,
+    128
+   ]
+  },
+  "no-mage": {
+   "mean": 109.8,
+   "median": 117,
+   "min": 12,
+   "max": 127,
+   "reachedCap": 0,
+   "fellIn": {
+    "Summer": 7,
+    "Spring": 4,
+    "boss level": 3,
+    "Autumn": 6
+   },
+   "through": {
+    "slime": 2,
+    "troll": 14,
+    "knight": 6,
+    "slimelet": 8,
+    "orc": 2
+   },
+   "held": [
+    12,
+    100,
+    101,
+    103,
+    104,
+    109,
+    109,
+    110,
+    113,
+    114,
+    117,
+    117,
+    118,
+    119,
+    123,
+    124,
+    125,
+    126,
+    126,
+    127
+   ]
+  }
+ }
+}

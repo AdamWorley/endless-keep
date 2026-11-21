@@ -1,0 +1,92 @@
+// Part of the game script in endless-keep.html. The build puts it back at its //#include line, inside the game's closure.
+/* ---------- the wishing fish ----------
+   Now and then a golden fish surfaces in the pond during a level (about one level in four, from level 3; never in
+   winter, when the pond is frozen, or while a wish is still working). Tap it (anywhere on the pond), or press W, before it dives and it grants a
+   wish: one of three heirlooms' bonuses for the rest of this level and the next WISH_LEVELS. It runs on real time in
+   the frame loop, outside the game's own update, so it's as easy to catch at 3x speed and the bots never meet it. */
+const POND = { x: 400, y: 80, rx: 44, ry: 13 }, FISH_STAY = 8, FISH_KIND = .1;
+// where the fish swims: the meadow's pond, or a map's own water (fishAt, with where: "river"); none on a map without either
+const fishPool = () => MAP.fishAt || (MAP.pond === false ? null : POND);
+let fish = null, fishL = 0;   // fishL: the level the fish has already been decided for
+function fishTick(dt) {
+  if (fish) {
+    fish.t += dt;
+    if (fish.t >= 0 && !fish.told) { fish.told = true; sfx("glint"); }   // no banner: a glint you hear, and the fish you see
+    if (fish.t >= FISH_STAY / 2 && !fish.told2 && !fish.gone) { fish.told2 = true; sfx("glint"); }
+    if (fish.gone) { if (fish.t > fish.goneAt + .8) fish = null; }
+    else if (fish.t > FISH_STAY) { fish.gone = true; fish.goneAt = fish.t; }
+    else { const P = fishPool(), a = fish.a0 + fish.t * .7 * fish.dir; fish.x = P.x + Math.cos(a) * P.rx; fish.y = P.y + Math.sin(a) * P.ry; fish.face = -Math.sin(a) * fish.dir >= 0 ? 1 : -1; }
+  }
+  if (S.wish && !wishLeft()) {
+    const names = [S.wish.id, ...(S.wish.also || []).map(w => w[0])].map(k => PERKS[k].name);
+    toast(names.length > 1 ? `Your wishes have faded: ${names.join(", ")} are back to normal.` : `Your wish has faded: ${names[0]} is back to normal.`);
+    S.wish = null; schedulePersist(); renderUpNext();
+  }
+  if (S.phase !== "wave" || fishL === S.level || S.vs || watchOnly() || !newRules() || !rules5()) return;
+  fishL = S.level;
+  if (S.level < 3 || season.frozen || !fishPool() || S.wish || Math.random() > .25) return;
+  fish = { t: -(3 + Math.random() * 12), a0: Math.random() * 6.28, dir: Math.random() < .5 ? 1 : -1, x: fishPool().x, y: fishPool().y, face: 1 };   // surfaces 3-15 s into the level
+}
+function drawFishShape(c, x, y, s, face, wig) {
+  c.save(); c.translate(x, y); c.scale(face * s, s);
+  c.fillStyle = "#e07a1f"; tri(c, -9, 0, -16, -6 + wig, -16, 6 + wig);                      // tail
+  c.fillStyle = "#f2a33a"; ell(c, 0, 0, 10, 5.2);                                           // body
+  c.fillStyle = "#ffd36b"; ell(c, 1.5, -1.4, 6.5, 2.4);                                     // golden back
+  c.fillStyle = "#e07a1f"; tri(c, -2, -4.4, 4, -4.6, 0, -8);                                // fin
+  c.fillStyle = "#fff"; ell(c, 6, -1.2, 1.7, 1.7); c.fillStyle = "#1b1b1b"; ell(c, 6.4, -1.1, .9, .9);
+  c.restore();
+}
+function drawFish() {
+  if (fish.t < 0) return;
+  const c = ctx, up = Math.min(1, fish.t / .6), down = fish.gone ? Math.max(0, 1 - (fish.t - fish.goneAt) / .6) : 1, a = Math.min(up, down);
+  const p = (time * 1.6) % 1;   // ripples spreading from the fish
+  c.save();
+  c.strokeStyle = `rgba(255,255,255,${.5 * (1 - p) * a})`; c.lineWidth = 1.4; c.beginPath(); c.ellipse(fish.x, fish.y + 2, 10 + p * 16, 4 + p * 6, 0, 0, Math.PI * 2); c.stroke();
+  if (season.night) { const g = c.createRadialGradient(fish.x, fish.y, 0, fish.x, fish.y, 26); g.addColorStop(0, `rgba(255,214,110,${.45 * a})`); g.addColorStop(1, "rgba(255,214,110,0)"); c.fillStyle = g; c.fillRect(fish.x - 26, fish.y - 26, 52, 52); }
+  c.globalAlpha = a;
+  const sp = !fish.gone && Math.sin(time * 9) > .96;   // a glint now and then
+  drawFishShape(c, fish.x, fish.y - 2 * up, 1, fish.face, Math.sin(time * 10) * 2);
+  if (sp) { c.fillStyle = "#fff"; ell(c, fish.x + 2, fish.y - 6, 1.6, 1.6); }
+  c.restore();
+}
+// the water can't be built on anyway, so while the fish is up a tap anywhere on it (or near the fish) catches it:
+// the pond, or any square of a map's river or sea (not its bridges)
+function fishHit(x, y, pad = 0) {
+  if (!fish || fish.gone || fish.t < 0) return false;
+  const P = fishPool(), c = Math.floor(x / CELL), r = Math.floor(y / CELL);
+  if (MAP.fishAt && MAP.waterSet.has(cellKey(c, r)) && !MAPINFO.set.has(cellKey(c, r))) return true;
+  return Math.hypot(x - fish.x, y - fish.y) < 36 + pad || ((x - P.x) / (P.rx + 38 + pad)) ** 2 + ((y - P.y) / (P.ry + 31 + pad)) ** 2 < 1;
+}
+function catchFish() {
+  if (!fish || fish.gone || fish.t < 0) return;
+  fish.gone = true; fish.goneAt = fish.t; sfx("clear"); unlock("wish");
+  for (let i = 0; i < 16; i++) { const a = Math.random() * 6.28, sp = 30 + Math.random() * 50; S.fx.push({ x: fish.x, y: fish.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 40, life: .6, max: .6, col: i % 2 ? "rgba(255,214,110,.95)" : "rgba(200,235,250,.9)", r: 2.2, g: 90 }); }
+  const ids = Object.keys(WISHES).sort(() => Math.random() - .5).slice(0, 3), was = paused;
+  paused = true;
+  openModal(card => {
+    card.append(el("h2", "", "The golden fish grants a wish"), el("p", "", `Choose one. It lasts for the rest of this level and the next ${WISH_LEVELS}.`));
+    const g = el("div", "heirlooms");
+    ids.forEach(id => {
+      const P = PERKS[id], R = RARITY[P.r], n = WISHES[id], b = el("button", `heirloom ${P.r}`); b.style.setProperty("--rc", R.col);
+      b.append(heirloomImg(id, "hi"), el("span", "rr", "Wish"), el("span", "bn", P.name), el("span", "bd", P.desc(n)), el("span", "bo", perk(id) ? `On top of your ${perk(id)} heirloom${perk(id) === 1 ? "" : "s"}` : `For ${WISH_LEVELS + 1} levels`));
+      b.addEventListener("click", () => {
+        S.wish = { id, n, until: S.level + WISH_LEVELS }; sfx("up");
+        toast(`Your wish is granted: ${P.name} for ${WISH_LEVELS + 1} levels.`); schedulePersist(); closeModal();
+      });
+      g.append(b);
+    });
+    // now and then (1 in 10), a fish let go grants all three anyway
+    const no = el("button", "", "Let it swim away");
+    no.addEventListener("click", () => {
+      if (Math.random() < FISH_KIND) {
+        S.wish = { id: ids[0], n: WISHES[ids[0]], until: S.level + WISH_LEVELS, also: ids.slice(1).map(k => [k, WISHES[k]]) }; sfx("up");
+        toast(`The golden fish flicks its tail, and all three wishes come true anyway: ${ids.map(k => PERKS[k].name).join(", ")} for ${WISH_LEVELS + 1} levels.`);
+        schedulePersist();
+      }
+      closeModal();
+    });
+    card.append(g, el("div", "row")); card.lastChild.append(no);
+    card.append(el("p", "fine", "Or be generous, and let it go free. They say kindness to a golden fish has a way of coming back."));
+  }, () => { paused = was; renderUpNext(); renderPanel(); updateHud(); });
+}
+document.addEventListener("keydown", ev => { if ((ev.key === "w" || ev.key === "W") && fish && !fish.gone && fish.t >= 0 && $("modal").hidden && !ev.target.closest("input, textarea, select")) { ev.preventDefault(); catchFish(); } });
