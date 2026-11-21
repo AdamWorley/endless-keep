@@ -1,5 +1,6 @@
 // Run: npm test   — exercises the API with an in-memory store (no network, no Cloudflare needed)
-import { handle, minRunMs } from "../src/core.js";
+import { handle, minRunMs, fastestWave, BADGES } from "../src/core.js";
+import { loadGame } from "../../bot/sim.mjs";
 import { cleanName, isProfane } from "../src/names.js";
 import assert from "node:assert/strict";
 
@@ -166,5 +167,23 @@ await t("starting runs: origin, rate limit, Turnstile when enabled, and a salt i
   assert.equal((await startRun(null, 1, { ip: "14.0.0.4", extra: human(true), body: { token: tok(), v: 1, human: "pass" } })).status, 200);
   const nosalt = await handle(new Request("https://lb.example/runs", { method: "POST", headers: { "Content-Type": "application/json", Origin: ORIGIN }, body: JSON.stringify({ token: tok(), v: 1 }) }), { ...opts(), salt: "" });
   assert.equal(nosalt.status, 503);
+});
+// The server keeps its own copies of three game rules. Load the real game and check they still agree.
+await t("the server's copies of the game's rules match the game", () => {
+  const G = loadGame({ seed: 7 });
+  for (const a of G.ACH) assert.ok(BADGES.has(a.id), `achievement "${a.id}" is missing from BADGES in core.js`);
+  // fastestWave must never be slower than the game really allows, or honest scores are refused as too fast.
+  // The game's quickest wave: spawning starts 0.5s in, each monster waits its gap, the goblin toll can remove 30%
+  // of the ordinary monsters (from level 4, not on boss levels), and the game runs at most 3x real time.
+  for (let L = 1; L <= 200; L++) for (let i = 0; i < 4; i++) {
+    const q = G.makeWave(L), boss = L % 10 === 0, cut = L >= 4 && !boss ? Math.round(q.filter(x => x.k !== "boss").length * .3) : 0;
+    const gaps = q.map(x => x.gap).sort((a, b) => a - b).slice(0, q.length - cut - 1);
+    const game = (.5 + gaps.reduce((a, b) => a + b, 0)) / 3;
+    assert.ok(fastestWave(L) <= game, `level ${L}: the server says ${fastestWave(L).toFixed(2)}s but the game can finish in ${game.toFixed(2)}s`);
+  }
+  for (const s of ["Ada", "  sp  aced  ", "<b>x</b>", "z\u0301\u0302\u0303\u0304", "Ünïcödé Name Too Long Here", "f u c k", "sh1t", "Scunthorpe", "Big Ass", "Peacock"]) {
+    assert.equal(G.cleanName(s), cleanName(s), `cleanName(${JSON.stringify(s)})`);
+    assert.equal(G.isProfane(s), isProfane(s), `isProfane(${JSON.stringify(s)})`);
+  }
 });
 console.log(`\n${pass} checks passed`);

@@ -17,6 +17,7 @@ globalThis.__EK = {
   chop, plantSapling, plantCost, treeStage, woodValue, GROWTH, repairCost, wallCost, treasCost, treasPay, FORT, curEv, chooseEvent, EVENTS,
   TOWERS, TORDER, ENEMIES, ROAD, posAt, distRoad, CELL, W, H, CASTLE, dragonAt, bossFor, planFor, goldScale,
   RULES_VERSION, GAME_VERSION, get MAP() { return MAP; }, DEFAULT_MAP,
+  makeWave, ACH, cleanName, isProfane,   // the leaderboard tests check its copies of these rules against the game
   snapState: typeof snapState === "function" ? snapState : null,   // older copies of the game (EK_GAME) may not have it
   treasMax: typeof treasMax === "function" ? treasMax : () => Infinity, SCAV: typeof SCAV === "object" ? SCAV : null,
   // two players (live match): older copies of the game don't have it

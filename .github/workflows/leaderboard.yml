@@ -1,11 +1,11 @@
-# Tests the leaderboard server on every change. Cloudflare deploys it (Workers Builds, connected to this repo).
+# Tests the leaderboard server on every change, and on game changes (the tests check the server's copies of game rules). Cloudflare deploys it (Workers Builds, connected to this repo).
 name: Leaderboard
 on:
   push:
     branches: [main]
-    paths: ["leaderboard/**", .github/workflows/leaderboard.yml]
+    paths: ["leaderboard/**", endless-keep.html, bot/sim.mjs, .github/workflows/leaderboard.yml]
   pull_request:
-    paths: ["leaderboard/**"]
+    paths: ["leaderboard/**", endless-keep.html, bot/sim.mjs]
   workflow_dispatch:
 permissions:
   contents: read
