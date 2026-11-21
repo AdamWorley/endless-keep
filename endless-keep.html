@@ -1204,8 +1204,27 @@ function drawBareTree(g, x, y, s, tone) {
   if (tone) { g.fillStyle = season.trees[1][1]; g.globalAlpha = .75; ell(g, x + 12 * s, y - 26 * s, 3 * s, 2.2 * s); ell(g, x - 13 * s, y - 24 * s, 3 * s, 2.2 * s); ell(g, x - 9 * s, y - 28 * s, 2.4 * s, 1.8 * s); g.globalAlpha = 1; }
   if (season.snow) { g.fillStyle = "#f7fafc"; ell(g, x + 9 * s, y - 20 * s, 3 * s, 1.3 * s); ell(g, x - 8 * s, y - 22 * s, 3 * s, 1.3 * s); ell(g, x - 1 * s, y - 21 * s, 2.5 * s, 1.2 * s); }
 }
+// a palm (trees on a beach): a leaning, ringed trunk, drooping fronds and coconuts; it stays green all year
+function drawPalm(g, x, y, s, tone) {
+  const ink = season.ink || "#33261a", lean = tone ? 1 : -1, tx = x + 9 * s * lean, ty = y - 30 * s;
+  g.save(); g.lineCap = g.lineJoin = "round";
+  const trunk = (w, col) => { g.strokeStyle = col; g.lineWidth = w * s; g.beginPath(); g.moveTo(x, y + 1); g.quadraticCurveTo(x + 1 * lean * s, y - 18 * s, tx, ty); g.stroke(); };
+  trunk(7.5, ink); trunk(5, "#9a7448");
+  g.strokeStyle = "#7a5634"; g.lineWidth = 1.2; for (let k = 1; k < 6; k++) { const f = k / 6, u = 1 - f, px = u * u * x + 2 * u * f * (x + lean * s) + f * f * tx, py = u * u * (y + 1) + 2 * u * f * (y - 18 * s) + f * f * ty; g.beginPath(); g.moveTo(px - 2.4 * s, py); g.lineTo(px + 2.4 * s, py + .8); g.stroke(); }   // rings
+  const night = season.night, dark = night ? "#1f3f2b" : "#2f7a3a", light = night ? "#2c5a3e" : "#4fa04e";
+  for (const [a, len, droop] of [[-2.7, 17, 6], [-2.1, 15, 4], [-1.57, 12, 2], [-1.05, 15, 4], [-.45, 17, 6], [2.6, 12, 7], [.55, 12, 7]]) {   // fronds
+    const ex = tx + Math.cos(a) * len * s, ey = ty + Math.sin(a) * len * s * .55 + droop * s, mx = tx + Math.cos(a) * len * s * .5, my = ty + Math.sin(a) * len * s * .55 - 4 * s;
+    for (const [w, col] of [[6.5, ink], [4.2, dark], [1.6, light]]) { g.strokeStyle = col; g.lineWidth = w * s; g.beginPath(); g.moveTo(tx, ty); g.quadraticCurveTo(mx, my, ex, ey); g.stroke(); }
+  }
+  g.fillStyle = ink; ell(g, tx - 2.5 * s, ty + 2.5 * s, 2.8 * s, 2.8 * s); ell(g, tx + 2.5 * s, ty + 3 * s, 2.8 * s, 2.8 * s);   // coconuts
+  g.fillStyle = "#6b4a2a"; ell(g, tx - 2.5 * s, ty + 2.5 * s, 2 * s, 2 * s); ell(g, tx + 2.5 * s, ty + 3 * s, 2 * s, 2 * s);
+  if (season.snow) { g.fillStyle = "#f7fafc"; ell(g, tx - 6 * s, ty - 4 * s, 5 * s, 1.6 * s); ell(g, tx + 6 * s, ty - 4 * s, 5 * s, 1.6 * s); }
+  g.restore();
+}
+const onSand = t => MAP.sea && t.y >= 450;   // Harbour cliffs: the beach is the row above the sea
 function drawTree(g, x, y, s, tone, shadow = true, bare = MAP.bare) {
   if (shadow) { g.fillStyle = "rgba(20,40,20,.28)"; ell(g, x + 4, y + 4, 16 * s, 7 * s); }
+  if (bare === "palm") return drawPalm(g, x, y, s, tone);
   if (bare) return drawBareTree(g, x, y, s, tone);
   const ink = season.ink || "#33261a", o = 1.6;
   g.fillStyle = ink; g.fillRect(x - 2.5 * s - o, y - 8 * s, 5 * s + 2 * o, 10 * s + o);
@@ -1249,10 +1268,22 @@ function drawSea(g, Z, r) {
   g.fillStyle = "rgba(255,255,255,.7)"; for (let x = 0; x < W; x += 18) ell(g, x + 9, top + 2, 10, 3);   // surf
   g.strokeStyle = "rgba(255,255,255,.35)"; g.lineWidth = 2;
   for (let i = 0; i < 26; i++) { const x = r() * W, y = top + 16 + r() * (H - top - 22); g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + 8, y - 4, x + 16, y); g.stroke(); }
-  // the cliff under the castle
-  g.fillStyle = Z.ink; g.fillRect(CASTLE.x - 34, top - 26, W - CASTLE.x + 34, H - top + 26);
-  g.fillStyle = "#8e8574"; g.fillRect(CASTLE.x - 31, top - 24, W - CASTLE.x + 31, H - top + 24);
-  g.fillStyle = "#6f675a"; for (let i = 0; i < 7; i++) g.fillRect(CASTLE.x - 25 + i * 18, top - 10 + (i % 3) * 14, 12, 3);
+  // the cliff under the castle: a jagged sandstone face in layers, grass along its top, surf breaking at its foot
+  const x0 = CASTLE.x - 30, y0 = top - 24, edge = [[x0, y0], [x0 - 6, y0 + 18], [x0 + 3, y0 + 34], [x0 - 8, y0 + 52], [x0 + 1, y0 + 70], [x0 - 10, y0 + 88], [x0 - 4, H + 4]];
+  const face = () => { g.beginPath(); g.moveTo(W + 4, y0); edge.forEach(([x, y]) => g.lineTo(x, y)); g.lineTo(W + 4, H + 4); g.closePath(); };
+  face(); g.fillStyle = Z.ink; g.lineWidth = 5; g.strokeStyle = Z.ink; g.stroke();
+  const rock = g.createLinearGradient(0, y0, 0, H); rock.addColorStop(0, Z.night ? "#6a5d4b" : "#c2a37a"); rock.addColorStop(1, Z.night ? "#4a4034" : "#8f7454");
+  face(); g.fillStyle = rock; g.fill();
+  g.save(); face(); g.clip();
+  g.strokeStyle = Z.night ? "rgba(30,24,18,.5)" : "rgba(110,84,56,.6)"; g.lineWidth = 2.2;   // layers of rock
+  for (const [y, w] of [[y0 + 22, 3], [y0 + 46, -4], [y0 + 70, 2], [y0 + 94, -3]]) { g.beginPath(); g.moveTo(x0 - 12, y); g.quadraticCurveTo(x0 + 50, y + w * 2, W + 4, y - w); g.stroke(); }
+  g.strokeStyle = Z.ink; g.lineWidth = 1.4;   // cracks
+  for (const [x, y, dx, dy] of [[x0 + 30, y0 + 26, 6, 14], [x0 + 82, y0 + 50, -5, 16], [x0 + 56, y0 + 76, 4, 12], [x0 + 110, y0 + 28, -3, 10]]) { g.beginPath(); g.moveTo(x, y); g.lineTo(x + dx, y + dy * .5); g.lineTo(x + dx * .4, y + dy); g.stroke(); }
+  g.restore();
+  g.fillStyle = Z.ink; g.beginPath(); g.roundRect(x0 - 4, y0 - 6, W - x0 + 8, 12, 5); g.fill();   // a grassy lip
+  g.fillStyle = Z.grass[1]; g.beginPath(); g.roundRect(x0 - 2, y0 - 5, W - x0 + 6, 9, 4); g.fill();
+  g.fillStyle = "rgba(255,255,255,.75)";   // surf where the sea meets the rock
+  for (let i = 3; i < edge.length; i++) { const [x, y] = edge[i]; ell(g, x - 5, y, 7, 3); ell(g, x - 10, y + 8, 5, 2.2); }
 }
 // drifting mist over a map's mist patches, drawn over the board's things
 function drawMist() {
@@ -1581,7 +1612,7 @@ function drawLiveTree(t) {
   if (t.fall) {
     c.save(); c.translate(t.x, t.y); c.rotate(Math.min(1, t.fall) * 1.45 * t.dir);
     c.globalAlpha = Math.max(0, 1 - Math.max(0, t.fall - 1) * 2);
-    drawTree(c, 0, 0, t.s, t.tone, false); c.restore(); c.globalAlpha = 1;
+    drawTree(c, 0, 0, t.s, t.tone, false, onSand(t) ? "palm" : MAP.bare); c.restore(); c.globalAlpha = 1;
     c.fillStyle = "#7a5a38"; ell(c, t.x, t.y, 4 * t.s, 2.5 * t.s);
     return;
   }
@@ -1602,7 +1633,7 @@ function drawLiveTree(t) {
     }
     return;
   }
-  drawTree(c, t.x + dx, t.y, t.s, t.tone);
+  drawTree(c, t.x + dx, t.y, t.s, t.tone, true, onSand(t) ? "palm" : MAP.bare);
   if (t.hex) drawHexEyes(t);
   if (t.hp < t.max || picked) {
     const cy = t.y - 16 * t.s, rr = 17 * t.s;
