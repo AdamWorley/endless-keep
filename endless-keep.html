@@ -1544,10 +1544,10 @@ function plantSapling(x, y) {
 function drawCastle() {
   const c = ctx, { x, y, w, h } = CASTLE, hurt = S && S.hp / S.maxHp <= DANGER;
   if (S && S.fort.moat) {  // water all round the castle (off the board's right edge too), with a plank bridge where the road crosses
-    const mw = 10 + S.fort.moat * 4, mx = x - mw - 4, top = y + 26, bot = MAP.sea ? SHORE_Y - 10 : y + h + 8 + mw * .8, R = W + 20, isle = top + mw * .5;   // the far side looks thinner; over a cliff, the front runs along the cliff's edge
+    const mw = 10 + S.fort.moat * 4, mx = x - mw - 4, top = y + 26, bot = MAP.sea ? SHORE_Y - 22 : y + h + 8 + mw * .8, R = W + 20, isle = top + mw * .5;   // the far side looks thinner; over a cliff, the sea is the moat's front
     c.fillStyle = season.edge; c.beginPath(); c.roundRect(mx - 3, top - 3, R - mx, bot - top + 6, 10); c.fill();
     c.fillStyle = season.frozen ? "#cfe8f1" : season.pond; c.beginPath(); c.roundRect(mx, top, R - mx, bot - top, 8); c.fill();
-    const foot = y + h + 9;
+    const foot = MAP.sea ? bot + 3 : y + h + 9;   // over a cliff, the island runs to the cliff's edge
     c.fillStyle = season.edge; c.beginPath(); c.roundRect(x - 3, isle - 3, R - x, foot - isle, 8); c.fill();   // the castle's island
     c.fillStyle = season.grass[1]; c.beginPath(); c.roundRect(x, isle, R - x, foot - 6 - isle, 6); c.fill();
     c.fillStyle = "rgba(255,255,255,.3)"; c.fillRect(mx + 2, y + 50 + Math.sin(time * 1.5) * 4, 2, 18); c.fillRect(mx + mw - 5, y + 150 + Math.cos(time * 1.3) * 4, 2, 14);
