@@ -86,6 +86,7 @@ function catchFish() {
       closeModal();
     });
     card.append(g, el("div", "row")); card.lastChild.append(no);
+    card.append(el("p", "fine", "Or be generous, and let it go free. They say kindness to a golden fish has a way of coming back."));
   }, () => { paused = was; renderUpNext(); renderPanel(); updateHud(); });
 }
 document.addEventListener("keydown", ev => { if ((ev.key === "w" || ev.key === "W") && fish && !fish.gone && fish.t >= 0 && $("modal").hidden && !ev.target.closest("input, textarea, select")) { ev.preventDefault(); catchFish(); } });
