@@ -18,7 +18,7 @@ import { cleanName, isProfane } from "./names.js";
 export const BADGES = new Set(["lv10", "lv25", "lv50", "lv100", "trollking", "bigdragon", "wyrm", "jasmine", "untouched", "greatwyrm", "lumberjack", "rich", "architect", "frosty", "namesake", "whisperer",
   "laststand", "allfive", "toplevel", "fortress", "greenthumb", "eventful", "scholar", "slayer", "slimecube", "wish"]);
 // the game's built-in maps (MAPS in the game; the tests check they match)
-export const MAPS = new Set(["meadow", "graveyard", "millford"]);
+export const MAPS = new Set(["meadow", "graveyard", "millford", "trollpass"]);
 const isMap = m => typeof m === "string" && MAPS.has(m);
 const MAX_LEVEL = 5000;
 const MAX_VERSION = 999;
