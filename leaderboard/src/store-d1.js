@@ -17,7 +17,9 @@ export function d1Store(db) {
     async put(p) {
       await db.prepare(
         "INSERT INTO players (id, ver, name, best, best_at, badges, updated) VALUES (?, ?, ?, ?, ?, ?, ?) " +
-        "ON CONFLICT(id, ver) DO UPDATE SET name = excluded.name, best = max(players.best, excluded.best), best_at = excluded.best_at, badges = excluded.badges, updated = excluded.updated"
+        "ON CONFLICT(id, ver) DO UPDATE SET name = excluded.name, best = max(players.best, excluded.best), " +
+        // decided in SQL, not from the row read earlier, so two saves at once can't stamp a lower score's time on the best
+        "best_at = CASE WHEN excluded.best > players.best THEN excluded.best_at ELSE players.best_at END, badges = excluded.badges, updated = excluded.updated"
       ).bind(p.id, p.ver, p.name, p.best, p.best_at, p.badges, p.updated).run();
     },
     async hit(key, window) {
