@@ -243,6 +243,7 @@ ol.board .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; m
 ol.board .lv { font-weight: 800; }
 ol.board .bd { display: flex; gap: 2px; align-items: center; }
 ol.board .bd img { width: 18px; height: 18px; display: block; }
+ol.board .post { padding: 2px 10px; font-size: .85rem; align-self: center; }
 ol.board .bd .more { font-size: .72rem; color: var(--fg-dim); }
 /* achievements: a gold-medal button in the header that opens the full list as a pop-up card */
 .achbtn { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 8px; box-shadow: var(--raise); white-space: nowrap; }
@@ -561,7 +562,7 @@ canvas.mapedit:focus-visible { outline: 3px solid var(--gold); outline-offset: 2
           <dl class="kv" id="overStats"></dl>
           <p id="overMvp"></p>
           <div class="overbadges" id="overBadges"></div>
-          <div class="row"><button id="btnPost" hidden>Post to the Hall of Heroes</button><button id="btnAgain" class="primary">Play again</button></div>
+          <div class="row"><button id="btnAgain" class="primary">Play again</button></div>
           <p class="fine" id="postNote" hidden></p>
         </div>
       </div>
@@ -970,7 +971,7 @@ let S = null, sel = null, hoverPt = null, speed = 1, paused = false, sound = tru
 let playerName = (ls.get("ek_name") || "").toString().slice(0, 16);
 let time = 0;
 function newRun() {
-  fish = null; fishL = 0; goo = [];
+  fish = null; fishL = 0; goo = []; pendingPost = null;   // an unposted level only waits until the next game
   S = { rv: RULES_VERSION, level: 1, gold: 180, hp: 30, maxHp: 30, walls: 0, treasury: 0, scav: 0, dragon: false, fort: { archers: 0, mages: 0, moat: 0, masons: 0, nets: 0 },
         towers: [], trees: freshTrees(), enemies: [], shots: [], fx: [], texts: [],
         phase: "build", queue: [], spawnT: 0, nextT: 6, income: 0, shake: 0, waveHp: 20, newBadges: [],
@@ -3454,24 +3455,28 @@ function savePlayer(level, badge) {
   if (cloudOn()) { myScoreDoc = { players }; enqueue(() => db.doc("scores/" + uid).set({ players })); renderAch(); }
   else { ls.set("ek_scores", players); renderBoard(); }
 }
-// the shared board only gets a score you choose to post, from the game-over card (this run's level, with its ticket)
+// the shared board only gets a score you choose to post: when the keep falls, this run's level waits in the Hall of
+// Heroes at the rank it would take, with a Post button, until you post it or start another game
 const canPost = () => !!LB_URL && !!S && !S.vs && !S.vsGuest && !S.map && S.level > 1;
+let pendingPost = null;   // { held, v, map, state: "" | "busy" | "retry" | "no" }
 function offerPost(held) {
-  const b = $("btnPost"), note = $("postNote");
-  b.hidden = !canPost(); note.hidden = true; b.disabled = false; b.textContent = `Post level ${held} to the Hall of Heroes`;
+  pendingPost = canPost() ? { held, v: S.rv || RULES_VERSION, map: S.mid || "meadow", state: "" } : null;
+  const note = $("postNote"); note.hidden = !pendingPost; note.textContent = "Your level is waiting in the Hall of Heroes. Post it from there if you'd like it on the shared board.";
+  renderBoard();
 }
-$("btnPost").addEventListener("click", async () => {
-  const b = $("btnPost"), note = $("postNote"), held = S.level - 1, { cur } = myEntry();
-  b.disabled = true; b.textContent = "Posting…";
-  const res = await submitScore(held, (cur && cur.badges) || [], S.rv || RULES_VERSION, S.mid);
-  note.hidden = false;
-  if (res === "ok") { b.textContent = "Posted"; note.textContent = `Level ${held} is in the Hall of Heroes as ${cleanName(playerName) || "A keeper"}. It keeps your best.`; }
+async function postPending() {
+  const p = pendingPost; if (!p || p.state === "busy" || p.state === "no") return;
+  p.state = "busy"; renderBoard();
+  const { cur } = myEntry(), res = await submitScore(p.held, (cur && cur.badges) || [], p.v, p.map === "meadow" ? null : p.map);
+  if (pendingPost !== p) return;   // a new game began meanwhile
+  if (res === "ok") { pendingPost = null; toast(`Level ${p.held} is in the Hall of Heroes as ${cleanName(playerName) || "A keeper"}. It keeps your best.`); }
   else {
-    b.disabled = res === "name"; b.textContent = res === "name" ? "Can't post" : `Try posting again`;
-    note.textContent = res === "name" ? "That name can't go on the shared board. Pick another on the start screen next time."
-      : res === "refused" ? "The Hall of Heroes wouldn't take this score." : "Couldn't reach the Hall of Heroes. Check you're online and try again.";
+    p.state = res === "name" ? "no" : "retry";
+    toast(res === "name" ? "That name can't go on the shared board. Pick another on the start screen next time."
+      : res === "refused" ? "The Hall of Heroes wouldn't take this score." : "Couldn't reach the Hall of Heroes. Check you're online and try again.");
   }
-});
+  renderBoard();
+}
 const ACH = [
   { id: "lv10",       name: "Seasoned Defender",   desc: "Reach level 10" },
   { id: "lv25",       name: "Veteran of the Keep", desc: "Reach level 25" },
@@ -3647,8 +3652,19 @@ function renderBoard() {
   pick.value = String(viewV);
   rows = rows.filter(r => r.best > 0 && r.v === viewV);
   rows.sort((a, b) => b.best - a.best || a.at - b.at);
-  const myK = nameKey(playerName);
-  rows.slice(0, 15).forEach((r, i) => {
+  const myK = nameKey(playerName), pp = pendingPost && pendingPost.map === viewMap && pendingPost.v === viewV ? pendingPost : null;
+  if (pp) rows.splice(rows.filter(r => r.best >= pp.held).length, 0, { pending: pp, name: cleanName(playerName) || "A keeper", best: pp.held });
+  const top = rows.slice(0, 15), at = rows.findIndex(r => r.pending);
+  if (at >= 15) top[14] = rows[at];   // your unposted level always shows, at its own rank
+  top.forEach((r) => {
+    const i = rows.indexOf(r);
+    if (r.pending) {
+      const li = el("li", "me pending"), b = el("button", "post", { busy: "Posting…", retry: "Try again", no: "Can't post" }[r.pending.state] || "Post");
+      b.disabled = r.pending.state === "busy" || r.pending.state === "no"; b.title = `Post level ${r.best} to the shared Hall of Heroes`;
+      b.addEventListener("click", postPending);
+      li.append(el("span", "rk", String(i + 1)), el("span", "nm", r.name), b, el("span", "lv", "Level " + r.best));
+      list.append(li); return;
+    }
     const li = el("li", r.mine && nameKey(r.name) === myK ? "me" : "");
     const bd = el("span", "bd"), ids = (Array.isArray(r.badges) ? r.badges : []).filter(id => ACH.some(a => a.id === id));
     ids.slice(-4).reverse().forEach(id => { const im = new Image(); im.src = badgeImg(id); im.alt = ACH.find(a => a.id === id).name; im.title = im.alt; bd.append(im); });
@@ -4083,7 +4099,7 @@ function vsEnd(winner) {
 const vsClock = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 function vsShowOver(head, note) {
   $("overCard").querySelector("h2").textContent = head;
-  $("overScore").textContent = note; $("overHeirlooms").textContent = ""; $("overNote").textContent = "Two-player games don't affect your heirlooms or the Hall of Heroes."; $("btnPost").hidden = $("postNote").hidden = true;
+  $("overScore").textContent = note; $("overHeirlooms").textContent = ""; $("overNote").textContent = "Two-player games don't affect your heirlooms or the Hall of Heroes."; $("postNote").hidden = true;
   $("overStats").textContent = ""; $("overMvp").textContent = ""; $("overBadges").textContent = "";
   $("btnAgain").textContent = "Back to the start";
   if (S) S.phase = "over";
