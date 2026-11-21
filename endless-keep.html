@@ -1066,6 +1066,7 @@ function sfx(name) {
     case "build": tone(330, .07, "square", .025); tone(495, .1, "square", .025, 0, .07); break;
     case "up":    tone(523, .08, "triangle", .04); tone(659, .08, "triangle", .04, 0, .08); tone(784, .14, "triangle", .04, 0, .16); break;
     case "wave":  tone(392, .22, "triangle", .05); tone(523, .4, "triangle", .05, 0, .2); break;
+    case "glint": tone(1568, .12, "sine", .03); tone(2093, .16, "sine", .025, 0, .07); tone(2637, .3, "sine", .02, 0, .14); break;
     case "clear": tone(659, .1, "sine", .045); tone(784, .1, "sine", .045, 0, .1); tone(1047, .3, "sine", .045, 0, .2); break;
     case "boss":  tone(98, .9, "sawtooth", .05, 70); tone(73, 1.1, "sawtooth", .04, 55, .3); break;
     case "over":  tone(392, .3, "triangle", .05, 0); tone(330, .3, "triangle", .05, 0, .3); tone(262, .7, "triangle", .05, 196, .6); break;
@@ -3341,7 +3342,7 @@ const ACH = [
   { id: "eventful",   name: "Through Thick and Thin", desc: "Clear 10 levels with a random event in one game" },
   { id: "scholar",    name: "Monster Scholar",     desc: "Meet every monster in the Bestiary" },
   { id: "slayer",     name: "Ten Thousand Fallen", desc: "Defeat 10,000 monsters across all your games" },
-  { id: "wish",       name: "Wishful Thinking",    desc: "Catch the golden fish in the pond" },
+  { id: "wish",       name: "Wishful Thinking",    desc: "Catch the golden fish" },
 ];
 const badgeCache = {};
 function medal(g, text, col = "#2a1d05") {

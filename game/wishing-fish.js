@@ -11,7 +11,8 @@ let fish = null, fishL = 0;   // fishL: the level the fish has already been deci
 function fishTick(dt) {
   if (fish) {
     fish.t += dt;
-    if (fish.t >= 0 && !fish.told) { fish.told = true; toast(`A golden fish is up in the ${fishPool().where || "pond"}! Tap the ${fishPool().where || "pond"} (or press W) before it dives to make a wish.`); }
+    if (fish.t >= 0 && !fish.told) { fish.told = true; sfx("glint"); }   // no banner: a glint you hear, and the fish you see
+    if (fish.t >= FISH_STAY / 2 && !fish.told2 && !fish.gone) { fish.told2 = true; sfx("glint"); }
     if (fish.gone) { if (fish.t > fish.goneAt + .8) fish = null; }
     else if (fish.t > FISH_STAY) { fish.gone = true; fish.goneAt = fish.t; }
     else { const P = fishPool(), a = fish.a0 + fish.t * .7 * fish.dir; fish.x = P.x + Math.cos(a) * P.rx; fish.y = P.y + Math.sin(a) * P.ry; fish.face = -Math.sin(a) * fish.dir >= 0 ? 1 : -1; }
@@ -44,11 +45,13 @@ function drawFish() {
   if (sp) { c.fillStyle = "#fff"; ell(c, fish.x + 2, fish.y - 6, 1.6, 1.6); }
   c.restore();
 }
-// the water can't be built on anyway, so while the fish is up a tap anywhere on it (or near the fish) catches it
+// the water can't be built on anyway, so while the fish is up a tap anywhere on it (or near the fish) catches it:
+// the pond, or any square of a map's river or sea (not its bridges)
 function fishHit(x, y, pad = 0) {
   if (!fish || fish.gone || fish.t < 0) return false;
-  const P = fishPool();
-  return Math.hypot(x - fish.x, y - fish.y) < 26 + pad || ((x - P.x) / (P.rx + 38 + pad)) ** 2 + ((y - P.y) / (P.ry + 31 + pad)) ** 2 < 1;
+  const P = fishPool(), c = Math.floor(x / CELL), r = Math.floor(y / CELL);
+  if (MAP.fishAt && MAP.waterSet.has(cellKey(c, r)) && !MAPINFO.set.has(cellKey(c, r))) return true;
+  return Math.hypot(x - fish.x, y - fish.y) < 36 + pad || ((x - P.x) / (P.rx + 38 + pad)) ** 2 + ((y - P.y) / (P.ry + 31 + pad)) ** 2 < 1;
 }
 function catchFish() {
   if (!fish || fish.gone || fish.t < 0) return;
